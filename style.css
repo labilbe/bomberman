@@ -45,15 +45,20 @@ body {
    * rien n'est lisible. Le voile du haut est le plus dense, c'est la que se
    * trouvent les champs.
    *
-   * L'image n'est pas dans le depot — elle appartient a Interplay et assets/
-   * est exclu. Quand elle manque, le navigateur ne peint rien a sa place et la
-   * page retrouve exactement le fond qu'elle avait avant : il n'y a donc aucun
-   * repli a ecrire.
+   * DEUX fonds sont empiles, et c'est voulu. Celui du jeu n'est pas dans le
+   * depot : il appartient a Interplay, assets/ est exclu, et la version publiee
+   * ne l'a donc pas. En dessous attend `fond-accueil.svg`, dessine pour ce
+   * projet et versionne avec lui.
+   *
+   * Une couche CSS dont l'image manque ne peint rien et laisse voir la suivante.
+   * Le repli se fait donc tout seul, sans une ligne de JavaScript : l'ecran du
+   * jeu chez qui l'a extrait, le notre partout ailleurs.
    */
   background:
     linear-gradient(180deg, rgba(20, 16, 34, 0.88) 0%, rgba(20, 16, 34, 0.62) 38%, rgba(20, 16, 34, 0.55) 62%, rgba(20, 16, 34, 0.94) 100%),
     radial-gradient(1200px 600px at 50% -10%, #241d38 0%, transparent 70%),
     url('assets/jeu/accueil.png') no-repeat center center / cover fixed,
+    url('fond-accueil.svg') no-repeat center center / cover fixed,
     var(--fond);
   color: var(--texte);
   font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;

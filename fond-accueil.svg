@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Bombes allumees sur une grille, dans la penombre">
+  <!--
+    Fond de la page d'accueil, dessine ici et a nous.
+
+    Il existe parce que la version publiee n'a AUCUN fichier du jeu d'origine :
+    ceux-la appartiennent a Interplay, restent sur la machine de qui les extrait,
+    et ne sont donc pas la pour habiller la page en ligne.
+
+    Rien n'est copie du jeu. Une bombe ronde a meche, une croix de souffle et une
+    trame de piliers sont le vocabulaire commun du genre, pas des dessins
+    particuliers — et il n'y a ici aucun personnage.
+
+    Tout est en SVG plutot qu'en PNG : le fichier pese quelques kilo-octets, se
+    lit dans le depot, et reste net quelle que soit la taille de l'ecran.
+  -->
+
+  <defs>
+    <radialGradient id="halo" cx="50%" cy="22%" r="68%">
+      <stop offset="0%" stop-color="#3b2f5c"/>
+      <stop offset="55%" stop-color="#221b38"/>
+      <stop offset="100%" stop-color="#15111f"/>
+    </radialGradient>
+
+    <radialGradient id="corps" cx="34%" cy="28%" r="72%">
+      <stop offset="0%" stop-color="#7e7e90"/>
+      <stop offset="38%" stop-color="#3b3b4a"/>
+      <stop offset="100%" stop-color="#1a1a24"/>
+    </radialGradient>
+
+    <radialGradient id="souffle" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff3c4" stop-opacity="0.95"/>
+      <stop offset="45%" stop-color="#ffab2e" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#e2452b" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="etincelle" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fffbe8"/>
+      <stop offset="40%" stop-color="#ffc452"/>
+      <stop offset="100%" stop-color="#ff7a18" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- La trame de piliers du plateau, en tres bas contraste : elle donne le
+         sujet sans jamais concurrencer le texte pose par-dessus. -->
+    <pattern id="trame" width="120" height="108" patternUnits="userSpaceOnUse">
+      <rect width="120" height="108" fill="none"/>
+      <rect x="0" y="0" width="56" height="50" rx="7" fill="#ffffff" opacity="0.05"/>
+      <rect x="64" y="58" width="56" height="50" rx="7" fill="#ffffff" opacity="0.05"/>
+    </pattern>
+
+    <!-- Une bombe : corps, reflet, anneau, meche. Posee une fois, reutilisee. -->
+    <g id="bombe">
+      <ellipse cx="0" cy="104" rx="76" ry="16" fill="#000000" opacity="0.38"/>
+      <circle cx="0" cy="0" r="92" fill="url(#corps)"/>
+      <circle cx="0" cy="0" r="92" fill="none" stroke="#000000" stroke-opacity="0.5" stroke-width="3"/>
+      <ellipse cx="-31" cy="-36" rx="26" ry="18" fill="#ffffff" opacity="0.17" transform="rotate(-24 -31 -36)"/>
+      <rect x="-19" y="-104" width="38" height="24" rx="7" fill="#43434f"/>
+      <rect x="-19" y="-104" width="38" height="8" rx="4" fill="#5e5e6c"/>
+      <path d="M8 -100 C 44 -128, 58 -160, 44 -188" fill="none" stroke="#9a7b4a" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="42" cy="-192" r="26" fill="url(#etincelle)"/>
+      <circle cx="42" cy="-192" r="7" fill="#fffdf2"/>
+    </g>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#halo)"/>
+  <rect width="1600" height="900" fill="url(#trame)"/>
+
+  <!-- Deux souffles lointains, pour la profondeur. -->
+  <g opacity="0.85">
+    <rect x="1140" y="214" width="340" height="58" rx="29" fill="url(#souffle)"/>
+    <rect x="1281" y="73" width="58" height="340" rx="29" fill="url(#souffle)"/>
+  </g>
+  <g opacity="0.6">
+    <rect x="96" y="628" width="280" height="48" rx="24" fill="url(#souffle)"/>
+    <rect x="212" y="512" width="48" height="280" rx="24" fill="url(#souffle)"/>
+  </g>
+
+  <use href="#bombe" x="268" y="330" transform="translate(0 0) scale(1)" opacity="0.96"/>
+  <use href="#bombe" x="1296" y="636" transform="scale(0.74)" opacity="0.9" style="transform-origin: 1296px 636px"/>
+  <use href="#bombe" x="862" y="782" transform="scale(0.52)" opacity="0.72" style="transform-origin: 862px 782px"/>
+
+  <!-- Quelques braises en suspension. -->
+  <g fill="#ffc452">
+    <circle cx="470" cy="236" r="3.5" opacity="0.8"/>
+    <circle cx="534" cy="300" r="2.5" opacity="0.6"/>
+    <circle cx="396" cy="182" r="2" opacity="0.5"/>
+    <circle cx="1128" cy="500" r="3" opacity="0.6"/>
+    <circle cx="1060" cy="452" r="2" opacity="0.45"/>
+    <circle cx="742" cy="676" r="2.5" opacity="0.5"/>
+  </g>
+
+  <!-- Le sol se perd dans le noir, pour que le bas de page reste lisible. -->
+  <rect y="620" width="1600" height="280" fill="url(#halo)" opacity="0"/>
+  <rect y="560" width="1600" height="340" fill="#15111f" opacity="0.35"/>
+</svg>
