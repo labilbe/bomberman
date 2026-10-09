@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bomberman</title>
+    <meta
+      name="description"
+      content="Clone d'Atomic Bomberman jouable dans le navigateur : briques, bombes en chaine et power-ups, seul, a deux au clavier ou en ligne."
+    />
+    <meta name="theme-color" content="#120f1c" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="entete">
+        <h1>Bomberman</h1>
+        <p class="accroche">Pose, fuis, recommence.</p>
+      </header>
+
+      <main>
+        <section id="menu" class="carte">
+          <div class="champs">
+            <label class="champ">
+              <span>Pseudo</span>
+              <input id="pseudo" type="text" maxlength="16" autocomplete="off" spellcheck="false" />
+            </label>
+            <label class="champ">
+              <span>Salon</span>
+              <input id="salon" type="text" maxlength="8" autocomplete="off" spellcheck="false" />
+            </label>
+            <label class="champ">
+              <span>Au clavier</span>
+              <select id="sieges">
+                <option value="1">1 joueur</option>
+                <option value="2">2 joueurs</option>
+              </select>
+            </label>
+            <label class="champ">
+              <span>Match</span>
+              <select id="format">
+                <option value="3">Au meilleur des 3</option>
+                <option value="5">Au meilleur des 5</option>
+                <option value="7">Au meilleur des 7</option>
+              </select>
+            </label>
+            <label class="champ">
+              <span>Adversaires</span>
+              <select id="bots">
+                <option value="1">1 bot</option>
+                <option value="2">2 bots</option>
+                <option value="3">3 bots</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="boutons">
+            <button id="jouer-local" type="button" class="primaire">Jouer sur cette machine</button>
+            <button id="jouer-multi" type="button">Jouer en ligne</button>
+          </div>
+
+          <div class="aide">
+            <h2>Commandes</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Joueur</th>
+                  <th>Deplacer</th>
+                  <th>Bombe</th>
+                  <th>Detonateur</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row"><span class="pastille p0"></span> 1</th>
+                  <td>Fleches</td>
+                  <td>Espace</td>
+                  <td>Entree</td>
+                </tr>
+                <tr>
+                  <th scope="row"><span class="pastille p1"></span> 2</th>
+                  <td>Z Q S D</td>
+                  <td>Maj gauche</td>
+                  <td>Ctrl gauche</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="note">
+              Casse les briques pour trouver des bonus : une bombe de plus, une flamme plus longue,
+              de la vitesse, le coup de pied, le detonateur.
+            </p>
+          </div>
+        </section>
+
+        <section id="jeu" class="carte" hidden>
+          <div id="hud" class="hud"></div>
+          <div id="arene" class="arene">
+            <canvas id="toile" width="480" height="416"></canvas>
+            <div id="banniere" class="banniere" hidden></div>
+          </div>
+          <div class="pied-jeu">
+            <button id="quitter" type="button">Quitter la partie</button>
+            <button id="son" type="button" aria-pressed="true">Son : actif</button>
+            <span id="etat-reseau" class="etat-reseau"></span>
+          </div>
+        </section>
+      </main>
+
+      <footer class="pied">
+        <a href="https://github.com/labilbe/bomberman">Code source</a>
+      </footer>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

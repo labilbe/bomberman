@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Bombe">
+  <rect width="32" height="32" rx="6" fill="#120f1c" />
+  <path d="M19 7h2v3h-2z" fill="#c9a227" />
+  <path d="M21 5h2v3h-2z" fill="#c9a227" />
+  <circle cx="24" cy="5" r="2" fill="#ffd45e" />
+  <circle cx="14" cy="19" r="9" fill="#1b1b2a" stroke="#3a3a52" stroke-width="1.5" />
+  <circle cx="10.5" cy="15.5" r="2" fill="#9aa4bd" />
+</svg>
