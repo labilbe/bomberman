@@ -9,7 +9,9 @@
     "relais": "npx --yes wrangler@4 dev --port 8787 --local",
     "deploy": "npx --yes wrangler@4 deploy",
     "test": "node --test",
-    "test:relais": "node scripts/relais.e2e.mjs"
+    "test:relais": "node scripts/relais.e2e.mjs",
+    "prod": "node scripts/preparer-prod.mjs",
+    "prod:deploy": "node scripts/preparer-prod.mjs && npx --yes wrangler@4 pages deploy dist-prive --project-name bomberman-prive"
   },
   "license": "MIT"
 }
