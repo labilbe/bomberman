@@ -18,8 +18,8 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { lireRss, enMono, reechantillonner, versWav, FREQUENCE } from './son/rss.mjs';
-import { lireListe, plage } from './son/liste.mjs';
+import { lireRss, enMono, reechantillonner, versWav, FREQUENCE } from '../src/extraction/rss.js';
+import { lireListe, plage } from '../src/extraction/liste.js';
 
 /**
  * Ce que le moteur annonce, et ou le jeu range le son correspondant.

@@ -11,9 +11,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { lireEntete, lireMorceaux, charge, chaine } from '../scripts/ani/chfile.mjs';
-import { lireEnteteImage, developper, rgb555, decoder } from '../scripts/ani/cimg.mjs';
-import { vectoriser, reduirePalette } from '../scripts/ani/vecteur.mjs';
+import { lireEntete, lireMorceaux, charge, chaine } from '../src/extraction/chfile.js';
+import { lireEnteteImage, developper, rgb555, decoder } from '../src/extraction/cimg.js';
+import { vectoriser, reduirePalette } from '../src/extraction/vecteur.js';
 
 /** Fabrique un morceau : id(4) + taille(4) + drapeaux(2) + charge. */
 function morceau(id, charge, drapeaux = 1) {

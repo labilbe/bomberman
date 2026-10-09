@@ -21,9 +21,9 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { lireAnimation } from './ani/animation.mjs';
-import { vectoriser } from './ani/vecteur.mjs';
-import { decoderPcx } from './ani/pcx.mjs';
+import { lireAnimation } from '../src/extraction/animation.js';
+import { vectoriser } from '../src/extraction/vecteur.js';
+import { decoderPcx } from '../src/extraction/pcx.js';
 import { encoderPng } from './ani/png.mjs';
 import { lireCouleursJoueurs } from './ani/remap.mjs';
 

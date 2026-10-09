@@ -19,10 +19,10 @@
 
 import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, basename, extname } from 'node:path';
-import { lireMorceaux, parcourir, lireEntete } from './ani/chfile.mjs';
-import { lireAnimation } from './ani/animation.mjs';
+import { lireMorceaux, parcourir, lireEntete } from '../src/extraction/chfile.js';
+import { lireAnimation } from '../src/extraction/animation.js';
 import { encoderPng } from './ani/png.mjs';
-import { vectoriser } from './ani/vecteur.mjs';
+import { vectoriser } from '../src/extraction/vecteur.js';
 
 function options(argv) {
   const o = { source: '', sortie: 'assets', format: 'svg', couleurs: 0, seul: '', sonde: false };

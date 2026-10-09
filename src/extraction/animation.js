@@ -8,8 +8,8 @@
  * faut deviner a l'oeil lesquelles forment un cycle de marche.
  */
 
-import { lireMorceaux, charge, chaine, lireEntete } from './chfile.mjs';
-import { decoder } from './cimg.mjs';
+import { lireMorceaux, charge, chaine, lireEntete } from './chfile.js';
+import { decoder } from './cimg.js';
 
 /**
  * Duree qui veut dire « la meme que le pas precedent ».
