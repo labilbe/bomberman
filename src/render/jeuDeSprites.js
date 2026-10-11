@@ -29,8 +29,67 @@ const BANDEAU = 0.13;
 const MOT_DETONATEUR = 'BOOM';
 const TEXTE_DETONATEUR = '#ff2d2d';
 
-/** Inclinaison du bandeau, en radians : il barre la bombe, il ne la ceinture pas. */
+/**
+ * Inclinaison de repli, si le bouchon reste introuvable.
+ *
+ * Le bandeau suit normalement l'axe du BOUCHON JAUNE qui coiffe la bombe, parce
+ * que c'est lui qui donne son assiette au dessin : un bandeau horizontal sur une
+ * bombe penchee se lit comme une erreur de montage. On mesure donc le bouchon
+ * plutot que de coder un angle, ce qui a l'avantage de rester juste si les
+ * sprites changent.
+ */
 const INCLINAISON = (-14 * Math.PI) / 180;
+
+/** Un pixel est-il du laiton du bouchon ? Jaune franc : bleu nettement en retrait. */
+function estBouchon(r, v, b) {
+  const min = Math.min(r, v);
+  return min > 90 && b < min * 0.62;
+}
+
+/**
+ * Axe du bouchon jaune, en radians, ou `null` s'il est introuvable.
+ *
+ * On prend l'axe principal du nuage de pixels jaunes — la direction dans
+ * laquelle ils s'etalent le plus. C'est un calcul de covariance, pas une
+ * reconnaissance de forme : le bouchon est un petit cylindre penche, et son
+ * etalement suit sa pente.
+ */
+function axeDuBouchon(donnees, largeur, hauteur) {
+  let n = 0;
+  let sx = 0;
+  let sy = 0;
+  for (let y = 0; y < hauteur; y += 1) {
+    for (let x = 0; x < largeur; x += 1) {
+      const i = (y * largeur + x) * 4;
+      if (donnees[i + 3] < 128) continue;
+      if (!estBouchon(donnees[i], donnees[i + 1], donnees[i + 2])) continue;
+      n += 1;
+      sx += x;
+      sy += y;
+    }
+  }
+  if (n < 8) return null;
+
+  const mx = sx / n;
+  const my = sy / n;
+  let xx = 0;
+  let yy = 0;
+  let xy = 0;
+  for (let y = 0; y < hauteur; y += 1) {
+    for (let x = 0; x < largeur; x += 1) {
+      const i = (y * largeur + x) * 4;
+      if (donnees[i + 3] < 128) continue;
+      if (!estBouchon(donnees[i], donnees[i + 1], donnees[i + 2])) continue;
+      const dx = x - mx;
+      const dy = y - my;
+      xx += dx * dx;
+      yy += dy * dy;
+      xy += dx * dy;
+    }
+  }
+  if (xx === 0 && yy === 0) return null;
+  return 0.5 * Math.atan2(2 * xy, xx - yy);
+}
 
 /**
  * La meme bombe, ceinte d'un bandeau noir : celle qui attend un detonateur.
@@ -40,16 +99,16 @@ const INCLINAISON = (-14 * Math.PI) / 180;
  * bouton rouge et une antenne qui tourne — le recepteur, pas l'engin. La bombe
  * a detonateur d'Atomic Bomberman est la bombe ordinaire, barree d'un bandeau.
  *
- * Le bandeau est pose a l'EQUATEUR, trouve en cherchant la ligne de pixels la
- * plus large. Une fraction fixe de la hauteur ne marcherait pas : la meche
- * occupe le haut du sprite, sa longueur varie d'une image a l'autre, et le
- * bandeau glisserait le long de la bombe pendant l'animation. La ligne la plus
- * large, elle, est toujours le milieu de la sphere.
+ * Le bandeau est pose a l'EQUATEUR, au milieu des lignes de pixels les plus
+ * larges. Une fraction fixe de la hauteur ne marcherait pas : la meche occupe
+ * le haut du sprite, sa longueur varie d'une image a l'autre, et le bandeau
+ * glisserait le long de la bombe pendant l'animation. Le plus grand diametre,
+ * lui, est toujours le milieu de la sphere.
  *
  * Il suit aussi la silhouette, puisqu'on ne repeint que les pixels deja opaques
  * — sinon il depasserait en rectangle de part et d'autre.
  */
-function avecBandeau(toile) {
+function avecBandeau(toile, inclinaison = INCLINAISON) {
   const canvas = document.createElement('canvas');
   canvas.width = toile.width;
   canvas.height = toile.height;
@@ -60,16 +119,24 @@ function avecBandeau(toile) {
   const d = image.data;
   const opaque = (x, y) => d[(y * canvas.width + x) * 4 + 3] > 32;
 
-  let plusLarge = 0;
-  let equateur = Math.round(canvas.height * 0.6);
+  // Largeur de chaque rang, puis le MILIEU du plateau le plus large.
+  //
+  // Le milieu, et non le premier rang qui atteint le maximum : une sphere
+  // dessinee en pixels a le haut de son flanc plat, et la bombe compte sept
+  // rangs de meme largeur. En gardant le premier, le bandeau se posait trois
+  // pixels trop haut — assez pour qu'il coupe la bombe au-dessus de son plus
+  // grand diametre, ce qui se voit immediatement.
+  const largeurs = [];
   for (let y = 0; y < canvas.height; y += 1) {
     let compte = 0;
     for (let x = 0; x < canvas.width; x += 1) if (opaque(x, y)) compte += 1;
-    if (compte > plusLarge) {
-      plusLarge = compte;
-      equateur = y;
-    }
+    largeurs.push(compte);
   }
+  const plusLarge = Math.max(...largeurs);
+  if (plusLarge === 0) return canvas;
+  const equateur = Math.round(
+    (largeurs.indexOf(plusLarge) + largeurs.lastIndexOf(plusLarge)) / 2,
+  );
 
   let gauche = canvas.width;
   let droite = 0;
@@ -90,7 +157,7 @@ function avecBandeau(toile) {
   ctx.save();
   ctx.globalCompositeOperation = 'source-atop';
   ctx.translate((gauche + droite) / 2, equateur + 0.5);
-  ctx.rotate(INCLINAISON);
+  ctx.rotate(inclinaison);
 
   const long = canvas.width + canvas.height;
   ctx.fillStyle = '#14141a';
@@ -119,10 +186,32 @@ function avecBandeau(toile) {
 }
 
 /** La meme suite de sprites, chacun ceint de son bandeau. */
-const suiteAvecBandeau = (suite) => suite.map((sprite) => ({
-  ...sprite,
-  toile: avecBandeau(sprite.toile),
-}));
+const suiteAvecBandeau = (suite) => {
+  const inclinaison = angleDeLaSuite(suite);
+  return suite.map((sprite) => ({ ...sprite, toile: avecBandeau(sprite.toile, inclinaison) }));
+};
+
+/**
+ * Lit l'angle du bouchon sur la premiere image qui en montre un.
+ *
+ * L'angle est mesure UNE FOIS et sert pour toute la suite. Le mesurer image par
+ * image ferait trembler le bandeau pendant la pulsation : le bouchon ne compte
+ * que quelques dizaines de pixels, et un seul qui bascule d'une image a l'autre
+ * deplace son axe d'un degre.
+ */
+function angleDeLaSuite(suite) {
+  for (const { toile } of suite) {
+    const canvas = document.createElement('canvas');
+    canvas.width = toile.width;
+    canvas.height = toile.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(toile, 0, 0);
+    const donnees = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const angle = axeDuBouchon(donnees, canvas.width, canvas.height);
+    if (angle !== null) return angle;
+  }
+  return INCLINAISON;
+}
 
 /**
  * Duree d'un battement de bombe, en millisecondes, faute de mieux.
