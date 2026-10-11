@@ -11,6 +11,8 @@ import { creerScene } from './render/scene.js';
 import { chargerVectoriels } from './render/vectoriels.js';
 import { depuisDessins, depuisVectoriels } from './render/jeuDeSprites.js';
 import { creerClavier, TOUCHES } from './input/clavier.js';
+import { creerManettes } from './input/manettes.js';
+import { fusionner } from './input/fusion.js';
 import { creerHud, creerBanniere } from './view/hud.js';
 import { creerTransportLocal } from './net/transport.js';
 import { creerSons } from './audio/sons.js';
@@ -76,6 +78,17 @@ const scene = creerScene(toile, vectoriels ? depuisVectoriels(vectoriels) : depu
 const hud = creerHud(document.querySelector('#hud'));
 const banniere = creerBanniere(document.querySelector('#banniere'));
 const clavier = creerClavier({ nombre: TOUCHES.length });
+const manettes = creerManettes({ nombre: TOUCHES.length });
+
+/**
+ * L'intention d'un siege local, clavier et manette confondus.
+ *
+ * Les DEUX sources sont lues a chaque image, meme quand une seule sert. C'est
+ * necessaire, pas gaspille : leurs impulsions se consomment a la lecture, donc
+ * sauter celle qui parait inactive perdrait la bombe posee a l'instant meme ou
+ * le joueur change de main.
+ */
+const intentionLocale = (siege) => fusionner(clavier.lire(siege), manettes.lire(siege));
 const sons = creerSons();
 const boutonSon = document.querySelector('#son');
 
@@ -131,6 +144,7 @@ function arreterSession() {
   session.transport.fermer();
   session = null;
   clavier.oubli();
+  manettes.oubli();
   // La musique du menu ne demarre qu'ICI, au retour : au chargement de la page
   // le contexte audio n'existe pas encore, et le navigateur refuserait de la
   // lancer sans un geste. Quelqu'un qui clique « Jouer » tout de suite ne la
@@ -258,7 +272,7 @@ async function demarrer(transport, { humains, places, noms }) {
   function image(maintenant) {
     if (!session) return;
     for (let siege = 0; siege < miens.length; siege += 1) {
-      transport.intention(miens[siege], clavier.lire(siege));
+      transport.intention(miens[siege], intentionLocale(siege));
     }
     transport.battre(maintenant);
     if (vue) {
@@ -322,8 +336,33 @@ boutonMulti.addEventListener('click', () => {
   boutonMulti.disabled = true;
 });
 
+/**
+ * Dit combien de manettes sont branchees, sous le tableau des commandes.
+ *
+ * Le navigateur ne revele une manette qu'apres un premier appui dessus, par
+ * souci de vie privee : une page ne doit pas pouvoir reconnaitre un visiteur a
+ * son materiel sans qu'il ait rien fait. Une manette allumee peut donc rester
+ * invisible jusqu'a ce qu'on presse un bouton, et sans ce compteur on croirait
+ * le jeu en panne alors qu'il attend simplement ce geste.
+ */
+const noteManettes = document.querySelector('#manettes');
+const TEXTE_MANETTES = noteManettes?.textContent ?? '';
+
+function annoncerManettes() {
+  if (!noteManettes) return;
+  const nombre = manettes.combien();
+  const etat = nombre === 0
+    ? 'Aucune manette detectee pour l instant — appuie sur un bouton pour qu elle se signale.'
+    : `${nombre} manette${nombre > 1 ? 's' : ''} detectee${nombre > 1 ? 's' : ''}.`;
+  noteManettes.textContent = `${TEXTE_MANETTES.trim()} ${etat}`;
+}
+
+window.addEventListener('gamepadconnected', annoncerManettes);
+window.addEventListener('gamepaddisconnected', annoncerManettes);
+
 /** Etat initial des champs : le lien l'emporte sur la preference locale. */
 function initialiser() {
+  annoncerManettes();
   const invite = cleanRoom(new URLSearchParams(location.search).get('salon') ?? '');
   salonInput.value = invite || cleanRoom(lirePref(PREF_SALON, '')) || randomRoom();
   pseudoInput.value = cleanName(lirePref(PREF_PSEUDO, ''), randomName());
