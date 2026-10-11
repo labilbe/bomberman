@@ -22,6 +22,106 @@ export { IMAGES_MARCHE };
 /** Les quatre directions du moteur : HAUT, DROITE, BAS, GAUCHE. */
 const DIRS = [0, 1, 2, 3];
 
+/** Demi-epaisseur du bandeau, en fraction de la hauteur du sprite. */
+const BANDEAU = 0.09;
+
+/** Ce qui est ecrit sur le bandeau, et de quelle couleur. */
+const MOT_DETONATEUR = 'BOOM';
+const TEXTE_DETONATEUR = '#ff2d2d';
+
+/** Inclinaison du bandeau, en radians : il barre la bombe, il ne la ceinture pas. */
+const INCLINAISON = (-14 * Math.PI) / 180;
+
+/**
+ * La meme bombe, ceinte d'un bandeau noir : celle qui attend un detonateur.
+ *
+ * On ne prend PAS le sprite TRIGBOMB du jeu, bien qu'il existe et que
+ * l'extraction le ramene. Ce n'est pas une bombe : c'est un dome aplati avec un
+ * bouton rouge et une antenne qui tourne — le recepteur, pas l'engin. La bombe
+ * a detonateur d'Atomic Bomberman est la bombe ordinaire, barree d'un bandeau.
+ *
+ * Le bandeau est pose a l'EQUATEUR, trouve en cherchant la ligne de pixels la
+ * plus large. Une fraction fixe de la hauteur ne marcherait pas : la meche
+ * occupe le haut du sprite, sa longueur varie d'une image a l'autre, et le
+ * bandeau glisserait le long de la bombe pendant l'animation. La ligne la plus
+ * large, elle, est toujours le milieu de la sphere.
+ *
+ * Il suit aussi la silhouette, puisqu'on ne repeint que les pixels deja opaques
+ * — sinon il depasserait en rectangle de part et d'autre.
+ */
+function avecBandeau(toile) {
+  const canvas = document.createElement('canvas');
+  canvas.width = toile.width;
+  canvas.height = toile.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(toile, 0, 0);
+
+  const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = image.data;
+  const opaque = (x, y) => d[(y * canvas.width + x) * 4 + 3] > 32;
+
+  let plusLarge = 0;
+  let equateur = Math.round(canvas.height * 0.6);
+  for (let y = 0; y < canvas.height; y += 1) {
+    let compte = 0;
+    for (let x = 0; x < canvas.width; x += 1) if (opaque(x, y)) compte += 1;
+    if (compte > plusLarge) {
+      plusLarge = compte;
+      equateur = y;
+    }
+  }
+
+  let gauche = canvas.width;
+  let droite = 0;
+  for (let x = 0; x < canvas.width; x += 1) {
+    if (!opaque(x, equateur)) continue;
+    if (x < gauche) gauche = x;
+    if (x > droite) droite = x;
+  }
+  const large = droite - gauche;
+  if (large <= 6) return canvas;
+
+  const demi = Math.max(2, Math.round(canvas.height * BANDEAU));
+
+  // `source-atop` ne peint que la ou il y a deja quelque chose : le bandeau se
+  // decoupe donc tout seul sur la silhouette de la bombe, meme en biais. C'est
+  // ce qui permet de le poser EN TRAVERS sans deborder en rectangle, ce qu'un
+  // parcours ligne par ligne ne savait pas faire.
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-atop';
+  ctx.translate((gauche + droite) / 2, equateur + 0.5);
+  ctx.rotate(INCLINAISON);
+
+  const long = canvas.width + canvas.height;
+  ctx.fillStyle = '#14141a';
+  ctx.fillRect(-long, -demi, long * 2, demi * 2);
+  // Un lisere plus clair en haut et en bas : sans lui le bandeau se confond
+  // avec le bas de la bombe, qui est deja sombre.
+  ctx.fillStyle = '#56565f';
+  ctx.fillRect(-long, -demi, long * 2, 1);
+  ctx.fillRect(-long, demi - 1, long * 2, 1);
+
+  // Le mot. A cette taille il ne se LIT pas vraiment, et c'etait deja le cas
+  // dans le jeu d'origine : ce qu'on reconnait, c'est qu'il y a de l'ecriture
+  // rouge en travers de la bombe.
+  ctx.font = `bold ${Math.max(5, demi * 2)}px 'Arial Narrow', Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = TEXTE_DETONATEUR;
+  const mesure = ctx.measureText(MOT_DETONATEUR).width;
+  ctx.scale(Math.min(1, (large - 2) / mesure), 1);
+  ctx.fillText(MOT_DETONATEUR, 0, 0);
+  ctx.restore();
+
+  return canvas;
+}
+
+/** La meme suite de sprites, chacun ceint de son bandeau. */
+const suiteAvecBandeau = (suite) => suite.map((sprite) => ({
+  ...sprite,
+  toile: avecBandeau(sprite.toile),
+}));
+
 /**
  * Duree d'un battement de bombe, en millisecondes, faute de mieux.
  *
@@ -67,9 +167,8 @@ export function depuisDessins(places = PLACES.length) {
     // Les bombes dessinees ne portent pas la couleur du joueur : la meme
     // sequence sert pour toutes les places.
     bombe: parPlace(() => brut.bombe.map(sprite)),
-    // Les sprites dessines au code n ont pas de bombe a detonateur : la bombe
-    // ordinaire sert, a cadence fixe.
-    bombeDetonateur: null,
+    // Meme regle que pour les sprites extraits : la bombe ordinaire, barree.
+    bombeDetonateur: parPlace(() => suiteAvecBandeau(brut.bombe.map(sprite))),
     // Un seul jeu de flammes, reutilise pour le centre, les milieux et les
     // bouts : le dessin au code fait une croix pleine, qui se raccorde d'une
     // case a l'autre sans avoir besoin de pieces distinctes.
@@ -117,10 +216,7 @@ export function depuisVectoriels(charge, places = PLACES.length) {
       trigger: un('bonusTrigger'),
     },
     bombe: parPlace('bombe'),
-    // Atomic Bomberman donne un sprite a part a la bombe qui attend son
-    // detonateur — TRIGBOMB, et non BOMBS. Le role peut manquer si l'extraction
-    // date d'avant : le rendu retombe alors sur la bombe ordinaire.
-    bombeDetonateur: roles.bombeDetonateur ? parPlace('bombeDetonateur') : null,
+    bombeDetonateur: Array.from({ length: places }, (_, p) => suiteAvecBandeau(parPlace('bombe')[p])),
     // Une explosion prend la couleur de celui qui a pose la bombe : chaque piece
     // existe donc en autant d'exemplaires que de places.
     flamme: Array.from({ length: places }, (_, p) => ({
