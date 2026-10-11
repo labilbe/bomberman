@@ -23,7 +23,7 @@ export { IMAGES_MARCHE };
 const DIRS = [0, 1, 2, 3];
 
 /** Demi-epaisseur du bandeau, en fraction de la hauteur du sprite. */
-const BANDEAU = 0.09;
+const BANDEAU = 0.13;
 
 /** Ce qui est ecrit sur le bandeau, et de quelle couleur. */
 const MOT_DETONATEUR = 'BOOM';
@@ -109,7 +109,9 @@ function avecBandeau(toile) {
   ctx.textBaseline = 'middle';
   ctx.fillStyle = TEXTE_DETONATEUR;
   const mesure = ctx.measureText(MOT_DETONATEUR).width;
-  ctx.scale(Math.min(1, (large - 2) / mesure), 1);
+  // Le mot remplit le bandeau d un bord a l autre, quitte a s etirer : sur la
+  // bombe du jeu il barre toute la sphere, il ne flotte pas au milieu.
+  ctx.scale((large - 2) / mesure, 1);
   ctx.fillText(MOT_DETONATEUR, 0, 0);
   ctx.restore();
 
