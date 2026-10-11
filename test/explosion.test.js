@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { pas, avancerDe } from '../src/engine/pas.js';
 import { rayon } from '../src/engine/explosion.js';
 import { poser } from '../src/engine/bombes.js';
-import { index } from '../src/engine/grille.js';
-import { MECHE_PAS, FLAMME_PAS, BRIQUE, VIDE, DROITE, HAUT } from '../src/engine/constantes.js';
+import { index, caseAxe } from '../src/engine/grille.js';
+import { MECHE_PAS, FLAMME_PAS, BRIQUE, VIDE, DROITE, GAUCHE, HAUT } from '../src/engine/constantes.js';
 import { CODES_BONUS } from '../src/engine/bonus.js';
 import { areneNue, brique, objet, placer, entree, evenements } from './aide.js';
 
@@ -29,10 +29,8 @@ test('la croix detruit une brique et s arrete la', () => {
   brique(etat, 5, 3);
   brique(etat, 6, 3);
   const branche = rayon(etat, 3, 3, DROITE, 5);
-  assert.deepEqual(branche.cases, [
-    [4, 3],
-    [5, 3],
-  ]);
+  // La case de la brique n'est PAS enflammee : la brique absorbe le souffle.
+  assert.deepEqual(branche.cases, [[4, 3]]);
   assert.deepEqual(branche.brique, [5, 3]);
 
   const joueur = placer(etat, 0, 3, 3);
@@ -190,4 +188,48 @@ test('une bombe explose seule a la fin de sa meche', () => {
   assert.equal(etat.bombes.length, 1, 'elle ne doit pas partir avant l heure');
   avancerDe(etat, 3, entree(0, {}));
   assert.equal(etat.bombes.length, 0);
+});
+
+test('un joueur abrite derriere une brique survit a l ouverture du trou', () => {
+  // Le bug rapporte : la case de la brique etait videe ET enflammee au meme
+  // pas. Le joueur du bon cote de l'abri avancait dans le trou qui venait de
+  // s'ouvrir et mourait, puni d'avoir ete a couvert.
+  const etat = areneNue();
+  brique(etat, 5, 3);
+  const poseur = placer(etat, 0, 3, 3);
+  poseur.portee = 4;
+  const abrite = placer(etat, 1, 6, 3);
+
+  pas(etat, entree(0, { poser: true }));
+  detonner(etat, 0);
+  assert.equal(etat.tuiles[index(5, 3)], VIDE, 'la brique doit tomber');
+  assert.equal(abrite.vivant, true, 'et l abrite ne doit rien sentir');
+
+  // Il avance maintenant vers l explosion, et s arrete des qu il est dans le
+  // trou tout juste ouvert. On ne va pas plus loin a dessein : la case suivante
+  // brule pour de bon, et y mourir serait juste.
+  let franchis = 0;
+  while (caseAxe(abrite.x) !== 5 && franchis < FLAMME_PAS) {
+    pas(etat, entree(1, { dir: GAUCHE }));
+    franchis += 1;
+  }
+
+  assert.equal(caseAxe(abrite.x), 5, 'il doit atteindre le trou avant la fin du feu');
+  assert.ok(etat.flammes.length > 0, 'et la case voisine doit encore bruler');
+  assert.equal(abrite.vivant, true, 'entrer dans le trou ne doit pas tuer');
+});
+
+test('la case d une brique tombee ne brule pas', () => {
+  const etat = areneNue();
+  brique(etat, 5, 3);
+  const joueur = placer(etat, 0, 3, 3);
+  joueur.portee = 4;
+
+  pas(etat, entree(0, { poser: true }));
+  detonner(etat, 0);
+
+  const enFeu = etat.flammes.some((flamme) => flamme.cx === 5 && flamme.cy === 3);
+  assert.equal(enFeu, false);
+  // La case juste avant, elle, brule bien : le souffle va jusqu a la brique.
+  assert.ok(etat.flammes.some((flamme) => flamme.cx === 4 && flamme.cy === 3));
 });

@@ -67,6 +67,9 @@ export function depuisDessins(places = PLACES.length) {
     // Les bombes dessinees ne portent pas la couleur du joueur : la meme
     // sequence sert pour toutes les places.
     bombe: parPlace(() => brut.bombe.map(sprite)),
+    // Les sprites dessines au code n ont pas de bombe a detonateur : la bombe
+    // ordinaire sert, a cadence fixe.
+    bombeDetonateur: null,
     // Un seul jeu de flammes, reutilise pour le centre, les milieux et les
     // bouts : le dessin au code fait une croix pleine, qui se raccorde d'une
     // case a l'autre sans avoir besoin de pieces distinctes.
@@ -114,6 +117,10 @@ export function depuisVectoriels(charge, places = PLACES.length) {
       trigger: un('bonusTrigger'),
     },
     bombe: parPlace('bombe'),
+    // Atomic Bomberman donne un sprite a part a la bombe qui attend son
+    // detonateur — TRIGBOMB, et non BOMBS. Le role peut manquer si l'extraction
+    // date d'avant : le rendu retombe alors sur la bombe ordinaire.
+    bombeDetonateur: roles.bombeDetonateur ? parPlace('bombeDetonateur') : null,
     // Une explosion prend la couleur de celui qui a pose la bombe : chaque piece
     // existe donc en autant d'exemplaires que de places.
     flamme: Array.from({ length: places }, (_, p) => ({

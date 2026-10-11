@@ -156,3 +156,93 @@ test('la bombe reste sur sa case tant qu elle ne glisse pas', () => {
   avancerDe(etat, 50, entree(0, { dir: BAS }));
   assert.equal(bombeSur(etat, 7, 5), bombe);
 });
+
+test('une bombe a detonateur n a pas de meche et attend indefiniment', () => {
+  // Le marche du bonus : sans minuterie, le detonateur n est plus une facon
+  // d aller plus vite mais une arme de patience.
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 7, 7);
+  joueur.detonateur = true;
+
+  pas(etat, entree(0, { poser: true }));
+  const [bombe] = etat.bombes;
+  assert.equal(bombe.meche, null, 'elle ne doit porter aucune meche');
+
+  placer(etat, 0, 1, 1);
+  avancerDe(etat, MECHE_PAS * 3, entree(0, {}));
+  assert.equal(etat.bombes.length, 1, 'trois meches plus tard, elle est toujours la');
+  assert.equal(etat.bombes[0].meche, null);
+});
+
+test('le detonateur fait partir la bombe qui attend', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 7, 7);
+  joueur.detonateur = true;
+
+  pas(etat, entree(0, { poser: true }));
+  placer(etat, 0, 1, 1);
+  avancerDe(etat, MECHE_PAS * 2, entree(0, {}));
+  assert.equal(etat.bombes.length, 1);
+
+  pas(etat, entree(0, { declencher: true }));
+  assert.equal(etat.bombes.length, 0);
+  assert.equal(evenements(etat, 'boom').length, 1);
+  assert.equal(joueur.posees, 0, 'et son quota lui revient');
+});
+
+test('sans le detonateur, la bombe garde sa meche', () => {
+  const etat = areneNue();
+  placer(etat, 0, 7, 7);
+  pas(etat, entree(0, { poser: true }));
+  assert.equal(etat.bombes[0].meche, MECHE_PAS - 1);
+});
+
+test('une bombe qui attend part quand meme si une autre l atteint', () => {
+  // Elle n echappe pas aux chaines : rester a l abri d un souffle serait un
+  // privilege que le bonus ne donne pas.
+  const etat = areneNue({ places: 2 });
+  const patient = placer(etat, 0, 5, 3);
+  patient.detonateur = true;
+  pas(etat, entree(0, { poser: true }));
+
+  const voisin = placer(etat, 1, 3, 3);
+  voisin.portee = 3;
+  voisin.detonateur = true;
+  pas(etat, entree(1, { poser: true }));
+  placer(etat, 1, 9, 9);
+  pas(etat, entree(1, { declencher: true }));
+
+  assert.equal(etat.bombes.length, 0, 'les deux doivent avoir saute');
+  assert.equal(evenements(etat, 'boom').length, 2);
+});
+
+test('la mort du porteur rend une meche a ses bombes en attente', () => {
+  // Sinon elles resteraient posees jusqu a la fin de la manche : plus aucun
+  // doigt ne peut les declencher, et elles bloqueraient l arene pour rien.
+  // Trois places, et non deux : a deux, la manche se conclut des la mort du
+  // porteur et le moteur gele avant que la meche n ait pu bruler.
+  const etat = areneNue({ places: 3 });
+  const porteur = placer(etat, 0, 7, 7);
+  porteur.detonateur = true;
+  pas(etat, entree(0, { poser: true }));
+  assert.equal(etat.bombes[0].meche, null);
+  placer(etat, 2, 13, 11);
+
+  const tueur = placer(etat, 1, 1, 1);
+  tueur.detonateur = true;
+  tueur.portee = 1;
+  placer(etat, 0, 1, 2);
+  pas(etat, entree(1, { poser: true }));
+  // Le tueur s eloigne avant d appuyer : s il mourait avec sa victime, il ne
+  // resterait qu un survivant et la manche se conclurait.
+  placer(etat, 1, 13, 1);
+  pas(etat, entree(1, { declencher: true }));
+
+  assert.equal(porteur.vivant, false, 'le porteur doit bien mourir');
+  const restante = etat.bombes.find((bombe) => bombe.place === 0);
+  assert.ok(restante, 'sa bombe lointaine est encore la');
+  assert.equal(restante.meche, MECHE_PAS, 'mais elle a desormais une meche');
+
+  avancerDe(etat, MECHE_PAS + 1, []);
+  assert.equal(etat.bombes.length, 0, 'et elle finit par partir seule');
+});

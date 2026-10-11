@@ -14,7 +14,7 @@
  *    brique ne rapporterait jamais rien.
  */
 
-import { FLAMME_PAS, VECTEURS, VIDE, BRIQUE } from './constantes.js';
+import { FLAMME_PAS, MECHE_PAS, VECTEURS, VIDE, BRIQUE } from './constantes.js';
 import { caseDe, poserCase, index, estLibre, boiteSurCase, caseAxe } from './grille.js';
 import { noter } from './etat.js';
 import { bombeSur } from './bombes.js';
@@ -31,6 +31,19 @@ export const PAR_DEPART = 2;
  * S'arrete au premier mur dur, detruit UNE brique et s'arrete la. Une flamme
  * qui traverserait deux briques rendrait tout abri illusoire.
  *
+ * LA CASE DE LA BRIQUE N'EST PAS ENFLAMMEE, et c'est une regle de jeu, pas un
+ * detail. La brique ABSORBE le souffle : elle tombe, et le feu ne prend pas sa
+ * place. En l'enflammant, on obtenait une case a la fois VIDE et mortelle
+ * pendant une demi-seconde — un joueur abrite derriere la brique qui avancait
+ * vers l'explosion entrait dans le trou tout juste ouvert et mourait, alors
+ * qu'il etait precisement du bon cote de l'abri. Atomic Bomberman ne punit pas
+ * ca, et il a raison : c'est l'abri qui a joue son role.
+ *
+ * Ce que l'on voit sur cette case pendant qu'elle brule n'est donc pas une
+ * flamme du moteur mais l'animation de la brique qui tombe, declenchee par
+ * l'evenement `brick` — et chez Atomic Bomberman cette animation s'appelle
+ * justement « flame brick ». Le feu y est dessine, il n'y est pas mortel.
+ *
  * @param {import('./etat.js').Etat} etat
  * @returns {{ cases: number[][], brique: number[] | null, bombes: number[] }}
  */
@@ -46,7 +59,6 @@ export function rayon(etat, cx, cy, dir, portee) {
     const tuile = caseDe(etat, x, y);
     if (tuile === BRIQUE) {
       brique = [x, y];
-      cases.push([x, y]);
       break;
     }
     if (!estLibre(tuile)) break;
@@ -226,6 +238,15 @@ export function tuer(etat, joueur, cause) {
   joueur.marche = false;
   joueur.mortAu = etat.pas;
   joueur.surBombe = null;
+
+  // Ses bombes a detonateur n'attendent plus personne : on leur rend une meche.
+  // Sans ca elles resteraient posees jusqu'a la fin de la manche, puisque plus
+  // aucun doigt ne peut les declencher — des obstacles definitifs au milieu de
+  // l'arene, nes de la mort d'un joueur qui n'est meme plus la pour en profiter.
+  for (const bombe of etat.bombes) {
+    if (bombe.place === joueur.place && bombe.meche === null) bombe.meche = MECHE_PAS;
+  }
+
   noter(etat, ['death', joueur.place, cause]);
 }
 

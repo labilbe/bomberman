@@ -14,6 +14,7 @@
 
 import { COLS, ROWS, VECTEURS, FLAMME_PAS } from '../engine/constantes.js';
 import { index, caseDe, estLibre, caseAxe } from '../engine/grille.js';
+import { rayon } from '../engine/explosion.js';
 
 /** Valeur d'une case que rien ne menace. */
 export const SUR = 30000;
@@ -40,7 +41,11 @@ export function carteDanger(etat) {
   }
 
   for (const bombe of etat.bombes) {
-    const meche = Math.max(0, bombe.meche);
+    // Une bombe a detonateur n'a pas de meche : elle peut partir a l'instant
+    // meme, au gre d'un doigt. On la compte donc a zero, c'est-a-dire au danger
+    // maximal. Ce n'est pas une prudence excessive, c'est la verite du jeu : il
+    // n'existe aucun delai dont un bot pourrait se prevaloir.
+    const meche = bombe.meche === null ? 0 : Math.max(0, bombe.meche);
     const centre = index(bombe.cx, bombe.cy);
     if (carte[centre] > meche) carte[centre] = meche;
     for (const v of VECTEURS) {
@@ -225,4 +230,25 @@ export function fuite(etat, joueur, danger) {
   if (refuge) return refuge;
   if (repli) return { dir: repli.dir, distance: repli.distance, sur: false };
   return null;
+}
+
+/**
+ * La case est-elle dans le souffle de cette bombe ?
+ *
+ * On passe par `rayon`, qui est la definition du moteur, plutot que de refaire
+ * le parcours : la forme d'un souffle a deja change une fois — la case de la
+ * brique n'en fait plus partie — et une seconde version aurait menti des ce
+ * jour-la, en faisant fuir un bot d'une case ou il ne risquait plus rien.
+ *
+ * @param {import('../engine/etat.js').Etat} etat
+ * @param {import('../engine/etat.js').Bombe} bombe
+ */
+export function souffleCouvre(etat, bombe, cx, cy) {
+  if (bombe.cx === cx && bombe.cy === cy) return true;
+  for (let dir = 0; dir < VECTEURS.length; dir += 1) {
+    for (const [x, y] of rayon(etat, bombe.cx, bombe.cy, dir, bombe.portee).cases) {
+      if (x === cx && y === cy) return true;
+    }
+  }
+  return false;
 }

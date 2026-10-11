@@ -55,6 +55,16 @@ export function peutPoser(etat, joueur) {
  * propre bombe a l'instant ou il la pose, et le jeu entier — qui consiste a
  * poser puis fuir — deviendrait injouable.
  *
+ * UNE BOMBE DE PORTEUR DU DETONATEUR N'A PAS DE MECHE. Sa `meche` vaut `null`,
+ * et elle attend indefiniment : c'est le marche du bonus, et toute sa saveur.
+ * Avec une meche, le detonateur ne serait qu'une facon d'aller plus vite ; sans
+ * elle, il devient une arme de patience — on pose devant un couloir, on attend
+ * que l'adversaire s'y engage. Atomic Bomberman la distingue d'ailleurs a
+ * l'ecran, et le rendu fait de meme.
+ *
+ * Le nombre de bombes posables reste la limite : un porteur de detonateur ne
+ * peut pas couvrir l'arene, il doit declencher pour reposer.
+ *
  * @param {import('./etat.js').Etat} etat
  * @param {import('./etat.js').Joueur} joueur
  * @returns {import('./etat.js').Bombe | null}
@@ -69,7 +79,7 @@ export function poser(etat, joueur) {
     cy,
     place: joueur.place,
     portee: joueur.portee,
-    meche: MECHE_PAS,
+    meche: joueur.detonateur ? null : MECHE_PAS,
     glisse: null,
   };
   etat.prochainId += 1;
@@ -93,6 +103,9 @@ export function poser(etat, joueur) {
 export function avancerMeches(etat) {
   const terminees = [];
   for (const bombe of etat.bombes) {
+    // `null` veut dire « pas de meche » : une bombe a detonateur, qui attend.
+    // Elle ne vieillit pas, et c'est bien tout ce qui la distingue ici.
+    if (bombe.meche === null) continue;
     bombe.meche -= 1;
     if (bombe.meche <= 0) terminees.push(bombe);
   }

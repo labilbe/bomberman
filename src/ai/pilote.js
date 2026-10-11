@@ -25,10 +25,18 @@
  */
 
 import { COLS, VECTEURS, MECHE_PAS, FLAMME_PAS } from '../engine/constantes.js';
-import { index, caseDe, estLibre, estBrique, caseAxe } from '../engine/grille.js';
+import { index, caseDe, estLibre, estBrique, caseAxe, casesTouchees } from '../engine/grille.js';
 import { estVisible } from '../engine/bonus.js';
 import { ENTREE_VIDE } from '../engine/entrees.js';
-import { carteDanger, dangerAvecBombe, parcourir, fuite, ouverte, SUR } from './danger.js';
+import {
+  carteDanger,
+  dangerAvecBombe,
+  parcourir,
+  fuite,
+  ouverte,
+  souffleCouvre,
+  SUR,
+} from './danger.js';
 
 /**
  * Pas entre deux decisions, quand rien ne menace.
@@ -154,6 +162,65 @@ export function decider(etat, place, memoire = creerMemoire(), options = {}) {
   if (!joueur || !joueur.vivant) {
     return { entree: { ...ENTREE_VIDE }, memoire: creerMemoire() };
   }
+
+  // Le detonateur se decide A PART du deplacement, et s'ajoute a ce que le reste
+  // de la fonction choisira. Appuyer n'occupe pas les jambes : un bot qui se met
+  // a l'abri peut faire sauter sa bombe dans le meme pas, et c'est exactement ce
+  // qu'un joueur fait.
+  const choix = choisirDeplacement(etat, place, memoire, options, joueur);
+  if (veutDeclencher(etat, joueur)) choix.entree.declencher = true;
+  return choix;
+}
+
+/**
+ * Le bot declenche-t-il sa bombe a distance, a ce pas ?
+ *
+ * Il attend d'etre SORTI de son propre souffle. Sans cette condition, un bot qui
+ * ramasse le detonateur se tue a la premiere bombe : il la pose et appuie dans
+ * la foulee, puisque rien d'autre ne l'en empeche — la bombe a detonateur n'a
+ * pas de meche, donc pas de delai qui lui laisse le temps de partir.
+ *
+ * On juge la PLUS ANCIENNE de ses bombes, parce que c'est elle que le moteur
+ * fera sauter. En juger une autre reviendrait a decider sur une bombe et a en
+ * declencher une seconde, ailleurs.
+ *
+ * @param {import('../engine/etat.js').Etat} etat
+ * @param {import('../engine/etat.js').Joueur} joueur
+ */
+function veutDeclencher(etat, joueur) {
+  if (!joueur.detonateur) return false;
+
+  let ancienne = null;
+  for (const bombe of etat.bombes) {
+    if (bombe.place !== joueur.place) continue;
+    if (ancienne === null || bombe.id < ancienne.id) ancienne = bombe;
+  }
+  // Une bombe a meche part toute seule : on ne gaspille pas le detonateur, et
+  // surtout on ne l'avance pas au moment ou le bot est peut-etre encore dedans.
+  if (ancienne === null || ancienne.meche !== null) return false;
+
+  // On interroge TOUTES les cases que la boite du bomber mord, et non sa seule
+  // case centrale. Le moteur tue sur le chevauchement de la boite : un bomber
+  // dont le centre vient de passer la frontiere deborde encore largement sur la
+  // case d'avant. Juge sur son centre, le bot appuyait une fraction de seconde
+  // trop tot et se tuait une fois sur quatre.
+  for (const { cx, cy } of casesTouchees(joueur.x, joueur.y)) {
+    if (souffleCouvre(etat, ancienne, cx, cy)) return false;
+  }
+  return true;
+}
+
+/**
+ * Choisit le deplacement et la pose. Le detonateur est decide par `decider`.
+ *
+ * @param {import('../engine/etat.js').Etat} etat
+ * @param {number} place
+ * @param {Memoire} memoire
+ * @param {{ niveau?: keyof typeof NIVEAUX }} options
+ * @param {import('../engine/etat.js').Joueur} joueur
+ * @returns {{ entree: import('../engine/entrees.js').Entree, memoire: Memoire }}
+ */
+function choisirDeplacement(etat, place, memoire, options, joueur) {
 
   const niveau = NIVEAUX[options.niveau ?? 'normal'] ?? NIVEAUX.normal;
   const danger = carteDanger(etat);
