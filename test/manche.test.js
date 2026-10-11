@@ -13,7 +13,7 @@ import {
   MANCHES_MAX,
 } from '../src/engine/manche.js';
 import { pas, avancerDe } from '../src/engine/pas.js';
-import { FIN_MANCHE_PAS } from '../src/engine/constantes.js';
+import { FIN_MANCHE_PAS, DETONATEURS_PAR_BONUS } from '../src/engine/constantes.js';
 import { areneNue, placer, entree, evenements } from './aide.js';
 
 test('un format inconnu retombe sur le premier', () => {
@@ -105,7 +105,7 @@ test('le moteur attend la fin des flammes avant d annoncer le verdict', () => {
   const etat = areneNue({ places: 2 });
   const un = placer(etat, 0, 3, 3);
   placer(etat, 1, 9, 9);
-  un.detonateur = true;
+  un.detonateur = DETONATEURS_PAR_BONUS;
 
   pas(etat, entree(0, { poser: true }));
   pas(etat, entree(0, { declencher: true }));

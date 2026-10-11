@@ -14,10 +14,10 @@
  *    brique ne rapporterait jamais rien.
  */
 
-import { FLAMME_PAS, MECHE_PAS, DEMI_MORTEL, VECTEURS, VIDE, BRIQUE } from './constantes.js';
+import { FLAMME_PAS, DEMI_MORTEL, VECTEURS, VIDE, BRIQUE } from './constantes.js';
 import { caseDe, poserCase, index, estLibre, boiteSurCase, caseAxe } from './grille.js';
 import { noter } from './etat.js';
-import { bombeSur } from './bombes.js';
+import { bombeSur, rendreLesMeches } from './bombes.js';
 import { estCache, estVisible, codeDe, appliquer, NOMS_BONUS } from './bonus.js';
 
 /** Causes de mort, telles qu'elles partent sur le reseau. */
@@ -242,12 +242,7 @@ export function tuer(etat, joueur, cause) {
   joueur.surBombe = null;
 
   // Ses bombes a detonateur n'attendent plus personne : on leur rend une meche.
-  // Sans ca elles resteraient posees jusqu'a la fin de la manche, puisque plus
-  // aucun doigt ne peut les declencher — des obstacles definitifs au milieu de
-  // l'arene, nes de la mort d'un joueur qui n'est meme plus la pour en profiter.
-  for (const bombe of etat.bombes) {
-    if (bombe.place === joueur.place && bombe.meche === null) bombe.meche = MECHE_PAS;
-  }
+  rendreLesMeches(etat, joueur.place);
 
   noter(etat, ['death', joueur.place, cause]);
 }

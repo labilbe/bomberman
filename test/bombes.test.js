@@ -4,7 +4,15 @@ import assert from 'node:assert/strict';
 import { pas, avancerDe } from '../src/engine/pas.js';
 import { peutPoser, bombeSur } from '../src/engine/bombes.js';
 import { caseAxe, centreAxe } from '../src/engine/grille.js';
-import { MECHE_PAS, DROITE, GAUCHE, BAS } from '../src/engine/constantes.js';
+import {
+  MECHE_PAS,
+  FLAMME_PAS,
+  DETONATEURS_PAR_BONUS,
+  DROITE,
+  GAUCHE,
+  BAS,
+} from '../src/engine/constantes.js';
+import { appliquer, CODES_BONUS } from '../src/engine/bonus.js';
 import { areneNue, brique, placer, entree, evenements } from './aide.js';
 
 test('on ne pose jamais plus de bombes que son quota', () => {
@@ -118,7 +126,7 @@ test('le detonateur fait partir la plus ancienne bombe, et elle seule', () => {
   const etat = areneNue();
   const joueur = placer(etat, 0, 1, 5);
   joueur.bombes = 3;
-  joueur.detonateur = true;
+  joueur.detonateur = DETONATEURS_PAR_BONUS;
 
   // Trois bombes assez loin les unes des autres pour qu aucune n enchaine sur
   // les autres : on veut eprouver le detonateur, pas la chaine.
@@ -162,7 +170,7 @@ test('une bombe a detonateur n a pas de meche et attend indefiniment', () => {
   // d aller plus vite mais une arme de patience.
   const etat = areneNue();
   const joueur = placer(etat, 0, 7, 7);
-  joueur.detonateur = true;
+  joueur.detonateur = DETONATEURS_PAR_BONUS;
 
   pas(etat, entree(0, { poser: true }));
   const [bombe] = etat.bombes;
@@ -177,7 +185,7 @@ test('une bombe a detonateur n a pas de meche et attend indefiniment', () => {
 test('le detonateur fait partir la bombe qui attend', () => {
   const etat = areneNue();
   const joueur = placer(etat, 0, 7, 7);
-  joueur.detonateur = true;
+  joueur.detonateur = DETONATEURS_PAR_BONUS;
 
   pas(etat, entree(0, { poser: true }));
   placer(etat, 0, 1, 1);
@@ -202,12 +210,12 @@ test('une bombe qui attend part quand meme si une autre l atteint', () => {
   // privilege que le bonus ne donne pas.
   const etat = areneNue({ places: 2 });
   const patient = placer(etat, 0, 5, 3);
-  patient.detonateur = true;
+  patient.detonateur = DETONATEURS_PAR_BONUS;
   pas(etat, entree(0, { poser: true }));
 
   const voisin = placer(etat, 1, 3, 3);
   voisin.portee = 3;
-  voisin.detonateur = true;
+  voisin.detonateur = DETONATEURS_PAR_BONUS;
   pas(etat, entree(1, { poser: true }));
   placer(etat, 1, 9, 9);
   pas(etat, entree(1, { declencher: true }));
@@ -223,13 +231,13 @@ test('la mort du porteur rend une meche a ses bombes en attente', () => {
   // porteur et le moteur gele avant que la meche n ait pu bruler.
   const etat = areneNue({ places: 3 });
   const porteur = placer(etat, 0, 7, 7);
-  porteur.detonateur = true;
+  porteur.detonateur = DETONATEURS_PAR_BONUS;
   pas(etat, entree(0, { poser: true }));
   assert.equal(etat.bombes[0].meche, null);
   placer(etat, 2, 13, 11);
 
   const tueur = placer(etat, 1, 1, 1);
-  tueur.detonateur = true;
+  tueur.detonateur = DETONATEURS_PAR_BONUS;
   tueur.portee = 1;
   placer(etat, 0, 1, 2);
   pas(etat, entree(1, { poser: true }));
@@ -245,4 +253,82 @@ test('la mort du porteur rend une meche a ses bombes en attente', () => {
 
   avancerDe(etat, MECHE_PAS + 1, []);
   assert.equal(etat.bombes.length, 0, 'et elle finit par partir seule');
+});
+
+test('le detonateur est une reserve qui s epuise', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 1, 5);
+  joueur.bombes = 1;
+  assert.equal(joueur.detonateur, 0, 'on commence sans');
+
+  appliquer(joueur, CODES_BONUS.DETONATEUR);
+  assert.equal(joueur.detonateur, DETONATEURS_PAR_BONUS);
+
+  // On pose et on declenche autant de fois qu il y a de charges, en changeant
+  // de case a chaque fois pour ne pas se gener.
+  for (let tir = 0; tir < DETONATEURS_PAR_BONUS; tir += 1) {
+    placer(etat, 0, 1 + tir * 2, 5);
+    pas(etat, entree(0, { poser: true }));
+    assert.equal(etat.bombes[0].meche, null, `tir ${tir} : elle doit attendre`);
+    // On s eloigne avant d appuyer : poser et se faire sauter avec, c est la
+    // facon la plus sure de ne tester qu un seul tir.
+    placer(etat, 0, 13, 11);
+    pas(etat, entree(0, { declencher: true }));
+    assert.equal(etat.bombes.length, 0, `tir ${tir} : elle doit partir`);
+    assert.equal(joueur.detonateur, DETONATEURS_PAR_BONUS - tir - 1);
+    // On laisse le feu s eteindre : la case du tir suivant est a deux cases de
+    // celle-ci, donc encore en flammes, et le joueur s y teleporterait.
+    avancerDe(etat, FLAMME_PAS, []);
+  }
+
+  // Reserve vide : on revient aux bombes a meche.
+  placer(etat, 0, 11, 5);
+  pas(etat, entree(0, { poser: true }));
+  assert.equal(etat.bombes[0].meche, MECHE_PAS - 1, 'la meche revient');
+  pas(etat, entree(0, { declencher: true }));
+  assert.equal(etat.bombes.length, 1, 'et le bouton ne fait plus rien');
+});
+
+test('appuyer dans le vide ne gaspille pas une charge', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 1, 5);
+  appliquer(joueur, CODES_BONUS.DETONATEUR);
+
+  pas(etat, entree(0, { declencher: true }));
+  assert.equal(joueur.detonateur, DETONATEURS_PAR_BONUS, 'aucune bombe, aucune charge');
+});
+
+test('la derniere charge rend leur meche aux bombes encore en attente', () => {
+  // Sinon elles resteraient posees pour toujours : plus aucune charge ne peut
+  // les declencher, et elles bloqueraient l arene.
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 1, 5);
+  joueur.bombes = 3;
+  joueur.detonateur = 1;
+
+  pas(etat, entree(0, { poser: true }));
+  placer(etat, 0, 5, 5);
+  pas(etat, entree(0, { poser: true }));
+  placer(etat, 0, 9, 5);
+  pas(etat, entree(0, { poser: true }));
+  assert.equal(etat.bombes.every((bombe) => bombe.meche === null), true);
+
+  pas(etat, entree(0, { declencher: true }));
+  assert.equal(joueur.detonateur, 0);
+  assert.equal(etat.bombes.length, 2, 'la plus ancienne est partie');
+  // MECHE_PAS - 1 et non MECHE_PAS : les meches rendues brulent deja d un pas
+  // avant la fin de celui-ci, comme toutes les autres.
+  assert.equal(
+    etat.bombes.every((bombe) => bombe.meche === MECHE_PAS - 1),
+    true,
+    'les autres ont une meche',
+  );
+});
+
+test('un second bonus recharge la reserve', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 1, 5);
+  joueur.detonateur = 2;
+  appliquer(joueur, CODES_BONUS.DETONATEUR);
+  assert.equal(joueur.detonateur, 2 + DETONATEURS_PAR_BONUS);
 });

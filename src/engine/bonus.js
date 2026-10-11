@@ -13,7 +13,13 @@
  * deplacement qui est exactement l'endroit ou l'on oublie un cas.
  */
 
-import { BOMBES_MAX, FLAMME_MAX, VITESSE_MAX, VITESSE_PALIER } from './constantes.js';
+import {
+  BOMBES_MAX,
+  FLAMME_MAX,
+  VITESSE_MAX,
+  VITESSE_PALIER,
+  DETONATEURS_PAR_BONUS,
+} from './constantes.js';
 
 /** Decalage des bonus encore caches sous une brique. */
 export const CACHE = 128;
@@ -76,7 +82,7 @@ export function codeDe(valeur) {
  * avec huit bombes de portee quinze chacune, l'arene entiere brule en
  * permanence et plus personne ne joue.
  *
- * @param {{ bombes: number, portee: number, vitesse: number, kick: boolean, detonateur: boolean }} joueur
+ * @param {{ bombes: number, portee: number, vitesse: number, kick: boolean, detonateur: number }} joueur
  * @param {number} code
  */
 export function appliquer(joueur, code) {
@@ -94,7 +100,7 @@ export function appliquer(joueur, code) {
       joueur.kick = true;
       break;
     case CODES_BONUS.DETONATEUR:
-      joueur.detonateur = true;
+      joueur.detonateur += DETONATEURS_PAR_BONUS;
       break;
     default:
       break;

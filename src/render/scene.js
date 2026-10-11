@@ -46,15 +46,6 @@ import { FOND } from './palette.js';
 const LENTEUR_DEPART = 1.5;
 
 /**
- * Cadence d'une bombe a detonateur, en millisecondes par image.
- *
- * Fixe et lente, a l'inverse de la pulsation d'une meche. Cette bombe n'a pas
- * de compte a rebours a raconter : elle a juste besoin de respirer assez pour
- * ne pas passer pour un decor.
- */
-const CYCLE_ATTENTE = 220;
-
-/**
  * @param {HTMLCanvasElement} canvas
  * @param {ReturnType<typeof depuisDessins>} [jeu]
  */
@@ -166,18 +157,22 @@ export function creerScene(canvas, jeu = depuisDessins()) {
       // cadence et partait en vrille. Partir de la meche supprime le probleme,
       // et rend la pulsation identique sur tous les ecrans d'une partie en
       // ligne, puisqu'elle ne depend plus que de l'etat du moteur.
-      // Une bombe a detonateur n'a pas de meche : `meche` vaut null, elle
-      // attend. Elle ne doit donc ni pulser de plus en plus vite — il n'y a
-      // aucun compte a rebours a lire — ni ressembler a une bombe ordinaire,
-      // puisque savoir laquelle attend un doigt change la facon de s'en
-      // approcher. On la rend a cadence fixe, avec son sprite propre quand le
-      // jeu de sprites en a un.
+      //
+      // Une bombe a detonateur, elle, n'a pas de meche : `meche` vaut null. Il
+      // n'y a donc aucun compte a rebours a lire sur elle, et son sprite porte
+      // deja le bandeau qui la distingue.
       const enAttente = bombe.meche === null;
       if (enAttente) {
-        const suiteAttente = (jeu.bombeDetonateur ?? jeu.bombe)[bombe.place]
-          ?? (jeu.bombeDetonateur ?? jeu.bombe)[0];
+        const banque = jeu.bombeDetonateur ?? jeu.bombe;
+        const suiteAttente = banque[bombe.place] ?? banque[0];
         const [ax, ay] = enPixels(x, y);
-        const image = Math.floor(temps / CYCLE_ATTENTE) % suiteAttente.length;
+        // Elle pulse comme une bombe qu'on vient de poser, et a cette cadence
+        // seulement : rien ne s'accelere, puisqu'il n'y a pas de compte a
+        // rebours a raconter. Une cadence inventee, elle, se voyait tout de
+        // suite — la bombe a detonateur battait a un autre rythme que ses
+        // voisines, et l'oeil le relevait avant de lire le bandeau.
+        const duree = jeu.bombeCycle * LENTEUR_DEPART;
+        const image = Math.floor((temps / duree) * suiteAttente.length) % suiteAttente.length;
         poser(suiteAttente[image], ax, ay + TUILE_H / 2);
         continue;
       }

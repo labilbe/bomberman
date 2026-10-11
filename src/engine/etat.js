@@ -37,7 +37,7 @@ import { DEPARTS, genererArene } from './arene.js';
  *   place: number, vivant: boolean, x: number, y: number,
  *   dir: number, marche: boolean,
  *   vitesse: number, bombes: number, portee: number,
- *   kick: boolean, detonateur: boolean,
+ *   kick: boolean, detonateur: number,
  *   posees: number, surBombe: number | null, mortAu: number | null
  * }} Joueur
  *
@@ -82,7 +82,7 @@ export function creerJoueur(place) {
     bombes: BOMBES_DEPART,
     portee: FLAMME_DEPART,
     kick: false,
-    detonateur: false,
+    detonateur: 0,
     posees: 0,
     surBombe: null,
     mortAu: null,

@@ -5,13 +5,24 @@ import { pas, avancerDe } from '../src/engine/pas.js';
 import { rayon } from '../src/engine/explosion.js';
 import { poser } from '../src/engine/bombes.js';
 import { index, caseAxe } from '../src/engine/grille.js';
-import { MECHE_PAS, FLAMME_PAS, BRIQUE, VIDE, DROITE, GAUCHE, HAUT, DEMI_MORTEL, DEMI_BOMBER } from '../src/engine/constantes.js';
+import {
+  MECHE_PAS,
+  FLAMME_PAS,
+  BRIQUE,
+  VIDE,
+  DROITE,
+  GAUCHE,
+  HAUT,
+  DEMI_MORTEL,
+  DEMI_BOMBER,
+  DETONATEURS_PAR_BONUS,
+} from '../src/engine/constantes.js';
 import { CODES_BONUS } from '../src/engine/bonus.js';
 import { areneNue, brique, objet, placer, entree, evenements } from './aide.js';
 
 /** Fait exploser sur-le-champ la bombe d un joueur muni du detonateur. */
 function detonner(etat, place) {
-  etat.joueurs[place].detonateur = true;
+  etat.joueurs[place].detonateur = DETONATEURS_PAR_BONUS;
   pas(etat, entree(place, { declencher: true }));
 }
 
@@ -148,7 +159,7 @@ test('un bomber qui meurt ne ramasse pas le bonus sous ses pieds', () => {
   // d etre empoche par un mort.
   const etat = areneNue({ places: 2 });
   const tueur = placer(etat, 1, 3, 2);
-  tueur.detonateur = true;
+  tueur.detonateur = DETONATEURS_PAR_BONUS;
   // La portee est fixee ICI et ne doit pas suivre la dotation de depart : tout
   // le montage tient a ce que la flamme s arrete en (3,3). A deux cases, elle
   // atteindrait (3,4), brulerait le bonus, et le test ne verifierait plus rien.

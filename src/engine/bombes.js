@@ -199,7 +199,33 @@ export function declencher(etat, joueur) {
     if (bombe.place !== joueur.place) continue;
     if (choisie === null || bombe.id < choisie.id) choisie = bombe;
   }
+  if (choisie === null) return null;
+
+  // Une charge par bombe reellement declenchee, et pas par appui : appuyer dans
+  // le vide ne doit pas gaspiller la reserve.
+  joueur.detonateur -= 1;
+  // La derniere charge partie, ce qui attendait encore n'attend plus personne.
+  if (joueur.detonateur === 0) rendreLesMeches(etat, joueur.place, choisie.id);
   return choisie;
+}
+
+/**
+ * Rend une meche ordinaire aux bombes d'une place qui n'en avaient pas.
+ *
+ * Une bombe a detonateur attend indefiniment, ce qui est son interet tant qu'un
+ * doigt peut la declencher. Quand ce doigt disparait — reserve epuisee, ou
+ * porteur mort — elle resterait posee jusqu'a la fin de la manche : un obstacle
+ * definitif au milieu de l'arene, que plus personne ne peut lever.
+ *
+ * @param {import('./etat.js').Etat} etat
+ * @param {number} place
+ * @param {number | null} sauf identifiant a laisser tel quel
+ */
+export function rendreLesMeches(etat, place, sauf = null) {
+  for (const bombe of etat.bombes) {
+    if (bombe.place !== place || bombe.id === sauf) continue;
+    if (bombe.meche === null) bombe.meche = MECHE_PAS;
+  }
 }
 
 /** Distance restante avant que la bombe n'atteigne le centre de sa case suivante. */

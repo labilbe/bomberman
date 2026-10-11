@@ -96,6 +96,16 @@ export const FLAMME_PAS = 30;
 export const BOMBES_DEPART = 1;
 export const FLAMME_DEPART = 2;
 
+/**
+ * Nombre de bombes qu'un detonateur ramasse peut faire sauter.
+ *
+ * Le detonateur n'est pas un etat acquis mais une RESERVE : il s'epuise, et on
+ * revient aux bombes a meche. C'est ce qui l'empeche de dominer la fin de
+ * manche — avec un detonateur permanent, celui qui l'a ramasse le premier pose
+ * ou il veut et attend indefiniment, et l'autre n'a plus de reponse.
+ */
+export const DETONATEURS_PAR_BONUS = 5;
+
 /** Plafonds des ramassages, pour qu'une manche ne degenere pas. */
 export const BOMBES_MAX = 8;
 export const FLAMME_MAX = 8;

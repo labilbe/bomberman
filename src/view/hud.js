@@ -54,7 +54,12 @@ export function creerHud(racine) {
       `<span>Vitesse <b>${vitesse}</b></span>`,
     ];
     if (joueur.kick) morceaux.push('<span class="actif">Kick</span>');
-    if (joueur.detonateur) morceaux.push('<span class="actif">Detonateur</span>');
+    // Le detonateur est une reserve, pas un etat : on affiche ce qu'il en
+    // reste. Sans le compte, on appuie une fois de trop et on decouvre qu'il
+    // est vide au pire moment — une bombe posee pour attendre qui part seule.
+    if (joueur.detonateur) {
+      morceaux.push(`<span class="actif">Detonateur <b>${joueur.detonateur}</b></span>`);
+    }
     return morceaux.join('');
   }
 
