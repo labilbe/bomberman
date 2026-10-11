@@ -129,11 +129,17 @@ export function casesTouchees(x, y) {
  *
  * Comparaisons strictes : un bomber exactement colle au bord d'une case n'est
  * pas dedans. Sans cela, une flamme tuerait a travers un mur d'une tuile.
+ *
+ * `demi` permet d'interroger une boite PLUS PETITE que celle de collision. Les
+ * flammes s'en servent : voir DEMI_MORTEL, qui explique pourquoi mourir et se
+ * cogner ne se mesurent pas avec la meme boite.
  */
-export function boiteSurCase(x, y, cx, cy) {
-  const b = boite(x, y);
+export function boiteSurCase(x, y, cx, cy, demi = DEMI_BOMBER) {
   return (
-    b.d > cx * UNITES && b.g < (cx + 1) * UNITES && b.b > cy * UNITES && b.h < (cy + 1) * UNITES
+    x + demi > cx * UNITES
+    && x - demi < (cx + 1) * UNITES
+    && y + demi > cy * UNITES
+    && y - demi < (cy + 1) * UNITES
   );
 }
 

@@ -14,7 +14,7 @@
  *    brique ne rapporterait jamais rien.
  */
 
-import { FLAMME_PAS, MECHE_PAS, VECTEURS, VIDE, BRIQUE } from './constantes.js';
+import { FLAMME_PAS, MECHE_PAS, DEMI_MORTEL, VECTEURS, VIDE, BRIQUE } from './constantes.js';
 import { caseDe, poserCase, index, estLibre, boiteSurCase, caseAxe } from './grille.js';
 import { noter } from './etat.js';
 import { bombeSur } from './bombes.js';
@@ -218,7 +218,9 @@ export function brulerJoueurs(etat) {
   for (const joueur of etat.joueurs) {
     if (!joueur.vivant) continue;
     for (const flamme of etat.flammes) {
-      if (!boiteSurCase(joueur.x, joueur.y, flamme.cx, flamme.cy)) continue;
+      // La boite MORTELLE, plus petite que celle de collision : on meurt en
+      // entrant dans le feu, pas en s en approchant.
+      if (!boiteSurCase(joueur.x, joueur.y, flamme.cx, flamme.cy, DEMI_MORTEL)) continue;
       tuer(etat, joueur, PAR_FLAMME);
       break;
     }

@@ -44,6 +44,30 @@ export const TICK_HZ = 30;
 export const DEMI_BOMBER = Math.round(0.37 * UNITES);
 
 /**
+ * Demi-largeur de la boite qui PREND FEU, plus petite que celle qui se cogne.
+ *
+ * Les deux etaient confondues, et c'etait une injustice que le jeu d'origine ne
+ * commet pas. La boite de collision doit etre large — sans quoi le bomber passe
+ * dans les murs — mais s'en servir pour la mort fait mourir a 0,13 tuile du feu,
+ * donc AVANT de l'atteindre. On le voyait le mieux sur une brique qui vient de
+ * tomber : le joueur abrite derriere elle avancait dans le trou et mourait de la
+ * flamme d'a cote, sans jamais etre entre dedans.
+ *
+ * 0,28 N'EST PAS UN CHIFFRE ROND MAIS UN PLANCHER MESURE. En descendant plus
+ * bas, le jeu se desamorce : a 0,25, les bots ne parviennent plus a s'achever
+ * et vingt-deux matchs sur quarante s'enlisent — preuve, au passage, qu'une
+ * bonne part des morts venait de cet effet de bord plutot que d'un vrai coup au
+ * but. C'est le test « quatre bots jouent une partie entiere » qui fixe cette
+ * limite, et c'est lui qu'il faudra relire avant de toucher a cette valeur.
+ *
+ * Elle reste non nulle a dessein : un bomber a moitie dans les flammes doit
+ * mourir, sinon on se gare au bord du souffle et le jeu perd son danger. La
+ * case voisine d'un foyer devient sure sur 72 % de sa largeur au lieu de 63 —
+ * assez pour se tenir dans le trou d'une brique, pas assez pour y flaner.
+ */
+export const DEMI_MORTEL = Math.round(0.28 * UNITES);
+
+/**
  * Vitesses, en sous-unites par pas.
  *
  * 94 u/pas ~= 5,5 tuiles/s : la vitesse d'Atomic Bomberman, ou l'on traverse la

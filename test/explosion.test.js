@@ -5,7 +5,7 @@ import { pas, avancerDe } from '../src/engine/pas.js';
 import { rayon } from '../src/engine/explosion.js';
 import { poser } from '../src/engine/bombes.js';
 import { index, caseAxe } from '../src/engine/grille.js';
-import { MECHE_PAS, FLAMME_PAS, BRIQUE, VIDE, DROITE, GAUCHE, HAUT } from '../src/engine/constantes.js';
+import { MECHE_PAS, FLAMME_PAS, BRIQUE, VIDE, DROITE, GAUCHE, HAUT, DEMI_MORTEL, DEMI_BOMBER } from '../src/engine/constantes.js';
 import { CODES_BONUS } from '../src/engine/bonus.js';
 import { areneNue, brique, objet, placer, entree, evenements } from './aide.js';
 
@@ -232,4 +232,43 @@ test('la case d une brique tombee ne brule pas', () => {
   assert.equal(enFeu, false);
   // La case juste avant, elle, brule bien : le souffle va jusqu a la brique.
   assert.ok(etat.flammes.some((flamme) => flamme.cx === 4 && flamme.cy === 3));
+});
+
+test('on peut se tenir dans le trou pendant que la case voisine brule', () => {
+  // La garantie qui compte pour le joueur : le trou ouvert par la brique est un
+  // abri, et pas seulement un passage ou l on meurt un pas plus tard.
+  const etat = areneNue({ places: 2 });
+  brique(etat, 5, 3);
+  const poseur = placer(etat, 0, 3, 3);
+  poseur.portee = 4;
+
+  pas(etat, entree(0, { poser: true }));
+  detonner(etat, 0);
+  assert.ok(etat.flammes.some((f) => f.cx === 4 && f.cy === 3), 'la case voisine doit bruler');
+
+  // On se place au centre du trou, et on ne bouge plus.
+  const abrite = placer(etat, 1, 5, 3);
+  avancerDe(etat, FLAMME_PAS + 2, entree(1, {}));
+  assert.equal(abrite.vivant, true);
+});
+
+test('la boite qui prend feu est plus petite que celle qui se cogne', () => {
+  // Les deux etaient confondues, et on mourait avant d atteindre la flamme.
+  // Ce test fige la distinction, pas la valeur exacte.
+  assert.ok(DEMI_MORTEL < DEMI_BOMBER);
+  // Elle reste non nulle : un bomber a moitie dans le feu doit mourir.
+  assert.ok(DEMI_MORTEL > 0);
+});
+
+test('un bomber bien engage dans la flamme meurt, lui', () => {
+  const etat = areneNue({ places: 2 });
+  const poseur = placer(etat, 0, 3, 3);
+  poseur.portee = 2;
+  pas(etat, entree(0, { poser: true }));
+
+  // Centre dans la case voisine du foyer, mais largement mordu dedans.
+  const victime = placer(etat, 1, 5, 3);
+  victime.x = 5 * 1024 + 120;
+  detonner(etat, 0);
+  assert.equal(victime.vivant, false);
 });
