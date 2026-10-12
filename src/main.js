@@ -349,7 +349,7 @@ clavier.raccourci('Escape', () => {
  * la deduire. `?relais=` la remplace, ce qui sert a tester contre un
  * `wrangler dev` local sans toucher au code.
  */
-const RELAIS = 'wss://bomberman-relais.franck-quintana.workers.dev/salon';
+const RELAIS = 'wss://bomberman-relais.labilbe.workers.dev/salon';
 
 /**
  * Lance une partie en ligne.
