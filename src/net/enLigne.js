@@ -24,13 +24,61 @@
 import { ENTREE_VIDE } from '../engine/entrees.js';
 import { creerEtat } from '../engine/etat.js';
 import { creerMatch } from '../engine/manche.js';
+import { index, dansArene } from '../engine/grille.js';
+import { VIDE } from '../engine/constantes.js';
+import { NOMS_BONUS } from '../engine/bonus.js';
 import { CLIENT, SERVER, encode, decode, REPRISE_MS } from './protocole.js';
+
+/** Nom reseau d'un bonus vers son code, pour relire les evenements du relais. */
+const CODE_PAR_NOM = Object.fromEntries(
+  Object.entries(NOMS_BONUS).map(([code, nom]) => [nom, Number(code)]),
+);
 
 /** Au-dela, on cesse de se reconnecter : le relais ne reviendra pas. */
 const RECONNEXIONS_MAX = 6;
 
 /** Attente avant une nouvelle tentative, en millisecondes. */
 const ATTENTES = [250, 500, 1000, 2000, 4000, 8000];
+
+/**
+ * Met une grille a jour d'apres les evenements du relais.
+ *
+ * C'est la moitie indispensable du choix de ne pas diffuser la grille trente
+ * fois par seconde : le relais n'envoie que ce qui CHANGE, et le client doit
+ * donc appliquer ces changements lui-meme.
+ *
+ * Sans elle, un bonus ramasse restait dessine au sol pour toujours. Le compteur
+ * de version ne l'aurait pas rattrape : il ne compte que les ecritures de
+ * TUILES, et ramasser un bonus ne touche que le tableau des objets. Une brique
+ * detruite, elle, bougeait bien la version — c'est pourquoi les bonus
+ * APPARAISSAIENT correctement tout en ne disparaissant jamais.
+ *
+ * Elle est pure et exportee pour cette raison : c'est une regle, pas de la
+ * plomberie, et une regle se verifie sans ouvrir de WebSocket.
+ *
+ * @param {{ tuiles: Uint8Array, objets: Uint8Array }} etat
+ * @param {unknown[][]} liste evenements du pas
+ * @returns {number} nombre d'ecritures de TUILES, pour suivre la version du relais
+ */
+export function suivreGrille(etat, liste) {
+  let tuilesEcrites = 0;
+  for (const [nom, cx, cy, ...reste] of liste) {
+    // `dansArene` et non une simple borne sur l'index : les evenements viennent
+    // du reseau, et une abscisse negative tombe dans le tableau tout en
+    // designant une AUTRE case — on ecrirait au hasard au lieu de refuser.
+    if (!dansArene(cx, cy)) continue;
+    const i = index(cx, cy);
+    if (nom === 'brick') {
+      etat.tuiles[i] = VIDE;
+      tuilesEcrites += 1;
+    } else if (nom === 'item') {
+      etat.objets[i] = CODE_PAR_NOM[reste[0]] ?? 0;
+    } else if (nom === 'itemgone' || nom === 'pick') {
+      etat.objets[i] = 0;
+    }
+  }
+  return tuilesEcrites;
+}
 
 /**
  * @param {{
@@ -188,6 +236,10 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
     }
 
     if (message.type === SERVER.EVENTS) {
+      // Le relais compte une version par ecriture de tuile : on avance du meme
+      // pas, sinon chaque brique cassee declencherait une resynchronisation —
+      // la grille entiere sur le fil, pour une case qu'on vient d'apprendre.
+      if (etat) version += suivreGrille(etat, message.e);
       diffuser(evenements, message.e, message.t);
       return;
     }
