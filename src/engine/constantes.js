@@ -33,8 +33,21 @@ export const HAUTEUR_U = ROWS * UNITES;
 export const PAS_HZ = 60;
 export const PAS_MS = 1000 / PAS_HZ;
 
-/** Cadence de diffusion reseau : un instantane sur deux pas. */
-export const TICK_HZ = 30;
+/**
+ * Cadence de diffusion reseau : un instantane par pas.
+ *
+ * Elle valait 30 Hz, soit un pas sur deux, et c'etait la cause du « lag » qu'on
+ * ressentait en ligne — a tort, car ce n'en etait pas. L'aller-retour jusqu'au
+ * relais est de QUATORZE millisecondes, mesure : le reseau n'y est pour rien.
+ * Mais le moteur avance a 60 Hz et l'ecran se rafraichit a 60 Hz, tandis que les
+ * positions n'arrivaient qu'a 30 : le bomber sautait deux pas d'un coup, une
+ * image sur deux. Ce n'etait pas du retard, c'etait de la saccade.
+ *
+ * A 60 Hz, chaque image affichee a sa position. Le cout est une trame de plus
+ * par pas et par joueur — quelques centaines d'octets, la ou l'on economise par
+ * ailleurs les soixante intentions par seconde que la page envoyait sans raison.
+ */
+export const TICK_HZ = 60;
 
 /**
  * Demi-largeur de la boite d'un bomber : 0,37 tuile, soit 0,74 tuile de large

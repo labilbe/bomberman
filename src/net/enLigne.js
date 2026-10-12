@@ -102,6 +102,8 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
   let ferme = false;
   let tentatives = 0;
   let sequence = 0;
+  /** Derniere intention envoyee, pour ne pas repeter ce que le relais sait deja. */
+  let derniere = null;
   /** Numero de version de la grille, pour reperer qu'elle a derive. */
   let version = -1;
 
@@ -299,6 +301,9 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
 
     fil.addEventListener('open', () => {
       tentatives = 0;
+      // Le relais ne sait plus ce qu'on voulait : la prochaine intention doit
+      // partir meme si elle n'a pas change depuis la coupure.
+      derniere = null;
       emettre({
         type: CLIENT.JOIN,
         room: salon,
@@ -346,6 +351,16 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
     intention(place, entree) {
       if (!miens.includes(place)) return;
       const utile = entree ?? ENTREE_VIDE;
+
+      // ON N ENVOIE QUE CE QUI CHANGE. La boucle de rendu appelle ceci soixante
+      // fois par seconde, et la direction reste la meme pendant des dizaines
+      // d'images : repeter « je vais toujours a droite » occupe le fil et fait
+      // travailler le relais pour rien. Une impulsion, elle, part toujours —
+      // elle ne vaut qu'une fois, et la taire serait perdre une bombe.
+      const impulsion = utile.poser || utile.declencher;
+      if (!impulsion && derniere !== null && derniere.dir === utile.dir) return;
+      derniere = { dir: utile.dir };
+
       sequence += 1;
       emettre({
         type: CLIENT.INPUT,
