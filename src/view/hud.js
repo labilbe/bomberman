@@ -117,13 +117,20 @@ export function creerBanniere(element) {
         d.textContent = detail;
         element.append(d);
       }
-      for (const bouton of boutons) {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'primaire';
-        b.textContent = bouton.texte;
-        b.addEventListener('click', bouton.action);
-        element.append(b);
+      if (boutons.length > 0) {
+        // Les boutons vont dans une rangee a eux : empiles, « Demarrer » et
+        // « Quitter » poussaient le texte hors de la banniere sur un ecran bas.
+        const rangee = document.createElement('div');
+        rangee.className = 'boutons';
+        for (const bouton of boutons) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'primaire';
+          b.textContent = bouton.texte;
+          b.addEventListener('click', bouton.action);
+          rangee.append(b);
+        }
+        element.append(rangee);
       }
       element.hidden = false;
       if (duree > 0) minuteur = setTimeout(cacher, duree);

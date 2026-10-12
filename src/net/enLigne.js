@@ -43,6 +43,7 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
   const evenements = new Set();
   const transitions = new Set();
   const reseaux = new Set();
+  const salons = new Set();
 
   /** L'arene telle que la page la connait, reconstruite depuis le fil. */
   let etat = null;
@@ -131,7 +132,14 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
 
   function recevoir(message) {
     if (message.type === SERVER.WAITING) {
-      dire(`En attente de joueurs — salon ${message.room} (${message.places}/${message.max})`);
+      // La salle d'attente a besoin de la LISTE, pas d'une phrase : qui est
+      // deja la, et combien de sieges restent vides.
+      diffuser(salons, {
+        code: message.room,
+        assis: message.places,
+        total: message.max,
+        noms: message.noms ?? [],
+      });
       return;
     }
 
@@ -297,6 +305,17 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
       });
     },
 
+    /**
+     * Lance la partie sans attendre que le salon soit plein.
+     *
+     * N'importe quel joueur assis peut le faire, et le relais comble les places
+     * restees vides avec des bots. Attendre un quatrieme qui ne viendra jamais
+     * est la facon la plus sure de ne pas jouer.
+     */
+    commencer() {
+      emettre({ type: CLIENT.BEGIN });
+    },
+
     /** Le temps est celui du relais : la page ne simule rien. */
     battre() {},
 
@@ -320,6 +339,12 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
       return () => reseaux.delete(f);
     },
 
+    /** Qui attend dans le salon, et combien de places restent. */
+    surSalon(f) {
+      salons.add(f);
+      return () => salons.delete(f);
+    },
+
     fermer() {
       ferme = true;
       emettre({ type: CLIENT.LEAVE });
@@ -328,6 +353,7 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
       evenements.clear();
       transitions.clear();
       reseaux.clear();
+      salons.clear();
     },
 
     /** Reserve au debogage : combien de temps il reste pour revenir. */

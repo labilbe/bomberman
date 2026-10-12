@@ -354,6 +354,20 @@ button.primaire:hover:not(:disabled) {
 
 .banniere .detail {
   color: var(--texte-doux);
+  /* La salle d'attente ecrit sur deux lignes : les sieges, puis ce qui manque.
+     Sans ce `pre-line`, le saut de ligne du texte serait avale et les deux
+     phrases se colleraient. */
+  white-space: pre-line;
+}
+
+/* Les boutons de la banniere se mettent cote a cote, et passent dessous quand
+   la place manque : « Demarrer » et « Quitter » n'ont pas a s'empiler sur un
+   ecran large. */
+.banniere .boutons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
 }
 
 .pied-jeu {

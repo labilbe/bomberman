@@ -245,6 +245,10 @@ async function demarrer(transport, { humains, places, noms }) {
   hud.construire(nombre, etiquettes);
   menu.hidden = true;
   jeu.hidden = false;
+  // La salle d'attente a fait son office : la partie commence. On la ferme ici
+  // plutot que d'attendre l'annonce de la premiere manche, qui ne vient pas
+  // quand on reprend une partie deja lancee.
+  banniere.cacher();
   // L'attente est finie, puisque la partie commence. On l'efface ICI et non sur
   // un message du relais : celui qui l'annonce part avant que la page se soit
   // abonnee — `demarrer()` ne rend la main qu'une fois la partie formee — et le
@@ -403,9 +407,52 @@ function jouerEnLigne() {
   invitation.searchParams.set('salon', code);
   history.replaceState(null, '', invitation);
 
-  etatReseau.textContent = `Salon ${code} — en attente…`;
+  // La salle d'attente s'ouvre TOUT DE SUITE, avant la moindre reponse du
+  // relais. Sans elle, celui qui cree un salon reste devant le menu sans savoir
+  // si quelque chose se passe, et reclique — c'est exactement ce qui remplissait
+  // le salon du meme joueur.
+  menu.hidden = true;
+  jeu.hidden = false;
+  ajusterEchelle();
+  montrerAttente(transport, { code, assis: 1, total: places, noms: [] });
+  transport.surSalon((salle) => montrerAttente(transport, salle));
+
   // Un seul siege local en ligne : les autres bombers sont ailleurs.
   demarrer(transport, { humains: 1, places, noms: null });
+}
+
+/**
+ * La salle d'attente : qui est assis, qui manque, et de quoi partir.
+ *
+ * N'IMPORTE QUEL JOUEUR PEUT LANCER. Il n'y a pas d'hote : attendre que le
+ * createur du salon se decide ferait dependre la partie de celui qui a le moins
+ * envie de jouer, et un salon a trois ne demarrerait jamais parce que le
+ * quatrieme n'arrive pas. Les places restees vides passent aux bots.
+ *
+ * Elle se redessine a chaque arrivee : la bannniere est reconstruite plutot que
+ * modifiee, ce qui evite de tenir a jour des noeuds un par un pour trois lignes
+ * de texte.
+ */
+function montrerAttente(transport, { code, assis, total, noms }) {
+  const sieges = Array.from({ length: total }, (_, place) => noms?.[place] || '— libre —');
+  const manque = total - assis;
+
+  banniere.montrer({
+    titre: `Salon ${code}`,
+    detail: [
+      sieges.join('   ·   '),
+      manque > 0
+        ? `En attente de ${manque} joueur${manque > 1 ? 's' : ''} — partage le lien de la barre d adresse`
+        : 'Le salon est complet',
+    ].join('\n'),
+    boutons: [
+      {
+        texte: manque > 0 ? `Demarrer (${manque} bot${manque > 1 ? 's' : ''})` : 'Demarrer',
+        action: () => transport.commencer?.(),
+      },
+      { texte: 'Quitter', action: arreterSession },
+    ],
+  });
 }
 
 boutonMulti.addEventListener('click', () => {

@@ -229,3 +229,23 @@ test('un inconnu qui parle ne fait rien', () => {
   assert.deepEqual(salon.message('zzz', { type: CLIENT.INPUT, seq: 1, dir: 0 }, 100), []);
   assert.deepEqual(salon.partir('zzz', 100), []);
 });
+
+test('une place libre vaut null, pas un libelle de remplissage', () => {
+  // La salle d attente doit distinguer un siege vide d un joueur assis : un
+  // « Place 3 » s y afficherait comme quelqu un qui attend deja.
+  const salon = creerSalon({ code: 'TEST', maintenant: 0, graine: 1 });
+  const envois = salon.rejoindre('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+
+  const [attente] = du(envois, SERVER.WAITING);
+  assert.equal(attente.noms[0], 'Alice');
+  assert.deepEqual(attente.noms.slice(1), [null, null, null]);
+});
+
+test('au depart, plus aucune place n est libre', () => {
+  const salon = creerSalon({ code: 'TEST', maintenant: 0, graine: 1 });
+  salon.rejoindre('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  const envois = salon.message('a', { type: CLIENT.BEGIN }, 0);
+
+  const [depart] = du(envois, SERVER.START);
+  assert.equal(depart.noms.filter((n) => n === null).length, 0, 'les bots ont tous un prenom');
+});

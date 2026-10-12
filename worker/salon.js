@@ -129,9 +129,15 @@ export function creerSalon({ code, maintenant, graine = randomSeed() }) {
   /** Prenoms donnes aux bots, par place. */
   const nomsDeBot = {};
 
-  /** Les noms affiches, par place : humains et bots confondus. */
+  /**
+   * Les noms affiches, par place : humains et bots confondus.
+   *
+   * Une place encore libre vaut `null`, et non « Place 3 ». La salle d'attente
+   * a besoin de distinguer les deux pour montrer qui manque ; un libelle de
+   * remplissage l'aurait affichee comme un joueur deja assis.
+   */
   function noms() {
-    const liste = Array.from({ length: places }, (_, place) => `Place ${place + 1}`);
+    const liste = Array.from({ length: places }, () => null);
     for (const membre of humains()) liste[membre.place] = membre.nom;
     for (const [place, nom] of Object.entries(nomsDeBot)) liste[place] = nom;
     return liste;
