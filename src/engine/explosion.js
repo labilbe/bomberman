@@ -31,6 +31,11 @@ export const PAR_DEPART = 2;
  * S'arrete au premier mur dur, detruit UNE brique et s'arrete la. Une flamme
  * qui traverserait deux briques rendrait tout abri illusoire.
  *
+ * Un bonus pose au sol arrete la branche de la meme facon : il est detruit, et
+ * rien ne passe au-dela. La difference avec la brique est que SA case brule,
+ * elle : le bonus ne bouche pas le passage, on peut s'y tenir, donc on peut y
+ * mourir.
+ *
  * LA CASE DE LA BRIQUE N'EST PAS ENFLAMMEE, et c'est une regle de jeu, pas un
  * detail. La brique ABSORBE le souffle : elle tombe, et le feu ne prend pas sa
  * place. En l'enflammant, on obtenait une case a la fois VIDE et mortelle
@@ -65,6 +70,12 @@ export function rayon(etat, cx, cy, dir, portee) {
     cases.push([x, y]);
     const bombe = bombeSur(etat, x, y);
     if (bombe !== null) bombes.push(bombe.id);
+    // UN BONUS AU SOL ARRETE LE SOUFFLE, comme une brique. Il brule — sa case
+    // est enflammee, elle, puisqu'elle reste praticable — mais la branche ne va
+    // pas plus loin. Sans cela, un bonus au sol se faisait detruire sans rien
+    // couvrir, et deux joueurs separes par un bonus etaient a decouvert l'un de
+    // l'autre alors qu'un simple mur de briques les aurait abrites.
+    if (estVisible(etat.objets[index(x, y)])) break;
   }
 
   return { cases, brique, bombes };

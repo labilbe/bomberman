@@ -353,3 +353,29 @@ test('un second souffle ne relance pas une brique deja a terre', () => {
   assert.equal(etat.ruines.length, 1, 'une seule chute en cours');
   assert.equal(evenements(etat, 'brick').length, 0, 'et aucune annonce de plus');
 });
+
+test('un bonus au sol arrete la branche, comme une brique', () => {
+  // Sans quoi un bonus se faisait detruire sans rien couvrir, et deux joueurs
+  // separes par un bonus etaient a decouvert l un de l autre.
+  const etat = areneNue();
+  objet(etat, 5, 3, CODES_BONUS.BOMBE);
+  const branche = rayon(etat, 3, 3, DROITE, 5);
+
+  // Sa case brule, elle : un bonus ne bouche pas le passage, on peut s y tenir,
+  // donc on peut y mourir. C'est la difference avec la brique.
+  assert.deepEqual(branche.cases, [[4, 3], [5, 3]]);
+  assert.equal(branche.brique, null, 'aucune brique la-dedans');
+});
+
+test('ce que le bonus couvre survit a l explosion', () => {
+  const etat = areneNue();
+  objet(etat, 5, 3, CODES_BONUS.BOMBE);
+  objet(etat, 6, 3, CODES_BONUS.FLAMME);
+  const joueur = placer(etat, 0, 3, 3);
+  joueur.portee = 5;
+  pas(etat, entree(0, { poser: true }));
+  detonner(etat, 0);
+
+  assert.equal(etat.objets[index(5, 3)], 0, 'le premier est brule');
+  assert.equal(etat.objets[index(6, 3)], CODES_BONUS.FLAMME, 'le second est a l abri derriere lui');
+});
