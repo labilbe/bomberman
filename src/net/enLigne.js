@@ -167,6 +167,7 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
       place: b.p,
       portee: 0,
       glisse: b.g ? { dir: b.g.d, x: b.g.x, y: b.g.y } : null,
+      vol: b.w ? { depuisX: b.w.x, depuisY: b.w.y, reste: b.w.r, duree: b.w.d } : null,
     }));
 
     etat.flammes = instant.f.map((f) => ({ cx: f.x, cy: f.y, reste: f.r, place: f.p }));

@@ -13,8 +13,15 @@
  * detonateur declenche la plus ancienne.
  */
 
-import { MECHE_PAS, VECTEURS, VITESSE_BOMBE, UNITES } from './constantes.js';
-import { caseDe, estLibre, caseAxe, centreAxe, boiteSurCase } from './grille.js';
+import {
+  MECHE_PAS,
+  VECTEURS,
+  VITESSE_BOMBE,
+  UNITES,
+  PORTEE_GANT,
+  VOL_PAS_PAR_CASE,
+} from './constantes.js';
+import { caseDe, estLibre, caseAxe, centreAxe, boiteSurCase, dansArene } from './grille.js';
 import { noter } from './etat.js';
 
 /** La bombe posee sur cette case, ou null. */
@@ -23,6 +30,19 @@ export function bombeSur(etat, cx, cy) {
     if (bombe.cx === cx && bombe.cy === cy) return bombe;
   }
   return null;
+}
+
+/**
+ * La bombe POSEE sur cette case, en ignorant celles qui volent.
+ *
+ * Une bombe frappee appartient deja a sa case d'arrivee — c'est ce qui fait que
+ * les flammes et la carte de danger la trouvent au bon endroit — mais elle est
+ * en l'air, donc elle ne bloque encore personne. On peut traverser la case ou
+ * elle va tomber tant qu'elle n'y est pas.
+ */
+export function bombePoseeSur(etat, cx, cy) {
+  const bombe = bombeSur(etat, cx, cy);
+  return bombe && !bombe.vol ? bombe : null;
 }
 
 /** La bombe portant cet identifiant, ou null. */
@@ -81,6 +101,8 @@ export function poser(etat, joueur) {
     portee: joueur.portee,
     meche: joueur.detonateur ? null : MECHE_PAS,
     glisse: null,
+    /** Vol du gant de boxe : non nul tant que la bombe est en l air. */
+    vol: null,
   };
   etat.prochainId += 1;
   etat.bombes.push(bombe);
@@ -178,6 +200,79 @@ export function avancerGlissements(etat) {
     if (!caseOuvertePourBombe(etat, bombe.cx + v.dx, bombe.cy + v.dy)) {
       bombe.glisse = null;
     }
+  }
+}
+
+/**
+ * Frappe la bombe devant soi : elle part en l'air.
+ *
+ * C'EST LA DIFFERENCE AVEC LE COUP DE PIED, et toute l'utilite du bonus. Le
+ * kick pousse au ras du sol et s'arrete au premier obstacle ; le gant fait
+ * PASSER la bombe par-dessus murs, briques et joueurs, pour la poser derriere.
+ * On peut donc renvoyer chez l'adversaire une bombe qu'on vient de recevoir,
+ * meme s'il s'est abrite.
+ *
+ * Elle atterrit sur la case la plus LOINTAINE qui soit libre, dans la limite du
+ * gant. Prendre la plus proche aurait fait retomber la bombe juste derriere le
+ * mur ou l'on se cache, ce qui n'est une riposte pour personne ; et refuser des
+ * qu'une case intermediaire est prise reviendrait a redonner au gant les
+ * defauts du kick.
+ *
+ * Rien ne part si aucune case n'est libre : la bombe reste ou elle est, plutot
+ * que de disparaitre ou de se poser sur un mur.
+ *
+ * @param {import('./etat.js').Etat} etat
+ * @param {import('./etat.js').Joueur} joueur
+ * @returns {import('./etat.js').Bombe | null} la bombe frappee, ou null
+ */
+export function frapper(etat, joueur) {
+  if (!joueur.gant || !joueur.vivant) return null;
+
+  const v = VECTEURS[joueur.dir];
+  const depuisX = caseAxe(joueur.x) + v.dx;
+  const depuisY = caseAxe(joueur.y) + v.dy;
+  const bombe = bombeSur(etat, depuisX, depuisY);
+  // Une bombe deja en l'air ne se refrappe pas : on ne rattrape pas au vol.
+  if (!bombe || bombe.vol) return null;
+
+  let versX = null;
+  let versY = null;
+  for (let i = 1; i <= PORTEE_GANT; i += 1) {
+    const x = depuisX + v.dx * i;
+    const y = depuisY + v.dy * i;
+    if (!dansArene(x, y)) break;
+    if (!estLibre(caseDe(etat, x, y))) continue;
+    if (bombeSur(etat, x, y)) continue;
+    versX = x;
+    versY = y;
+  }
+  if (versX === null) return null;
+
+  const cases = Math.abs(versX - depuisX) + Math.abs(versY - depuisY);
+  bombe.cx = versX;
+  bombe.cy = versY;
+  bombe.glisse = null;
+  // La bombe appartient DEJA a sa case d'arrivee : flammes, chaines et carte de
+  // danger raisonnent donc sur l'endroit ou elle va tomber, et non sur celui
+  // qu'elle a quitte. `vol` ne commande que son dessin et le fait qu'elle ne
+  // bloque encore personne.
+  bombe.vol = {
+    dir: joueur.dir,
+    depuisX,
+    depuisY,
+    reste: cases * VOL_PAS_PAR_CASE,
+    duree: cases * VOL_PAS_PAR_CASE,
+  };
+  noter(etat, ['punch', bombe.id, depuisX, depuisY, versX, versY]);
+  return bombe;
+}
+
+/** Fait avancer les bombes en vol d'un pas, et pose celles qui atterrissent. */
+export function avancerVols(etat) {
+  for (const bombe of etat.bombes) {
+    if (!bombe.vol) continue;
+    bombe.vol.reste -= 1;
+    if (bombe.vol.reste <= 0) bombe.vol = null;
   }
 }
 

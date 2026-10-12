@@ -73,6 +73,9 @@ const rolesDe = (terrain) => ({
   bonusSpeed: ['POWERS.ANI', 'power skate'],
   bonusKick: ['POWERS.ANI', 'power kicker'],
   bonusTrigger: ['POWERS.ANI', 'power trigger'],
+  // Le gant de boxe. Absent des extractions faites avant son ajout : le rendu
+  // dessine alors sa plaquette lui-meme, a la taille des tuiles du jeu.
+  bonusGant: ['POWERS.ANI', 'power punch'],
 });
 
 const argv = process.argv.slice(2);

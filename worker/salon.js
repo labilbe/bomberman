@@ -87,6 +87,11 @@ function instantane(etat, absents) {
       m: bombe.meche,
       p: bombe.place,
       g: bombe.glisse ? { d: bombe.glisse.dir, x: bombe.glisse.x, y: bombe.glisse.y } : null,
+      // Le vol du gant : d'ou elle part, et ou elle en est. Sans lui, la bombe
+      // frappee se teleporterait d'un bout a l'autre de sa trajectoire.
+      w: bombe.vol
+        ? { x: bombe.vol.depuisX, y: bombe.vol.depuisY, r: bombe.vol.reste, d: bombe.vol.duree }
+        : null,
     })),
     f: etat.flammes.map((flamme) => ({
       x: flamme.cx,

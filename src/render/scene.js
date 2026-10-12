@@ -56,6 +56,9 @@ const LENTEUR_DEPART = 1.5;
  */
 const CHUTE_MS = CHUTE_PAS * PAS_MS;
 
+/** Hauteur du sommet d'un vol de gant, en cases. */
+const HAUTEUR_VOL = 1.1;
+
 /**
  * @param {HTMLCanvasElement} canvas
  * @param {ReturnType<typeof depuisDessins>} [jeu]
@@ -153,10 +156,36 @@ export function creerScene(canvas, jeu = depuisDessins()) {
     }
   }
 
+  /**
+   * Position d'une bombe frappee, quelque part entre son depart et sa chute.
+   *
+   * La bombe appartient DEJA a sa case d'arrivee cote moteur — c'est ce qui
+   * fait que les flammes la trouvent au bon endroit — donc c'est le rendu, et
+   * lui seul, qui la montre encore en chemin. Il remonte de l'arrivee vers le
+   * depart avec ce qu'il reste de vol.
+   *
+   * La hauteur suit une parabole : sans elle, la bombe glisserait en ligne
+   * droite et l'on ne verrait pas qu'elle passe PAR-DESSUS les murs, ce qui est
+   * toute la difference avec le coup de pied.
+   */
+  function enVol(bombe) {
+    const avance = 1 - bombe.vol.reste / bombe.vol.duree;
+    const departX = bombe.vol.depuisX * UNITES + UNITES / 2;
+    const departY = bombe.vol.depuisY * UNITES + UNITES / 2;
+    const arriveeX = bombe.cx * UNITES + UNITES / 2;
+    const arriveeY = bombe.cy * UNITES + UNITES / 2;
+    const hauteur = 4 * avance * (1 - avance) * HAUTEUR_VOL * UNITES;
+    return [
+      departX + (arriveeX - departX) * avance,
+      departY + (arriveeY - departY) * avance - hauteur,
+    ];
+  }
+
   function dessinerBombes(vue, temps) {
     for (const bombe of vue.bombes) {
-      const x = bombe.glisse ? bombe.glisse.x : bombe.cx * UNITES + UNITES / 2;
-      const y = bombe.glisse ? bombe.glisse.y : bombe.cy * UNITES + UNITES / 2;
+      const enLAir = bombe.vol ? enVol(bombe) : null;
+      const x = enLAir ? enLAir[0] : (bombe.glisse ? bombe.glisse.x : bombe.cx * UNITES + UNITES / 2);
+      const y = enLAir ? enLAir[1] : (bombe.glisse ? bombe.glisse.y : bombe.cy * UNITES + UNITES / 2);
       // La pulsation accelere a mesure que la meche brule : c'est le compte a
       // rebours, et il doit se lire sans chiffre.
       //

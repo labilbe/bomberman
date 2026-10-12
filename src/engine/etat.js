@@ -37,7 +37,7 @@ import { DEPARTS, genererArene } from './arene.js';
  *   place: number, vivant: boolean, x: number, y: number,
  *   dir: number, marche: boolean,
  *   vitesse: number, bombes: number, portee: number,
- *   kick: boolean, detonateur: number,
+ *   kick: boolean, detonateur: number, gant: boolean,
  *   posees: number, surBombe: number | null, mortAu: number | null
  * }} Joueur
  *
@@ -83,6 +83,8 @@ export function creerJoueur(place) {
     portee: FLAMME_DEPART,
     kick: false,
     detonateur: 0,
+    /** Le gant de boxe : il envoie une bombe en l air plutot que de la pousser. */
+    gant: false,
     posees: 0,
     surBombe: null,
     mortAu: null,

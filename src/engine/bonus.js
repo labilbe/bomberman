@@ -31,6 +31,7 @@ export const CODES_BONUS = {
   VITESSE: 3,
   KICK: 4,
   DETONATEUR: 5,
+  GANT: 6,
 };
 
 /**
@@ -43,6 +44,7 @@ export const NOMS_BONUS = {
   [CODES_BONUS.VITESSE]: 'speed',
   [CODES_BONUS.KICK]: 'kick',
   [CODES_BONUS.DETONATEUR]: 'trigger',
+  [CODES_BONUS.GANT]: 'punch',
 };
 
 /**
@@ -58,6 +60,7 @@ export const TABLE_BONUS = [
   [CODES_BONUS.VITESSE, 15],
   [CODES_BONUS.KICK, 12],
   [CODES_BONUS.DETONATEUR, 8],
+  [CODES_BONUS.GANT, 8],
 ];
 
 /** Vrai si l'octet designe un bonus encore cache sous une brique. */
@@ -101,6 +104,9 @@ export function appliquer(joueur, code) {
       break;
     case CODES_BONUS.DETONATEUR:
       joueur.detonateur += DETONATEURS_PAR_BONUS;
+      break;
+    case CODES_BONUS.GANT:
+      joueur.gant = true;
       break;
     default:
       break;

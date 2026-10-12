@@ -13,7 +13,7 @@
  * propre calage a la main dans la scene.
  */
 
-import { construireSprites, COTE, IMAGES_MARCHE } from './sprites.js';
+import { construireSprites, peindreGant, COTE, IMAGES_MARCHE } from './sprites.js';
 import { PLACES } from './palette.js';
 
 /** Nombre d'images du cycle de marche, pour les deux fournisseurs. */
@@ -305,6 +305,13 @@ export function depuisVectoriels(charge, places = PLACES.length) {
       speed: un('bonusSpeed'),
       kick: un('bonusKick'),
       trigger: un('bonusTrigger'),
+      // Le gant manque aux extractions faites avant son ajout. On le dessine
+      // alors A LA TAILLE DES TUILES du jeu, plutot que d'agrandir la plaquette
+      // de 16 pixels : de 16 vers 40 l'agrandissement n'est pas entier, et
+      // chaque pixel serait d'une largeur differente de son voisin.
+      punch: roles.bonusGant
+        ? un('bonusGant')
+        : spriteDeTuile(peindreGant(tuile.largeur, tuile.hauteur), tuile),
     },
     bombe: parPlace('bombe'),
     bombeDetonateur: Array.from({ length: places }, (_, p) => suiteAvecBandeau(parPlace('bombe')[p])),

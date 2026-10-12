@@ -316,8 +316,54 @@ export function construireSprites(places = 4) {
       speed: peindreBonus('speed'),
       kick: peindreBonus('kick'),
       trigger: peindreBonus('trigger'),
+      // Le gant a son propre peintre : `peindreBonus` retombe sur le detonateur
+      // pour tout nom qu'il ne connait pas, et l'on aurait eu deux plaquettes
+      // identiques pour deux bonus qui ne font pas du tout la meme chose.
+      punch: peindreGant(),
     },
     bombers,
     morts,
   };
+}
+
+/**
+ * La plaquette du gant de boxe, a la taille qu'on lui demande.
+ *
+ * Elle existe parce que `power punch` n'est pas dans toutes les extractions :
+ * celles faites avant l'ajout du bonus n'ont pas ce sprite, et il faut bien
+ * montrer quelque chose. Toutes ses mesures sont donc des FRACTIONS du cote, et
+ * non des pixels : elle se dessine aussi bien sur les 16 pixels des sprites au
+ * code que sur les 40 d'une tuile d'Atomic Bomberman, sans agrandissement et
+ * donc sans flou.
+ *
+ * Le dessin est un gant vu de profil, poing vers la droite : une manchette, un
+ * poing arrondi, et un reflet. A cette taille on ne reconnait pas un gant, on
+ * reconnait une forme ramassee et rouge — c'est tout ce qu'il faut pour la
+ * distinguer des cinq autres plaquettes.
+ */
+export function peindreGant(largeur = COTE, hauteur = largeur) {
+  const { canvas, ctx } = toile(largeur, hauteur);
+  const couleurs = BONUS_COULEURS.punch;
+  const u = (f) => Math.round(f * largeur);
+  const v = (f) => Math.round(f * hauteur);
+
+  bloc(ctx, u(0.06), v(0.06), largeur - u(0.12), hauteur - v(0.12), CONTOUR);
+  bloc(ctx, u(0.12), v(0.12), largeur - u(0.24), hauteur - v(0.24), couleurs.fond);
+  bloc(ctx, u(0.12), v(0.12), largeur - u(0.24), v(0.14), couleurs.eclat);
+  bloc(ctx, u(0.12), hauteur - v(0.26), largeur - u(0.24), v(0.14), couleurs.glyphe);
+
+  // La silhouette est une sucette : un poing rond au bout d une manchette
+  // courte. Tenue tres petite, c est la seule forme qui se lit encore comme
+  // un gant — le pouce, les lacets et le croissant de lumiere essayes avant
+  // se perdaient dans la masse ou la trouaient.
+  const r = Math.max(2, u(0.18));
+  const px = largeur - u(0.24) - r;
+  const py = v(0.44);
+  const manche = Math.max(2, u(0.16));
+  bloc(ctx, px - r - manche + 1, py - v(0.13), manche, v(0.26), couleurs.glyphe);
+  disque(ctx, px, py, r, couleurs.glyphe);
+  // Le reflet part du cote ou le gant frappe : vers la droite, comme le coup.
+  disque(ctx, px + Math.round(r * 0.45), py - Math.round(r * 0.45), r * 0.3, couleurs.eclat);
+
+  return canvas;
 }

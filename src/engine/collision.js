@@ -22,7 +22,7 @@
 
 import { VECTEURS, DEMI_BOMBER, UNITES } from './constantes.js';
 import { caseDe, estLibre, casesTouchees, caseAxe, centreAxe, boiteSurCase } from './grille.js';
-import { bombeSur, bombeDe, pousser } from './bombes.js';
+import { bombePoseeSur, bombeDe, pousser } from './bombes.js';
 
 /**
  * Le bomber peut-il occuper cette case ?
@@ -35,7 +35,10 @@ import { bombeSur, bombeDe, pousser } from './bombes.js';
  */
 export function franchissable(etat, joueur, cx, cy) {
   if (!estLibre(caseDe(etat, cx, cy))) return false;
-  const bombe = bombeSur(etat, cx, cy);
+  // Une bombe EN VOL ne bloque pas : elle est au-dessus de la case, et l'on
+  // passe dessous. Sans quoi le gant fermerait un couloir avant meme que la
+  // bombe n'y soit tombee.
+  const bombe = bombePoseeSur(etat, cx, cy);
   if (bombe === null) return true;
   return bombe.id === joueur.surBombe;
 }
@@ -193,7 +196,8 @@ function tenterKick(etat, joueur, dir) {
   const v = VECTEURS[dir];
   const cx = caseAxe(joueur.x) + v.dx;
   const cy = caseAxe(joueur.y) + v.dy;
-  const bombe = bombeSur(etat, cx, cy);
+  // On ne shoote pas dans une bombe qui vole : elle n'est pas au sol.
+  const bombe = bombePoseeSur(etat, cx, cy);
   if (bombe !== null && bombe.id !== joueur.surBombe) pousser(etat, bombe, dir);
 }
 

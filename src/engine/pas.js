@@ -21,7 +21,14 @@
 import { FIN_MANCHE_PAS } from './constantes.js';
 import { ENTREE_VIDE } from './entrees.js';
 import { noter } from './etat.js';
-import { poser, declencher, avancerMeches, avancerGlissements } from './bombes.js';
+import {
+  poser,
+  frapper,
+  declencher,
+  avancerMeches,
+  avancerGlissements,
+  avancerVols,
+} from './bombes.js';
 import { deplacerJoueurs } from './collision.js';
 import {
   resoudreChaine,
@@ -79,7 +86,14 @@ export function pas(etat, entrees = []) {
   etat.pas += 1;
 
   for (const joueur of etat.joueurs) {
-    if (entreeDe(entrees, joueur.place).poser) poser(etat, joueur);
+    if (!entreeDe(entrees, joueur.place).poser) continue;
+    // LE MEME BOUTON POSE ET FRAPPE. Avec le gant, se trouver face a une bombe
+    // change ce que fait le bouton : on la renvoie au lieu d'en lacher une de
+    // plus. C'est ce que fait le jeu d'origine, et ca evite une troisieme
+    // touche a retenir — qui aurait de toute facon manque sur une manette a
+    // deux boutons.
+    if (frapper(etat, joueur)) continue;
+    poser(etat, joueur);
   }
 
   for (const joueur of etat.joueurs) {
@@ -91,6 +105,7 @@ export function pas(etat, entrees = []) {
   }
 
   avancerGlissements(etat);
+  avancerVols(etat);
   deplacerJoueurs(etat, entrees);
 
   const terminees = avancerMeches(etat);

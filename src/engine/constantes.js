@@ -134,6 +134,22 @@ export const FLAMME_DEPART = 2;
  */
 export const DETONATEURS_PAR_BONUS = 5;
 
+/**
+ * Le gant de boxe : combien de cases une bombe frappee survole, et en combien
+ * de temps.
+ *
+ * Trois cases, parce que c'est ce qui le distingue du coup de pied. Le kick
+ * pousse au ras du sol et s'arrete au premier obstacle ; le gant fait PASSER
+ * la bombe par-dessus — murs, briques, joueurs — pour la poser derriere. Avec
+ * une ou deux cases, les deux bonus se ressembleraient.
+ *
+ * Huit pas par case, soit un peu moins d'une demi-seconde pour un plein vol :
+ * assez lent pour qu'on voie la bombe arriver et qu'on ait le temps de s'oter
+ * de sa trajectoire, assez vif pour que la frappe reste une riposte.
+ */
+export const PORTEE_GANT = 3;
+export const VOL_PAS_PAR_CASE = 8;
+
 /** Plafonds des ramassages, pour qu'une manche ne degenere pas. */
 export const BOMBES_MAX = 8;
 export const FLAMME_MAX = 8;
@@ -165,4 +181,5 @@ export const BONUS = {
   VITESSE: 'speed',
   KICK: 'kick',
   DETONATEUR: 'trigger',
+  GANT: 'punch',
 };

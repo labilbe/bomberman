@@ -1277,6 +1277,13 @@
       "hauteur": 36,
       "accrocheX": 20,
       "accrocheY": 35
+    },
+    {
+      "fichier": "173.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
     }
   ],
   "roles": {
@@ -2343,6 +2350,12 @@
     "bonusTrigger": [
       {
         "image": 172,
+        "duree": 30
+      }
+    ],
+    "bonusGant": [
+      {
+        "image": 173,
         "duree": 30
       }
     ]

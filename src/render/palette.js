@@ -68,4 +68,6 @@ export const BONUS_COULEURS = {
   speed: { fond: '#48cae4', glyphe: '#073b4c', eclat: '#caf0f8' },
   kick: { fond: '#c77dff', glyphe: '#3c096c', eclat: '#e9d5ff' },
   trigger: { fond: '#70e000', glyphe: '#14331f', eclat: '#ccff33' },
+  // Le gant : rouge cuir, la couleur qu'on attend d'un gant de boxe.
+  punch: { fond: '#e5383b', glyphe: '#4a0d10', eclat: '#ff9a94' },
 };
