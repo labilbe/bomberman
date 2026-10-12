@@ -146,7 +146,7 @@ function sprite(canvas, source, echelle) {
  * couleur de celui qui a pose la bombe. C'est meme a ca qu'on reconnait qui
  * vient de vous tuer.
  */
-const PAR_PLACE = /^(marche|immobile)\d$|^mort$|^bombe|^flamme/;
+const PAR_PLACE = /^(marche|immobile|frappe)\d$|^mort$|^bombe|^flamme/;
 
 /**
  * Charge le jeu de sprites vectoriels.

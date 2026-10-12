@@ -25,11 +25,16 @@ import {
   CHUTE_PAS,
   PAS_MS,
   VITESSE_BASE,
+  VECTEURS,
+  FRAPPE_PAS,
+  VOL_PAS_PAR_CASE,
+  LARGEUR_U,
+  HAUTEUR_U,
 } from '../engine/constantes.js';
-import { index } from '../engine/grille.js';
+import { index, estLibre } from '../engine/grille.js';
 import { estVisible, NOMS_BONUS } from '../engine/bonus.js';
 import { depuisDessins } from './jeuDeSprites.js';
-import { FOND } from './palette.js';
+import { FOND, BONUS_COULEURS } from './palette.js';
 
 /**
  * De combien le premier battement d'une bombe est plus lent que le dernier.
@@ -56,8 +61,23 @@ const LENTEUR_DEPART = 1.5;
  */
 const CHUTE_MS = CHUTE_PAS * PAS_MS;
 
-/** Hauteur du sommet d'un vol de gant, en cases. */
+/**
+ * Hauteur du sommet d'un vol de gant, en cases, et celle d'un rebond.
+ *
+ * DEUX ALLURES, et c'est ce qu'on survole qui tranche. Au-dessus du sol libre,
+ * la bombe PLANE : un seul arc, du depart a la chute, qui dit qu'elle a ete
+ * envoyee loin d'un coup. Des qu'un mur ou une brique passe sous elle, elle
+ * REBONDIT dessus, une fois par case, jusqu'a trouver le trou ou tomber.
+ *
+ * Le rebond n'est pas un ornement : c'est lui qui rend lisible une frappe qui
+ * cherche son trou. Tendue sur huit cases, la parabole unique devenait une
+ * cloche molle dont le sommet planait deux rangees plus haut, loin de la colonne
+ * suivie — on ne savait plus dire ou la bombe allait retomber. Un rebond monte
+ * donc moins haut : une demi-case suffit a montrer qu'elle quitte le sol, et ne
+ * cache pas la case voisine.
+ */
 const HAUTEUR_VOL = 1.1;
+const HAUTEUR_REBOND = 0.55;
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -164,26 +184,65 @@ export function creerScene(canvas, jeu = depuisDessins()) {
    * lui seul, qui la montre encore en chemin. Il remonte de l'arrivee vers le
    * depart avec ce qu'il reste de vol.
    *
-   * La hauteur suit une parabole : sans elle, la bombe glisserait en ligne
-   * droite et l'on ne verrait pas qu'elle passe PAR-DESSUS les murs, ce qui est
-   * toute la difference avec le coup de pied.
+   * Elle plane d'un seul arc au-dessus du sol libre, et rebondit de case en
+   * case des qu'elle survole un obstacle — voir HAUTEUR_VOL. Sans hauteur du
+   * tout, elle glisserait en ligne droite et l'on ne verrait pas qu'elle passe
+   * PAR-DESSUS les murs, ce qui est toute la difference avec le coup de pied.
+   *
+   * @param {boolean} rebond vrai si quelque chose passe sous la trajectoire
    */
-  function enVol(bombe) {
+  function enVol(bombe, rebond) {
     const avance = 1 - bombe.vol.reste / bombe.vol.duree;
     const departX = bombe.vol.depuisX * UNITES + UNITES / 2;
     const departY = bombe.vol.depuisY * UNITES + UNITES / 2;
-    const arriveeX = bombe.cx * UNITES + UNITES / 2;
-    const arriveeY = bombe.cy * UNITES + UNITES / 2;
-    const hauteur = 4 * avance * (1 - avance) * HAUTEUR_VOL * UNITES;
+    // On suit la DIRECTION et le nombre de cases, et non le segment du depart a
+    // l'arrivee : une bombe qui sort de l'ecran revient par le bord d'en face,
+    // et son arrivee est alors a l'oppose du plateau. Le segment lui aurait fait
+    // traverser toute l'arene a rebours, en passant sous les murs.
+    const cases = bombe.vol.duree / VOL_PAS_PAR_CASE;
+    const v = VECTEURS[bombe.vol.dir];
+    const parcouru = avance * cases * UNITES;
+    // En rebond, la hauteur ne regarde que la fraction de case en cours : elle
+    // revient donc a zero a chaque case franchie — la bombe touche la brique, et
+    // repart. La derniere case tombe pile sur zero, et la bombe se pose sans
+    // ressauter. En vol plane, c'est l'avance totale qui compte, et l'arc est
+    // unique.
+    const bond = rebond ? (avance * cases) % 1 : avance;
+    const cime = rebond ? HAUTEUR_REBOND : HAUTEUR_VOL;
+    const hauteur = 4 * bond * (1 - bond) * cime * UNITES;
     return [
-      departX + (arriveeX - departX) * avance,
-      departY + (arriveeY - departY) * avance - hauteur,
+      ((((departX + v.dx * parcouru) % LARGEUR_U) + LARGEUR_U) % LARGEUR_U),
+      // La hauteur est retiree APRES l'enroulement : c'est la position au sol
+      // qui fait le tour du plateau, pas l'arc.
+      ((((departY + v.dy * parcouru) % HAUTEUR_U) + HAUTEUR_U) % HAUTEUR_U) - hauteur,
     ];
+  }
+
+  /**
+   * Y a-t-il un mur ou une brique SOUS la trajectoire d'une bombe frappee ?
+   *
+   * C'est ce qui decide de son allure : elle plane au-dessus du sol libre, et
+   * rebondit sur ce qu'elle survole. La question se pose au rendu et nulle part
+   * ailleurs — le moteur, lui, a deja choisi ou elle tombe — et la grille du
+   * client suffit a y repondre, en solo comme en ligne.
+   *
+   * La case d'arrivee n'est pas examinee : elle est libre par construction,
+   * c'est le trou que la bombe cherchait.
+   */
+  function survoleUnObstacle(vue, bombe) {
+    const cases = bombe.vol.duree / VOL_PAS_PAR_CASE;
+    const v = VECTEURS[bombe.vol.dir];
+    for (let i = 1; i < cases; i += 1) {
+      const cx = (((bombe.vol.depuisX + v.dx * i) % COLS) + COLS) % COLS;
+      const cy = (((bombe.vol.depuisY + v.dy * i) % ROWS) + ROWS) % ROWS;
+      if (!estLibre(vue.tuiles[index(cx, cy)])) return true;
+    }
+    return false;
   }
 
   function dessinerBombes(vue, temps) {
     for (const bombe of vue.bombes) {
-      const enLAir = bombe.vol ? enVol(bombe) : null;
+      const enLAir = bombe.vol ? enVol(bombe, survoleUnObstacle(vue, bombe)) : null;
       const x = enLAir ? enLAir[0] : (bombe.glisse ? bombe.glisse.x : bombe.cx * UNITES + UNITES / 2);
       const y = enLAir ? enLAir[1] : (bombe.glisse ? bombe.glisse.y : bombe.cy * UNITES + UNITES / 2);
       // La pulsation accelere a mesure que la meche brule : c'est le compte a
@@ -300,6 +359,69 @@ export function creerScene(canvas, jeu = depuisDessins()) {
     return Math.floor(total / parImage) % images;
   }
 
+  /**
+   * Ou en est le coup de poing d'un bomber : de 0 a 1, ou null.
+   *
+   * C'est le moteur qui date le geste (`frappeAu`), et non le rendu : en ligne,
+   * la frappe est decidee par le relais, et un compte a rebours tenu dans la
+   * page ne serait pas le meme chez les deux joueurs.
+   */
+  function avanceFrappe(joueur, vue) {
+    if (!joueur.gant || joueur.frappeAu === null || !joueur.vivant) return null;
+    const depuis = vue.pas - joueur.frappeAu;
+    // Une manche qui recommence remet le compteur de pas a zero : la date d'une
+    // frappe de la manche passee est alors dans le futur.
+    if (depuis < 0 || depuis >= FRAPPE_PAS) return null;
+    return depuis / FRAPPE_PAS;
+  }
+
+  /**
+   * Le coup de poing, FAUTE DE LA SEQUENCE DU JEU.
+   *
+   * Atomic Bomberman a sa propre animation de frappe, et c'est elle qu'on joue
+   * quand le jeu de sprites l'apporte (`jeu.frappes`, extrait de PUNCH.ANI). Ce
+   * dessin-ci ne sert qu'aux extractions qui ne l'ont pas et aux sprites peints
+   * au code : sans lui, le bonus resterait muet a l'ecran chez qui n'a pas
+   * re-extrait ses sprites.
+   *
+   * Il imite le geste plutot que le gant : le bomber S'ELANCE — son sprite part
+   * en avant de quelques pixels puis revient — et c'est son bras qui se detend,
+   * depuis l'epaule, et non un gant qui vole tout seul devant lui. La detente
+   * suit un sinus : le poing est le plus loin au MILIEU du geste, pas a la fin,
+   * sans quoi le bras reste tendu et disparait d'un coup.
+   */
+  function dessinerBrasFrappe(joueur, px, py, avance) {
+    const detente = Math.sin(Math.PI * avance);
+    const v = VECTEURS[joueur.dir];
+    // L'epaule : au tiers haut du corps, decalee du cote du bras qui frappe. De
+    // face ou de dos, un bras pile au milieu se lirait comme un nez.
+    const lateral = v.dy === 0 ? 0 : TUILE_L * 0.22;
+    const epauleX = px + lateral;
+    const epauleY = py - TUILE_H * 0.62;
+    const portee = (0.1 + 0.42 * detente) * TUILE_L;
+    const poingX = epauleX + v.dx * portee;
+    const poingY = epauleY + v.dy * portee * 0.7;
+    const rayon = TUILE_L * 0.13;
+
+    const couleurs = BONUS_COULEURS.punch;
+    // Le bras d'abord, de l'epaule au poing : sans lui, le gant flotte.
+    ctx.strokeStyle = couleurs.glyphe;
+    ctx.lineWidth = Math.max(2, rayon * 0.8);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(epauleX, epauleY);
+    ctx.lineTo(poingX, poingY);
+    ctx.stroke();
+
+    ctx.fillStyle = couleurs.fond;
+    ctx.beginPath();
+    ctx.arc(poingX, poingY, rayon, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = couleurs.glyphe;
+    ctx.lineWidth = Math.max(1, rayon * 0.3);
+    ctx.stroke();
+  }
+
   function dessinerBombers(vue, temps) {
     // Du haut vers le bas : un bomber plus bas passe devant celui du dessus,
     // sans quoi les silhouettes se chevauchent a l'envers.
@@ -325,11 +447,34 @@ export function creerScene(canvas, jeu = depuisDessins()) {
         continue;
       }
 
-      if (joueur.marche) {
-        const suite = jeu.bombers[joueur.place][joueur.dir];
-        poser(suite[imageDeMarche(joueur, suite.length)], px, py);
+      const frappe = avanceFrappe(joueur, vue);
+
+      if (frappe !== null && jeu.frappes) {
+        // La sequence du jeu d'origine : elle REMPLACE la pose, comme dans
+        // Atomic Bomberman — le bomber arme, frappe et se remet en garde, et
+        // marcher pendant ce temps ne se voit pas.
+        //
+        // Elle est etiree sur la duree que le MOTEUR donne au geste, et non sur
+        // la sienne : c'est le moteur qui dit quand la frappe commence et
+        // finit, et une animation a son propre rythme se figerait sur sa
+        // derniere image ou serait coupee avant la fin.
+        const suite = jeu.frappes[joueur.place][joueur.dir];
+        poser(suite[Math.min(suite.length - 1, Math.floor(frappe * suite.length))], px, py);
       } else {
-        poser(jeu.immobiles[joueur.place][joueur.dir], px, py);
+        // L'elan accompagne le coup au lieu de le regarder partir, et il reste
+        // petit : un bomber qui sortirait de sa case mordrait la voisine et ne
+        // serait plus la ou le moteur le dit.
+        const elan = frappe === null ? 0 : TUILE_L * 0.1 * Math.sin(Math.PI * frappe);
+        const v = VECTEURS[joueur.dir];
+        const ex = px + v.dx * elan;
+        const ey = py + v.dy * elan * 0.7;
+        if (joueur.marche) {
+          const suite = jeu.bombers[joueur.place][joueur.dir];
+          poser(suite[imageDeMarche(joueur, suite.length)], ex, ey);
+        } else {
+          poser(jeu.immobiles[joueur.place][joueur.dir], ex, ey);
+        }
+        if (frappe !== null) dessinerBrasFrappe(joueur, ex, ey, frappe);
       }
 
       if (joueur.absent) {

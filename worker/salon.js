@@ -79,6 +79,13 @@ function instantane(etat, absents) {
       s: joueur.vitesse,
       k: joueur.kick ? 1 : 0,
       g: joueur.detonateur,
+      // Le gant. Sans lui, le client ignorait qu'il l'avait ramasse : le HUD ne
+      // l'affichait pas, et l'intention envoyee au salon etait celle de
+      // quelqu'un qui n'a pas le bonus.
+      n: joueur.gant ? 1 : 0,
+      // Et le PAS de sa derniere frappe, comme pour la mort : le rendu joue le
+      // geste a partir de cette date.
+      u: joueur.frappeAu,
     })),
     b: etat.bombes.map((bombe) => ({
       i: bombe.id,
@@ -90,7 +97,10 @@ function instantane(etat, absents) {
       // Le vol du gant : d'ou elle part, et ou elle en est. Sans lui, la bombe
       // frappee se teleporterait d'un bout a l'autre de sa trajectoire.
       w: bombe.vol
-        ? { x: bombe.vol.depuisX, y: bombe.vol.depuisY, r: bombe.vol.reste, d: bombe.vol.duree }
+        // La DIRECTION y est, et pas seulement le depart : une bombe qui sort
+        // de l ecran revient par le bord d en face, et le rendu ne peut plus la
+        // deduire du segment depart-arrivee.
+        ? { x: bombe.vol.depuisX, y: bombe.vol.depuisY, r: bombe.vol.reste, d: bombe.vol.duree, s: bombe.vol.dir }
         : null,
     })),
     f: etat.flammes.map((flamme) => ({

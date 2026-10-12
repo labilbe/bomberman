@@ -20,8 +20,10 @@ import {
   UNITES,
   PORTEE_GANT,
   VOL_PAS_PAR_CASE,
+  COLS,
+  ROWS,
 } from './constantes.js';
-import { caseDe, estLibre, caseAxe, centreAxe, boiteSurCase, dansArene } from './grille.js';
+import { caseDe, estLibre, caseAxe, centreAxe, boiteSurCase, enrouler } from './grille.js';
 import { noter } from './etat.js';
 
 /** La bombe posee sur cette case, ou null. */
@@ -204,7 +206,7 @@ export function avancerGlissements(etat) {
 }
 
 /**
- * Frappe la bombe devant soi : elle part en l'air.
+ * Frappe la bombe devant soi — ou celle sous ses pieds : elle part en l'air.
  *
  * C'EST LA DIFFERENCE AVEC LE COUP DE PIED, et toute l'utilite du bonus. Le
  * kick pousse au ras du sol et s'arrete au premier obstacle ; le gant fait
@@ -212,14 +214,23 @@ export function avancerGlissements(etat) {
  * On peut donc renvoyer chez l'adversaire une bombe qu'on vient de recevoir,
  * meme s'il s'est abrite.
  *
- * Elle atterrit sur la case la plus LOINTAINE qui soit libre, dans la limite du
- * gant. Prendre la plus proche aurait fait retomber la bombe juste derriere le
- * mur ou l'on se cache, ce qui n'est une riposte pour personne ; et refuser des
- * qu'une case intermediaire est prise reviendrait a redonner au gant les
- * defauts du kick.
+ * ELLE VISE LA PORTEE PLEINE, PUIS LE PREMIER TROU. La bombe survole trois
+ * cases quoi qu'il y ait dessous, et si la troisieme est prise — un mur, une
+ * brique, une autre bombe — elle poursuit tout droit jusqu'a la premiere case
+ * libre. Elle ne s'arrete donc jamais court : s'arreter avant la portee
+ * l'aurait fait retomber du cote du mur ou l'on se cache, ce qui n'est une
+ * riposte pour personne, et renoncer a frapper aurait rendu le bonus inerte
+ * dans les couloirs les plus etroits — ceux-la memes ou l'on en a besoin.
  *
- * Rien ne part si aucune case n'est libre : la bombe reste ou elle est, plutot
- * que de disparaitre ou de se poser sur un mur.
+ * Rien ne part si la ligne entiere est prise : la bombe reste ou elle est,
+ * plutot que de disparaitre ou de se poser sur un mur.
+ *
+ * L'arene est ENROULEE pour ce seul geste : une bombe frappee vers le haut sort
+ * par le haut de l'ecran et revient par le bas, sur la meme colonne. Acule
+ * contre un bord, on garde donc une riposte.
+ *
+ * La bombe devant soi passe avant celle du dessous : c'est la riposte voulue,
+ * tandis que la seconde n'est qu'un rattrapage de confort.
  *
  * @param {import('./etat.js').Etat} etat
  * @param {import('./etat.js').Joueur} joueur
@@ -229,26 +240,55 @@ export function frapper(etat, joueur) {
   if (!joueur.gant || !joueur.vivant) return null;
 
   const v = VECTEURS[joueur.dir];
-  const depuisX = caseAxe(joueur.x) + v.dx;
-  const depuisY = caseAxe(joueur.y) + v.dy;
-  const bombe = bombeSur(etat, depuisX, depuisY);
+  let depuisX = caseAxe(joueur.x) + v.dx;
+  let depuisY = caseAxe(joueur.y) + v.dy;
+  let bombe = bombeSur(etat, depuisX, depuisY);
+
+  // ON FRAPPE AUSSI CELLE QU'ON A SOUS LES PIEDS, et c'est ce qui rend le bonus
+  // utilisable. Sans cela il fallait avoir quitte entierement la case de sa
+  // bombe pour la viser : tant qu'on la touchait encore, appuyer vers elle y
+  // faisait REMARCHER — on repassait dessus au lieu de lui faire face — et le
+  // bouton ne faisait plus rien du tout, puisqu'une case ne porte qu'une bombe.
+  // Le gant paraissait mort. Appuyer debout sur sa propre bombe n'avait de toute
+  // facon aucun autre sens : elle part devant soi.
+  if (!bombe || bombe.vol) {
+    depuisX = caseAxe(joueur.x);
+    depuisY = caseAxe(joueur.y);
+    bombe = bombeSur(etat, depuisX, depuisY);
+  }
+
   // Une bombe deja en l'air ne se refrappe pas : on ne rattrape pas au vol.
   if (!bombe || bombe.vol) return null;
 
+  // La ligne de vol fait le tour du plateau et revient au depart : la parcourir
+  // en entier, c'est avoir vu toutes les cases possibles. Au-dela on tournerait
+  // en rond, au sens propre.
+  const ligne = v.dx !== 0 ? COLS : ROWS;
+
   let versX = null;
   let versY = null;
-  for (let i = 1; i <= PORTEE_GANT; i += 1) {
-    const x = depuisX + v.dx * i;
-    const y = depuisY + v.dy * i;
-    if (!dansArene(x, y)) break;
-    if (!estLibre(caseDe(etat, x, y))) continue;
-    if (bombeSur(etat, x, y)) continue;
-    versX = x;
-    versY = y;
+  let cases = 0;
+  for (let i = PORTEE_GANT; i < PORTEE_GANT + ligne; i += 1) {
+    // LA BOMBE SORT DE L'ECRAN ET REVIENT PAR L'AUTRE BORD, sur la meme colonne
+    // ou la meme ligne. C'est ce qui donne une riposte a celui qu'on acule
+    // contre un bord : frappee vers le haut depuis la premiere rangee, sa bombe
+    // survole le mur du bord, disparait, et retombe au bas de la colonne — le
+    // premier trou qu'elle rencontre apres sa portee.
+    const { cx, cy } = enrouler(depuisX + v.dx * i, depuisY + v.dy * i);
+    if (!estLibre(caseDe(etat, cx, cy))) continue;
+    if (bombeSur(etat, cx, cy)) continue;
+    versX = cx;
+    versY = cy;
+    // Le nombre de cases PARCOURUES, et non la distance a vol d'oiseau : une
+    // bombe qui s'est enroulee atterrit a dix cases de son depart alors qu'elle
+    // n'en a survole que quatre, et son vol durerait deux fois trop longtemps.
+    cases = i;
+    break;
   }
+  // La case de depart porte encore la bombe, donc elle n'est jamais « libre » :
+  // une ligne entierement prise ne peut pas la faire atterrir sur elle-meme.
   if (versX === null) return null;
 
-  const cases = Math.abs(versX - depuisX) + Math.abs(versY - depuisY);
   bombe.cx = versX;
   bombe.cy = versY;
   bombe.glisse = null;

@@ -66,6 +66,11 @@ const rolesDe = (terrain) => ({
     [`immobile${k}`, ['STAND.ANI', `stand ${d}`]],
   ])),
 
+  // Le coup de poing du gant de boxe : le bomber arme, frappe, et se remet en
+  // garde. Le jeu en a une sequence par direction, comme la marche. Un role
+  // absent n'est pas une erreur ici — il est signale, et le rendu s'en passe.
+  ...Object.fromEntries(DIRECTIONS.map((d, k) => [`frappe${k}`, ['PUNCH.ANI', `punch ${d} green`]])),
+
   // Les noms du moteur a gauche, ceux du jeu a droite : « speed » est un
   // patin a roulettes chez Interplay, « kick » une chaussure.
   bonusBomb: ['POWERS.ANI', 'power bomb'],
@@ -151,6 +156,30 @@ function decouperAccueil() {
   return { fichier: 'accueil.png', largeur: image.largeur, hauteur: image.hauteur };
 }
 
+/**
+ * Retrouve une sequence par son nom, sans exiger qu'il soit ecrit a la lettre.
+ *
+ * Le nom exact d'abord, puis la casse ignoree, puis TOUS LES MOTS presents dans
+ * n'importe quel ordre. Les noms d'Atomic Bomberman ne sont pas reguliers d'un
+ * fichier a l'autre — « walk north » ici, « stand north green » la — et une
+ * table de roles ecrite de memoire tombe a cote pour un mot en trop. Rater la
+ * sequence ne coute alors qu'une ligne dans les manquants, et le role disparait
+ * silencieusement du jeu de sprites : c'est exactement ce qui est arrive au gant
+ * de boxe, dont le bonus a manque pendant toute une serie d'extractions.
+ */
+function trouverSequence(sequences, voulue) {
+  const exact = sequences.find((s) => s.nom === voulue);
+  if (exact) return exact;
+  const bas = voulue.toLowerCase();
+  const sansCasse = sequences.find((s) => s.nom.toLowerCase() === bas);
+  if (sansCasse) return sansCasse;
+  const mots = bas.split(/\s+/).filter(Boolean);
+  return sequences.find((s) => {
+    const nom = s.nom.toLowerCase();
+    return mots.every((mot) => nom.split(/\s+/).includes(mot));
+  }) ?? null;
+}
+
 /** Cache des fichiers .ANI deja ouverts : TILES0 et FLAME servent plusieurs roles. */
 const ouverts = new Map();
 function ouvrir(fichier) {
@@ -172,7 +201,7 @@ for (const [role, [fichier, sequence]] of Object.entries(rolesDe(terrain))) {
     continue;
   }
 
-  const seq = animation.sequences.find((s) => s.nom === sequence);
+  const seq = trouverSequence(animation.sequences, sequence);
   if (!seq) {
     manquants.push(`${role} : sequence "${sequence}" absente de ${fichier}`);
     continue;

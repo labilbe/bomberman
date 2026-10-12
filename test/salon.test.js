@@ -300,3 +300,19 @@ test('l instantane signale un joueur coupe mais pas encore elimine', () => {
   assert.equal(dernier.j.find((j) => j.p === 0).a, 1, 'le coupe est signale');
   assert.equal(dernier.j.find((j) => j.p === 1).a, 0, 'l autre ne l est pas');
 });
+
+test('l instantane porte le gant et la date de la frappe', () => {
+  // Sans eux, le client ne savait pas qu'il avait ramasse le gant : le bandeau
+  // ne l affichait pas, et le coup de poing ne se voyait jamais.
+  const { salon } = salonLance();
+  battre(salon, DEPART_MANCHE_PAS * PAS_MS + 200);
+
+  const joueur = salon.partie.etat.joueurs[0];
+  joueur.gant = true;
+  joueur.frappeAu = salon.partie.etat.pas;
+
+  const dernier = du(battre(salon, 100, 5000), SERVER.STATE).at(-1);
+  const vu = dernier.j.find((j) => j.p === 0);
+  assert.equal(vu.n, 1, 'le gant est annonce');
+  assert.equal(vu.u, joueur.frappeAu, 'et le pas de sa frappe');
+});

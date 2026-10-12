@@ -87,17 +87,30 @@ export function pas(etat, entrees = []) {
 
   for (const joueur of etat.joueurs) {
     if (!entreeDe(entrees, joueur.place).poser) continue;
-    // LE MEME BOUTON POSE ET FRAPPE. Avec le gant, se trouver face a une bombe
-    // change ce que fait le bouton : on la renvoie au lieu d'en lacher une de
-    // plus. C'est ce que fait le jeu d'origine, et ca evite une troisieme
-    // touche a retenir — qui aurait de toute facon manque sur une manette a
-    // deux boutons.
-    if (frapper(etat, joueur)) continue;
     poser(etat, joueur);
   }
 
   for (const joueur of etat.joueurs) {
     if (!entreeDe(entrees, joueur.place).declencher) continue;
+
+    // LE MEME BOUTON FRAPPE ET DECLENCHE, et c'est le bouton du detonateur et
+    // non celui des bombes. Les deux commandes disent « cette bombe-la, celle
+    // que j'ai sous la main, maintenant » ; poser en dit le contraire. Les
+    // partager n'ajoute donc aucune touche a retenir — ce qui compte sur une
+    // manette a deux boutons — et laisse la pose nette : appuyer sur bombe pose
+    // une bombe, toujours.
+    //
+    // La frappe passe devant quand il y a quelque chose a frapper. Debout sur sa
+    // propre bombe avec le gant, on l'envoie donc au loin au lieu de la faire
+    // sauter sur place : c'est la lecture la plus sure des deux, puisque l'autre
+    // tue celui qui appuie.
+    //
+    // Le GESTE est joue des que le bouton est presse avec le gant, meme si
+    // aucune bombe ne part : frapper a cote doit se voir, sinon le bonus passe
+    // pour inerte et l'on croit la touche morte.
+    if (joueur.gant && joueur.vivant) joueur.frappeAu = etat.pas;
+    if (frapper(etat, joueur)) continue;
+
     const bombe = declencher(etat, joueur);
     // Une meche a 1 part au releve de ce pas : le detonateur n'a donc pas de
     // chemin a lui, il emprunte celui des meches et toute la chaine avec.

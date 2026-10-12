@@ -26,6 +26,24 @@ export function dansArene(x, y) {
 }
 
 /**
+ * Ramene une case dans l'arene en SORTANT PAR L'AUTRE BORD.
+ *
+ * L'arene n'est enroulee que pour le gant de boxe : une bombe frappee vers le
+ * haut repasse par le bas, sur la meme colonne, comme dans le jeu d'origine.
+ * Rien d'autre ne s'enroule — ni la marche, ni les flammes, ni le coup de pied,
+ * qui s'arretent tous au mur du bord.
+ *
+ * Le reste a 0 de JavaScript garde le signe du dividende : `-1 % 13` vaut -1 et
+ * non 12. D'ou le tour de passe-passe, et non un simple `%`.
+ */
+export function enrouler(x, y) {
+  return {
+    cx: ((x % COLS) + COLS) % COLS,
+    cy: ((y % ROWS) + ROWS) % ROWS,
+  };
+}
+
+/**
  * Nature d'une case. Hors arene, on repond DUR : les propagations de flamme et
  * les deplacements s'arretent alors sans avoir a tester les bords deux fois.
  *

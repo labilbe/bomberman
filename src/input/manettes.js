@@ -34,7 +34,9 @@ import { HAUT, DROITE, BAS, GAUCHE } from '../engine/constantes.js';
  *
  * 0 et 1 sont les deux boutons du bas a droite — A et B sur une manette Xbox,
  * croix et rond sur une PlayStation. On prend les deux plus accessibles du
- * pouce droit : poser une bombe et la declencher sont les deux gestes du jeu.
+ * pouce droit : poser une bombe et la declencher sont les deux gestes du jeu —
+ * et le second porte aussi le coup de poing, que le gant ait ete ramasse ou non,
+ * de sorte qu'une manette a deux boutons suffise toujours.
  */
 export const BOUTONS = { bombe: 0, detonateur: 1 };
 

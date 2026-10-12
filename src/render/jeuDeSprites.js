@@ -270,6 +270,9 @@ export function depuisDessins(places = PLACES.length) {
     })),
     bombers: parPlace((p) => DIRS.map((d) => brut.bombers[p][d].map(sprite))),
     immobiles: parPlace((p) => DIRS.map((d) => sprite(brut.bombers[p][d][0]))),
+    // Les sprites dessines au code n'ont pas de sequence de frappe : la scene
+    // joue la sienne par-dessus le bomber.
+    frappes: null,
     morts: parPlace((p) => brut.morts[p].map(sprite)),
   };
 }
@@ -324,6 +327,13 @@ export function depuisVectoriels(charge, places = PLACES.length) {
     })),
     bombers: Array.from({ length: places }, (_, p) => DIRS.map((d) => roles[`marche${d}`][p])),
     immobiles: Array.from({ length: places }, (_, p) => DIRS.map((d) => roles[`immobile${d}`][p][0])),
+    // Le coup de poing du jeu d'origine, s'il a ete extrait. Null sinon, et la
+    // scene joue alors sa propre frappe : les extractions faites avant l'ajout
+    // du gant n'ont pas PUNCH.ANI, et un geste qui n'existerait qu'ici laisserait
+    // le bonus muet partout ailleurs.
+    frappes: roles.frappe0
+      ? Array.from({ length: places }, (_, p) => DIRS.map((d) => roles[`frappe${d}`][p]))
+      : null,
     morts: Array.from({ length: places }, (_, p) => roles.mort[p]),
   };
 }

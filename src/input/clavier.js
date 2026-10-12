@@ -28,6 +28,8 @@ export const TOUCHES = [
     gauche: 'ArrowLeft',
     droite: 'ArrowRight',
     bombe: 'Space',
+    // Entree frappe ET declenche : voir pas.js, qui dit pourquoi les deux
+    // partagent un bouton.
     detonateur: 'Enter',
     libelle: { bombe: 'Espace', detonateur: 'Entree' },
   },

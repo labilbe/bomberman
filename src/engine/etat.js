@@ -85,6 +85,11 @@ export function creerJoueur(place) {
     detonateur: 0,
     /** Le gant de boxe : il envoie une bombe en l air plutot que de la pousser. */
     gant: false,
+    /**
+     * Le pas du dernier coup de poing, ou null. Il n'a aucun effet sur les
+     * regles : c'est le rendu qui s'en sert pour jouer le geste.
+     */
+    frappeAu: null,
     posees: 0,
     surBombe: null,
     mortAu: null,

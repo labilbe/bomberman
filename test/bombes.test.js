@@ -11,6 +11,10 @@ import {
   DROITE,
   GAUCHE,
   BAS,
+  HAUT,
+  ROWS,
+  COLS,
+  VOL_PAS_PAR_CASE,
 } from '../src/engine/constantes.js';
 import { appliquer, CODES_BONUS } from '../src/engine/bonus.js';
 import { areneNue, brique, placer, entree, evenements } from './aide.js';
@@ -348,10 +352,10 @@ test('le gant envoie la bombe trois cases plus loin, par-dessus tout', () => {
   const bombe = etat.bombes[0];
   assert.deepEqual([bombe.cx, bombe.cy], [4, 5]);
 
-  // Il revient sur sa case et frappe.
+  // Il revient sur sa case et frappe, du bouton du detonateur.
   placer(etat, 0, 3, 5);
   joueur.dir = DROITE;
-  pas(etat, entree(0, { poser: true }));
+  pas(etat, entree(0, { declencher: true }));
 
   assert.ok(bombe.vol, 'elle doit etre en l air');
   assert.deepEqual([bombe.cx, bombe.cy], [7, 5], 'et viser trois cases plus loin');
@@ -369,7 +373,7 @@ test('une bombe en vol ne bloque personne', () => {
   pas(etat, entree(0, { poser: true }));
   placer(etat, 0, 3, 5);
   joueur.dir = DROITE;
-  pas(etat, entree(0, { poser: true }));
+  pas(etat, entree(0, { declencher: true }));
 
   const bombe = etat.bombes[0];
   assert.ok(bombe.vol);
@@ -378,19 +382,48 @@ test('une bombe en vol ne bloque personne', () => {
   assert.ok(caseAxe(joueur.x) >= 4, 'il passe sous la trajectoire');
 });
 
-test('le gant se tait quand il n y a rien devant', () => {
+test('faute de frappe, la touche garde son sens premier : elle declenche', () => {
+  // Le gant ne prive pas du detonateur : il ne passe devant que s il y a
+  // vraiment une bombe a frapper, celle d en face ou celle du dessous.
   const etat = areneNue();
   const joueur = placer(etat, 0, 3, 5);
   joueur.gant = true;
+  joueur.detonateur = 1;
   joueur.dir = DROITE;
 
   pas(etat, entree(0, { poser: true }));
-  assert.equal(etat.bombes.length, 1, 'faute de cible, le bouton pose comme avant');
-  assert.equal(etat.bombes[0].cx, 3);
-  assert.equal(evenements(etat, 'punch').length, 0);
+  const bombe = etat.bombes[0];
+  // Il s eloigne : sa bombe n est plus ni devant lui ni sous ses pieds.
+  avancerDe(etat, 40, entree(0, { dir: DROITE }));
+  assert.ok(caseAxe(joueur.x) > 4, 'il est bien parti');
+
+  pas(etat, entree(0, { declencher: true }));
+  assert.equal(evenements(etat, 'punch').length, 0, 'rien a frapper d ou il est');
+  assert.equal(bombe.vol, null, 'elle ne s envole pas');
+  assert.equal(etat.bombes.length, 0, 'elle a saute sur commande');
+  assert.ok(etat.flammes.length > 0);
+  assert.equal(joueur.detonateur, 0, 'la charge a servi');
 });
 
-test('sans le gant, le bouton pose et ne frappe pas', () => {
+test('le bouton des bombes ne frappe plus : il pose, c est tout', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 3, 5);
+  joueur.gant = true;
+  joueur.bombes = 2;
+  joueur.dir = DROITE;
+
+  // Une bombe adverse juste devant lui, la cible meme du gant.
+  placer(etat, 1, 4, 5);
+  pas(etat, entree(1, { poser: true }));
+  const devant = bombeSur(etat, 4, 5);
+
+  pas(etat, entree(0, { poser: true }));
+  assert.equal(devant.vol, null, 'elle reste au sol');
+  assert.equal(evenements(etat, 'punch').length, 0);
+  assert.ok(bombeSur(etat, 3, 5), 'il a pose la sienne, comme demande');
+});
+
+test('sans le gant, rien ne vole, ni au bouton des bombes ni a l autre', () => {
   const etat = areneNue();
   const joueur = placer(etat, 0, 3, 5);
   joueur.bombes = 2;
@@ -399,7 +432,7 @@ test('sans le gant, le bouton pose et ne frappe pas', () => {
   pas(etat, entree(0, { poser: true }));
   placer(etat, 0, 3, 5);
   joueur.dir = DROITE;
-  pas(etat, entree(0, { poser: true }));
+  pas(etat, entree(0, { poser: true, declencher: true }));
 
   assert.equal(etat.bombes.length, 2, 'il en pose une seconde');
   assert.equal(etat.bombes.every((b) => !b.vol), true, 'et rien ne vole');
@@ -414,7 +447,7 @@ test('la bombe frappee atterrit et bloque de nouveau', () => {
   pas(etat, entree(0, { poser: true }));
   placer(etat, 0, 3, 5);
   joueur.dir = DROITE;
-  pas(etat, entree(0, { poser: true }));
+  pas(etat, entree(0, { declencher: true }));
 
   const bombe = etat.bombes[0];
   avancerDe(etat, bombe.vol.duree + 1, []);
@@ -432,7 +465,167 @@ test('sa meche continue de bruler pendant le vol', () => {
   const avant = etat.bombes[0].meche;
   placer(etat, 0, 3, 5);
   joueur.dir = DROITE;
-  pas(etat, entree(0, { poser: true }));
+  pas(etat, entree(0, { declencher: true }));
   avancerDe(etat, 10, []);
   assert.ok(etat.bombes[0].meche < avant - 5, 'le vol ne met pas la meche en pause');
+});
+
+test('on frappe la bombe sous ses pieds, sans avoir a quitter sa case', () => {
+  // LE CAS LE PLUS FREQUENT EN JEU, et celui qui rendait le gant inutilisable :
+  // tant que la boite touche encore sa propre bombe, appuyer vers elle y fait
+  // remarcher au lieu de lui faire face, et il n y avait alors rien a frapper.
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 3, 5);
+  joueur.gant = true;
+  joueur.dir = DROITE;
+
+  pas(etat, entree(0, { poser: true }));
+  const bombe = etat.bombes[0];
+  assert.deepEqual([bombe.cx, bombe.cy], [3, 5]);
+
+  pas(etat, entree(0, { declencher: true }));
+  assert.ok(bombe.vol, 'elle doit partir de sous ses pieds');
+  assert.deepEqual([bombe.cx, bombe.cy], [6, 5]);
+  assert.equal(etat.bombes.length, 1);
+  assert.equal(evenements(etat, 'punch').length, 1);
+});
+
+test('la bombe devant soi passe avant celle du dessous', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 3, 5);
+  joueur.gant = true;
+  joueur.bombes = 2;
+  joueur.dir = DROITE;
+
+  pas(etat, entree(0, { poser: true }));
+  placer(etat, 1, 4, 5);
+  pas(etat, entree(1, { poser: true }));
+  const sienne = bombeSur(etat, 3, 5);
+  const devant = bombeSur(etat, 4, 5);
+  assert.ok(sienne && devant);
+
+  pas(etat, entree(0, { declencher: true }));
+  assert.ok(devant.vol, 'c est celle d en face qui part');
+  assert.equal(sienne.vol, null, 'la sienne reste au sol');
+});
+
+test('le geste de frappe se joue meme quand rien ne part', () => {
+  // Frapper a cote doit se voir : sans retour a l ecran, le gant passe pour
+  // inerte et l on croit la touche morte.
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 3, 5);
+  joueur.gant = true;
+  joueur.dir = DROITE;
+
+  pas(etat, entree(0, { declencher: true }));
+  assert.equal(etat.bombes.length, 0, 'aucune bombe nulle part');
+  assert.equal(joueur.frappeAu, etat.pas, 'le geste est tout de meme date');
+
+  const sansGant = placer(etat, 1, 7, 5);
+  pas(etat, entree(1, { declencher: true }));
+  assert.equal(sansGant.frappeAu, null, 'sans le bonus, aucun geste');
+});
+
+test('frappee vers le haut depuis le bord, la bombe revient par le bas', () => {
+  // Acule contre un bord, on garde une riposte : la bombe survole le mur du
+  // pourtour, sort de l ecran, et retombe au bas de la MEME colonne.
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 3, 1);
+  joueur.gant = true;
+  joueur.dir = HAUT;
+
+  pas(etat, entree(0, { poser: true }));
+  const bombe = etat.bombes[0];
+  pas(etat, entree(0, { declencher: true }));
+
+  assert.ok(bombe.vol, 'elle part en l air');
+  assert.equal(bombe.cx, 3, 'meme colonne');
+  assert.equal(bombe.cy, ROWS - 2, 'et la premiere rangee jouable d en face');
+  // Trois cases survolees, pas onze : c est le trajet, pas la distance a vol
+  // d oiseau, qui donne la duree.
+  assert.equal(bombe.vol.duree, bombe.vol.reste + 1);
+  assert.equal(bombe.vol.duree, 3 * VOL_PAS_PAR_CASE);
+});
+
+test('l enroulement vaut aussi sur les cotes', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 1, 5);
+  joueur.gant = true;
+  joueur.dir = GAUCHE;
+
+  pas(etat, entree(0, { poser: true }));
+  const bombe = etat.bombes[0];
+  pas(etat, entree(0, { declencher: true }));
+
+  assert.deepEqual([bombe.cx, bombe.cy], [COLS - 2, 5]);
+});
+
+test('loin des bords, la frappe ne fait pas le tour du plateau', () => {
+  // L enroulement ne doit pas changer le geste ordinaire : trois cases devant,
+  // et rien d autre.
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 5, 5);
+  joueur.gant = true;
+  joueur.dir = HAUT;
+
+  pas(etat, entree(0, { poser: true }));
+  const bombe = etat.bombes[0];
+  pas(etat, entree(0, { declencher: true }));
+
+  assert.deepEqual([bombe.cx, bombe.cy], [5, 2]);
+});
+
+test('un mur a la portee ne l arrete pas : elle cherche le premier trou', () => {
+  // La rangee 2 porte les piliers du damier, aux abscisses paires. Frappee
+  // depuis (1,2) vers la droite, la bombe vise (4,2) — un pilier — et poursuit
+  // tout droit jusqu a (5,2).
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 1, 2);
+  joueur.gant = true;
+  joueur.dir = DROITE;
+
+  pas(etat, entree(0, { poser: true }));
+  const bombe = etat.bombes[0];
+  pas(etat, entree(0, { declencher: true }));
+
+  assert.deepEqual([bombe.cx, bombe.cy], [5, 2], 'elle passe par-dessus le pilier');
+  assert.equal(bombe.vol.duree, 4 * VOL_PAS_PAR_CASE, 'et son vol dure les quatre cases');
+});
+
+test('elle passe aussi par-dessus les briques et les autres bombes', () => {
+  const etat = areneNue();
+  brique(etat, 6, 5);
+  const joueur = placer(etat, 0, 3, 5);
+  joueur.gant = true;
+  joueur.dir = DROITE;
+
+  // Une bombe adverse posee pile a la portee du gant.
+  placer(etat, 1, 7, 5);
+  pas(etat, entree(1, { poser: true }));
+
+  pas(etat, entree(0, { poser: true }));
+  const sienne = bombeSur(etat, 3, 5);
+  pas(etat, entree(0, { declencher: true }));
+
+  // (6,5) est une brique, (7,5) porte deja une bombe : elle se pose en (8,5).
+  assert.deepEqual([sienne.cx, sienne.cy], [8, 5]);
+  assert.equal(bombeSur(etat, 7, 5).vol, null, 'celle d en face n a pas bouge');
+});
+
+test('une ligne entierement prise ne laisse rien partir', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 3, 5);
+  joueur.gant = true;
+  joueur.dir = DROITE;
+
+  // Toute la rangee en briques, sauf la case du bomber.
+  for (let x = 0; x < COLS; x += 1) if (x !== 3) brique(etat, x, 5);
+
+  pas(etat, entree(0, { poser: true }));
+  const bombe = etat.bombes[0];
+  pas(etat, entree(0, { declencher: true }));
+
+  assert.equal(bombe.vol, null, 'elle reste ou elle est');
+  assert.deepEqual([bombe.cx, bombe.cy], [3, 5]);
+  assert.equal(evenements(etat, 'punch').length, 0);
 });

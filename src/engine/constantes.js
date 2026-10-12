@@ -135,20 +135,38 @@ export const FLAMME_DEPART = 2;
 export const DETONATEURS_PAR_BONUS = 5;
 
 /**
- * Le gant de boxe : combien de cases une bombe frappee survole, et en combien
- * de temps.
+ * Le gant de boxe : combien de cases une bombe frappee survole AU MOINS, et en
+ * combien de temps par case.
  *
  * Trois cases, parce que c'est ce qui le distingue du coup de pied. Le kick
  * pousse au ras du sol et s'arrete au premier obstacle ; le gant fait PASSER
  * la bombe par-dessus — murs, briques, joueurs — pour la poser derriere. Avec
  * une ou deux cases, les deux bonus se ressembleraient.
  *
- * Huit pas par case, soit un peu moins d'une demi-seconde pour un plein vol :
+ * C'est un minimum et non une limite : si la troisieme case est prise, la bombe
+ * continue tout droit jusqu'au premier trou, en sortant par un bord s'il le
+ * faut. Un vol peut donc durer bien plus que trois cases — jusqu'a faire le tour
+ * du plateau — et la meche brule pendant ce temps.
+ *
+ * Huit pas par case, soit un peu moins d'une demi-seconde pour trois cases :
  * assez lent pour qu'on voie la bombe arriver et qu'on ait le temps de s'oter
  * de sa trajectoire, assez vif pour que la frappe reste une riposte.
  */
 export const PORTEE_GANT = 3;
 export const VOL_PAS_PAR_CASE = 8;
+
+/**
+ * Duree du GESTE de frappe, en pas : le temps que le poing part et revient.
+ *
+ * Il est joue des que le bouton est presse avec le gant, meme si rien ne
+ * s'envole. C'est ce qui apprend le bonus : sans retour a l'ecran, un joueur qui
+ * frappe a cote croit que le gant ne marche pas, et il n'a aucun moyen de
+ * deviner qu'il lui manquait seulement une bombe devant lui.
+ *
+ * Douze pas, soit deux tiers de seconde : assez pour se voir, trop court pour
+ * couvrir deux appuis de suite.
+ */
+export const FRAPPE_PAS = 12;
 
 /** Plafonds des ramassages, pour qu'une manche ne degenere pas. */
 export const BOMBES_MAX = 8;
