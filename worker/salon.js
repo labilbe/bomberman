@@ -38,7 +38,7 @@ import {
   nomsDeBots,
 } from '../src/net/protocole.js';
 
-/** Un instantane sur deux pas : 30 Hz, comme l'annonce le protocole. */
+/** Un instantane par pas : la cadence du moteur, pour que chaque image ait sa position. */
 const PAS_PAR_TICK = Math.round(PAS_HZ / TICK_HZ);
 
 /** Niveaux des adversaires artificiels, dans l'ordre ou on les ajoute. */
@@ -47,16 +47,16 @@ const NIVEAUX = ['tranquille', 'normal', 'teigneux'];
 /**
  * Compacte une vue de l'arene pour le fil.
  *
- * Les noms sont courts a dessein : cet objet part trente fois par seconde et par
- * joueur. `j` pour joueurs, `b` pour bombes, `f` pour flammes — c'est ecrit dans
+ * Les noms sont courts a dessein : cet objet part soixante fois par seconde et
+ * par joueur. `j` pour joueurs, `b` pour bombes, `f` pour flammes — c'est ecrit dans
  * le protocole, et c'est la seule endroit du projet ou l'on abrege.
  *
  * La GRILLE n'y est pas. Elle ne change qu'a la destruction d'une brique, donc
- * l'envoyer trente fois par seconde serait du gaspillage pur : le client la
+ * l'envoyer a chaque pas serait du gaspillage pur : le client la
  * recoit entiere a chaque manche, la met a jour sur les evenements, et demande
  * un renvoi si sa version ne colle plus.
  */
-function instantane(etat) {
+function instantane(etat, absents) {
   return {
     t: etat.pas,
     v: etat.version,
@@ -67,6 +67,13 @@ function instantane(etat) {
       d: joueur.dir,
       m: joueur.marche ? 1 : 0,
       e: joueur.vivant ? 1 : 0,
+      // Le PAS de la mort, et non un simple « il est mort » : le rendu joue la
+      // chute image par image a partir de cette date. Sans elle, le client
+      // restait sur la premiere image — bras leves — pour toujours.
+      o: joueur.mortAu,
+      // Coupe, mais pas encore elimine : la scene le grise, sinon les autres
+      // croient a un bomber immobile qui les guette.
+      a: absents.has(joueur.place) ? 1 : 0,
       b: joueur.bombes,
       f: joueur.portee,
       s: joueur.vitesse,
@@ -122,6 +129,15 @@ export function creerSalon({ code, maintenant, graine = randomSeed() }) {
   const aTous = (message) => envois.push({ pour: null, message });
   const aLui = (id, message) => envois.push({ pour: id, message });
   const vider = () => envois.splice(0, envois.length);
+
+  /** Les places dont le joueur est coupe mais pas encore elimine. */
+  function placesAbsentes() {
+    const absents = new Set();
+    for (const membre of membres.values()) {
+      if (!membre.present && membre.place !== null) absents.add(membre.place);
+    }
+    return absents;
+  }
 
   /** Les humains presents, dans l'ordre de leur place. */
   const humains = () => [...membres.values()].filter((m) => m.place !== null);
@@ -460,7 +476,7 @@ export function creerSalon({ code, maintenant, graine = randomSeed() }) {
       // L'instantane ne part qu'un pas sur deux, et jamais pendant que l'arene
       // est figee : rien n'y bouge, il n'y a rien a dire.
       if (avance.pas > 0 && !figee(partie) && partie.etat.pas % PAS_PAR_TICK === 0) {
-        aTous({ type: SERVER.STATE, ...instantane(partie.etat) });
+        aTous({ type: SERVER.STATE, ...instantane(partie.etat, placesAbsentes()) });
       }
 
       return envois.slice();

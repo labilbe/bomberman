@@ -143,6 +143,10 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
       joueur.dir = j.d;
       joueur.marche = j.m === 1;
       joueur.vivant = j.e === 1;
+      // Le pas de la mort, qui commande toute l'animation de chute. Sans lui,
+      // le rendu reste sur sa premiere image : un mort fige, bras leves.
+      joueur.mortAu = j.o ?? null;
+      joueur.absent = j.a === 1;
       joueur.bombes = j.b;
       joueur.portee = j.f;
       joueur.vitesse = j.s;

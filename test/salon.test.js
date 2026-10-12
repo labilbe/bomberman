@@ -249,3 +249,32 @@ test('au depart, plus aucune place n est libre', () => {
   const [depart] = du(envois, SERVER.START);
   assert.equal(depart.noms.filter((n) => n === null).length, 0, 'les bots ont tous un prenom');
 });
+
+test('l instantane porte la date de la mort, pas seulement le fait', () => {
+  // Le rendu joue la chute image par image a partir de ce pas. Sans lui, il
+  // restait sur la premiere image — un mort fige, bras leves.
+  const { salon } = salonLance();
+  battre(salon, DEPART_MANCHE_PAS * PAS_MS + 200);
+
+  const victime = salon.partie.etat.joueurs[1];
+  victime.vivant = false;
+  victime.mortAu = salon.partie.etat.pas;
+
+  const envois = battre(salon, 100, 5000);
+  const etats = du(envois, SERVER.STATE);
+  assert.ok(etats.length > 0);
+  const mort = etats.at(-1).j.find((j) => j.p === 1);
+  assert.equal(mort.e, 0, 'il est bien annonce mort');
+  assert.equal(mort.o, victime.mortAu, 'et avec le pas ou il est tombe');
+});
+
+test('l instantane signale un joueur coupe mais pas encore elimine', () => {
+  const { salon } = salonLance();
+  battre(salon, DEPART_MANCHE_PAS * PAS_MS + 200);
+  salon.partir('a', 5000);
+
+  const envois = battre(salon, 100, 5000);
+  const dernier = du(envois, SERVER.STATE).at(-1);
+  assert.equal(dernier.j.find((j) => j.p === 0).a, 1, 'le coupe est signale');
+  assert.equal(dernier.j.find((j) => j.p === 1).a, 0, 'l autre ne l est pas');
+});
