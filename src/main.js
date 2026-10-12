@@ -15,12 +15,21 @@ import { creerManettes } from './input/manettes.js';
 import { fusionner } from './input/fusion.js';
 import { creerHud, creerBanniere } from './view/hud.js';
 import { creerTransportLocal } from './net/transport.js';
+import { creerTransportEnLigne } from './net/enLigne.js';
 import { creerSons } from './audio/sons.js';
 import { creerPilote } from './ai/pilote.js';
 import { randomSeed } from './engine/rng.js';
 import { MAX_JOUEURS, PAS_MS } from './engine/constantes.js';
 import { couleurDePlace } from './render/palette.js';
-import { randomRoom, cleanRoom, cleanName, randomName, nomsDeBots } from './net/protocole.js';
+import {
+  randomRoom,
+  cleanRoom,
+  cleanName,
+  randomName,
+  nomsDeBots,
+  MIN_PLACES,
+  MAX_PLACES,
+} from './net/protocole.js';
 
 const menu = document.querySelector('#menu');
 const jeu = document.querySelector('#jeu');
@@ -217,6 +226,11 @@ async function demarrer(transport, { humains, places, noms }) {
   hud.construire(nombre, etiquettes);
   menu.hidden = true;
   jeu.hidden = false;
+  // L'attente est finie, puisque la partie commence. On l'efface ICI et non sur
+  // un message du relais : celui qui l'annonce part avant que la page se soit
+  // abonnee — `demarrer()` ne rend la main qu'une fois la partie formee — et le
+  // « en attente » serait reste affiche toute la manche.
+  etatReseau.textContent = '';
   ajusterEchelle();
 
   let vue = null;
@@ -327,13 +341,58 @@ clavier.raccourci('Escape', () => {
   if (session) arreterSession();
 });
 
+/**
+ * Adresse du relais.
+ *
+ * Elle est ecrite ici plutot que devinee : la page est servie par GitHub Pages
+ * et le relais vit chez Cloudflare, donc rien dans l'URL courante ne permet de
+ * la deduire. `?relais=` la remplace, ce qui sert a tester contre un
+ * `wrangler dev` local sans toucher au code.
+ */
+const RELAIS = 'wss://bomberman-relais.franck-quintana.workers.dev/salon';
+
+/**
+ * Lance une partie en ligne.
+ *
+ * Le salon est le rendez-vous : deux joueurs qui tapent le meme code tombent
+ * dans la meme arene. Le lien de la barre d'adresse le transporte, pour qu'on
+ * puisse inviter quelqu'un en lui envoyant une URL plutot qu'un code a recopier.
+ */
+function jouerEnLigne() {
+  arreterSession();
+
+  const code = cleanRoom(salonInput.value) || randomRoom();
+  salonInput.value = code;
+  ecrirePref(PREF_SALON, code);
+  ecrirePref(PREF_PSEUDO, cleanName(pseudoInput.value, pseudoInput.value));
+
+  const places = Math.max(MIN_PLACES, Math.min(MAX_PLACES, 1 + (Number(botsSelect.value) || 1)));
+  const format = Number(formatSelect.value) || 3;
+  const url = new URLSearchParams(location.search).get('relais') || RELAIS;
+
+  const transport = creerTransportEnLigne({
+    url,
+    salon: code,
+    pseudo: cleanName(pseudoInput.value),
+    places,
+    format,
+  });
+
+  // Le lien d'invitation, sans recharger la page : qui le recoit arrive dans ce
+  // salon, avec le code deja rempli.
+  const invitation = new URL(location.href);
+  invitation.searchParams.set('salon', code);
+  history.replaceState(null, '', invitation);
+
+  etatReseau.textContent = `Salon ${code} — en attente…`;
+  // Un seul siege local en ligne : les autres bombers sont ailleurs.
+  demarrer(transport, { humains: 1, places, noms: null });
+}
+
 boutonMulti.addEventListener('click', () => {
-  // Le relais arrive a l'etape suivante. On le dit plutot que de laisser un
-  // bouton qui ne repond pas.
-  etatReseau.textContent = '';
+  sons.eveiller();
   banniere.cacher();
-  boutonMulti.textContent = 'Le jeu en ligne arrive bientot';
-  boutonMulti.disabled = true;
+  jouerEnLigne();
 });
 
 /**

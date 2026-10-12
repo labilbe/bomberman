@@ -1,0 +1,33 @@
+{
+  // Le relais du jeu en ligne. Il ne sert AUCUN fichier : la page reste sur
+  // GitHub Pages, et ne vient ici que pour une WebSocket. Les deux cotes
+  // partagent pourtant le meme moteur et le meme protocole, importes depuis
+  // src/ — c'est ce qui garantit que le solo et le reseau jouent aux memes
+  // regles, et que le solo serve de reference quand une partie en ligne surprend.
+  "name": "bomberman-relais",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+
+  "durable_objects": {
+    "bindings": [
+      {
+        // Un objet par code de salon : c'est lui qui tient l'arene partagee.
+        "name": "SALONS",
+        "class_name": "SalonDurable"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      // `new_sqlite_classes` et non `new_classes` : c'est la forme que demande
+      // le plan gratuit, ou les Durable Objects sont adosses a SQLite.
+      "new_sqlite_classes": ["SalonDurable"]
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}

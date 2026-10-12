@@ -6,7 +6,17 @@
   "type": "module",
   "scripts": {
     "start": "npx --yes serve . -l 1987",
-    "test": "node --test"
+    "relais": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "test": "node --test",
+    "test:relais": "node scripts/relais.e2e.mjs"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^4.149.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "workerd@1.20261006.1": true
+  }
 }
