@@ -14,6 +14,8 @@
  * zero a la sortie, sinon chaque sprite arrive sur un rectangle opaque.
  */
 
+import { u16, u32 } from './octets.js';
+
 /** Longueur de l'en-tete de base, avant le bloc `extra`. */
 const ENTETE = 12;
 
@@ -28,23 +30,23 @@ const ENTETE = 12;
  * morceau suivant.
  */
 export function lireEnteteImage(octets) {
-  const extra = octets.readUInt32LE(4);
+  const extra = u32(octets, 4);
   const sousEntete = ENTETE + extra - 12;
 
   const entete = {
-    type: octets.readUInt16LE(0),
-    sousType: octets.readUInt16LE(2),
+    type: u16(octets, 0),
+    sousType: u16(octets, 2),
     extra,
-    largeur: octets.readUInt16LE(12),
-    hauteur: octets.readUInt16LE(14),
+    largeur: u16(octets, 12),
+    hauteur: u16(octets, 14),
     // Le point d'accroche : ou le jeu pose le sprite par rapport a sa case. Les
     // sprites d'Atomic Bomberman sont cadres large avec des marges inegales, et
     // c'est ce point — pas le coin de l'image — qui les aligne sur la grille.
-    accrocheX: octets.readUInt16LE(16),
-    accrocheY: octets.readUInt16LE(18),
-    cle: octets.readUInt16LE(20),
-    compresse: octets.readUInt32LE(sousEntete + 4),
-    brut: octets.readUInt32LE(sousEntete + 8),
+    accrocheX: u16(octets, 16),
+    accrocheY: u16(octets, 18),
+    cle: u16(octets, 20),
+    compresse: u32(octets, sousEntete + 4),
+    brut: u32(octets, sousEntete + 8),
     donnees: ENTETE + extra,
   };
 
@@ -83,7 +85,7 @@ export function developper(donnees, largeur, hauteur, bits, cle) {
   const total = largeur * hauteur;
   const pixels = new (bits === 16 ? Uint16Array : Uint8Array)(total).fill(cle);
   const pas = bits === 16 ? 2 : 1;
-  const lire = bits === 16 ? (p) => donnees.readUInt16LE(p) : (p) => donnees[p];
+  const lire = bits === 16 ? (p) => u16(donnees, p) : (p) => donnees[p];
 
   let p = 0;
   let index = 0;

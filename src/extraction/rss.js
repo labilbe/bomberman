@@ -17,6 +17,8 @@
  * et il n'y a pas de ffmpeg sur la machine.
  */
 
+import { i16, ecrireU16, ecrireU32, ecrireLatin1, concat } from './octets.js';
+
 /** Frequence d'echantillonnage des .RSS, annoncee par le jeu. */
 export const FREQUENCE = 22050;
 
@@ -26,13 +28,13 @@ const CANAUX = 2;
 /**
  * Lit un .RSS en echantillons entrelaces.
  *
- * @param {Buffer} octets
+ * @param {Uint8Array} octets
  * @returns {Int16Array}
  */
 export function lireRss(octets) {
   const trames = Math.floor(octets.length / (2 * CANAUX));
   const sortie = new Int16Array(trames * CANAUX);
-  for (let i = 0; i < sortie.length; i += 1) sortie[i] = octets.readInt16LE(i * 2);
+  for (let i = 0; i < sortie.length; i += 1) sortie[i] = i16(octets, i * 2);
   return sortie;
 }
 
@@ -96,10 +98,10 @@ export function reechantillonner(source, de, vers) {
 
 /** Ecrit un morceau RIFF : identifiant, longueur, charge. */
 function morceau(type, charge) {
-  const entete = Buffer.alloc(8);
-  entete.write(type, 0, 'latin1');
-  entete.writeUInt32LE(charge.length, 4);
-  return Buffer.concat([entete, charge]);
+  const entete = new Uint8Array(8);
+  ecrireLatin1(entete, 0, type);
+  ecrireU32(entete, 4, charge.length);
+  return concat([entete, charge]);
 }
 
 /**
@@ -110,19 +112,21 @@ function morceau(type, charge) {
  */
 export function versWav(echantillons, { canaux = 1, frequence = FREQUENCE } = {}) {
   const octetsParTrame = canaux * 2;
-  const format = Buffer.alloc(16);
-  format.writeUInt16LE(1, 0); // PCM entier
-  format.writeUInt16LE(canaux, 2);
-  format.writeUInt32LE(frequence, 4);
-  format.writeUInt32LE(frequence * octetsParTrame, 8);
-  format.writeUInt16LE(octetsParTrame, 12);
-  format.writeUInt16LE(16, 14);
+  const format = new Uint8Array(16);
+  ecrireU16(format, 0, 1); // PCM entier
+  ecrireU16(format, 2, canaux);
+  ecrireU32(format, 4, frequence);
+  ecrireU32(format, 8, frequence * octetsParTrame);
+  ecrireU16(format, 12, octetsParTrame);
+  ecrireU16(format, 14, 16);
 
-  const donnees = Buffer.from(echantillons.buffer, echantillons.byteOffset, echantillons.byteLength);
-  const corps = Buffer.concat([
-    Buffer.from('WAVE', 'latin1'),
-    morceau('fmt ', format),
-    morceau('data', donnees),
-  ]);
+  const donnees = new Uint8Array(
+    echantillons.buffer,
+    echantillons.byteOffset,
+    echantillons.byteLength,
+  );
+  const entete = new Uint8Array(4);
+  ecrireLatin1(entete, 0, 'WAVE');
+  const corps = concat([entete, morceau('fmt ', format), morceau('data', donnees)]);
   return morceau('RIFF', corps);
 }

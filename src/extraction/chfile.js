@@ -12,6 +12,8 @@
  * FNAM, CIMG — et il n'y a aucun bourrage.
  */
 
+import { u16, u32, latin1, chaineZero } from './octets.js';
+
 /** Taille de l'en-tete d'un morceau : id(4) + taille(4) + drapeaux(2). */
 export const ENTETE_MORCEAU = 10;
 
@@ -28,17 +30,17 @@ export const ENTETE_FICHIER = 16;
 const CONTENEURS = new Set(['FRAM', 'SEQ ']);
 
 function id(octets, position) {
-  return octets.toString('latin1', position, position + 4);
+  return latin1(octets, position, position + 4);
 }
 
 /** Verifie l'en-tete et rend le sous-type. Leve si ce n'est pas un CHFILE. */
 export function lireEntete(octets) {
-  if (octets.length < ENTETE_FICHIER || octets.toString('latin1', 0, 6) !== 'CHFILE') {
+  if (octets.length < ENTETE_FICHIER || latin1(octets, 0, 6) !== 'CHFILE') {
     throw new Error('ce fichier ne commence pas par CHFILE');
   }
   return {
-    sousType: octets.toString('latin1', 6, 10).trim(),
-    taille: octets.readUInt32LE(10),
+    sousType: latin1(octets, 6, 10).trim(),
+    taille: u32(octets, 10),
   };
 }
 
@@ -56,8 +58,8 @@ export function lireMorceaux(octets, debut = ENTETE_FICHIER, fin = octets.length
 
   while (position + ENTETE_MORCEAU <= fin) {
     const identifiant = id(octets, position);
-    const taille = octets.readUInt32LE(position + 4);
-    const drapeaux = octets.readUInt16LE(position + 8);
+    const taille = u32(octets, position + 4);
+    const drapeaux = u16(octets, position + 8);
     const charge = position + ENTETE_MORCEAU;
 
     // Une taille qui depasse les bornes veut dire que l'arbre est desynchronise.
@@ -93,6 +95,5 @@ export function* parcourir(noeuds, chemin = []) {
 
 /** Une chaine terminee par zero, comme le jeu ecrit les noms. */
 export function chaine(octets) {
-  const zero = octets.indexOf(0);
-  return octets.toString('latin1', 0, zero === -1 ? octets.length : zero);
+  return chaineZero(octets);
 }

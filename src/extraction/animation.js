@@ -8,6 +8,8 @@
  * faut deviner a l'oeil lesquelles forment un cycle de marche.
  */
 
+import { u16, i16 } from './octets.js';
+
 import { lireMorceaux, charge, chaine, lireEntete } from './chfile.js';
 import { decoder } from './cimg.js';
 
@@ -29,14 +31,14 @@ function lirePas(octets, stat, dureePrecedente) {
   const renvoi = sous.find((n) => n.id === 'FRAM');
   if (!renvoi) return null;
   const r = charge(octets, renvoi);
-  const brute = tete ? charge(octets, tete).readUInt16LE(0) : 0;
+  const brute = tete ? u16(charge(octets, tete), 0) : 0;
   return {
-    image: r.readUInt16LE(2),
+    image: u16(r, 2),
     duree: brute === DUREE_HERITEE ? dureePrecedente : brute,
     // Decalages par pas : le jeu bouge le sprite sans bouger son point
     // d'accroche, c'est ce qui donne le dandinement de la marche.
-    dx: r.readInt16LE(4),
-    dy: r.readInt16LE(6),
+    dx: i16(r, 4),
+    dy: i16(r, 6),
   };
 }
 

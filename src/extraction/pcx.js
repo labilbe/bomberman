@@ -12,6 +12,8 @@
  * que l'ancienne palette EGA de seize entrees qui ne sert a rien ici.
  */
 
+import { u16 } from './octets.js';
+
 /** Longueur de l'en-tete PCX, fixe. */
 const ENTETE = 128;
 
@@ -27,11 +29,11 @@ export function decoderPcx(octets) {
     throw new Error(`PCX non gere : ${octets[3]} bits, ${octets[65]} plans`);
   }
 
-  const largeur = octets.readUInt16LE(8) - octets.readUInt16LE(4) + 1;
-  const hauteur = octets.readUInt16LE(10) - octets.readUInt16LE(6) + 1;
+  const largeur = u16(octets, 8) - u16(octets, 4) + 1;
+  const hauteur = u16(octets, 10) - u16(octets, 6) + 1;
   // `octetsParLigne` peut depasser la largeur : le format arrondit a un nombre
   // pair, et les octets en trop sont du remplissage a jeter ligne par ligne.
-  const octetsParLigne = octets.readUInt16LE(66);
+  const octetsParLigne = u16(octets, 66);
 
   // La palette occupe les 768 derniers octets, derriere son marqueur.
   const debutPalette = octets.length - 769;
