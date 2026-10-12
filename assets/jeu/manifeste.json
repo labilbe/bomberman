@@ -1,0 +1,2350 @@
+{
+  "tuile": {
+    "largeur": 40,
+    "hauteur": 36
+  },
+  "sol": {
+    "fichier": "sol.png",
+    "largeur": 600,
+    "hauteur": 72,
+    "terrain": 0
+  },
+  "accueil": {
+    "fichier": "accueil.png",
+    "largeur": 640,
+    "hauteur": 480
+  },
+  "couleursJoueur": [
+    {
+      "teinte": 60,
+      "saturation": 0.09,
+      "clarte": 0.35
+    },
+    {
+      "teinte": 60,
+      "saturation": 0.09,
+      "clarte": 0.01
+    },
+    {
+      "teinte": 7,
+      "saturation": 0.81,
+      "clarte": 0.21
+    },
+    {
+      "teinte": 240,
+      "saturation": 0.96,
+      "clarte": 0.16
+    },
+    {
+      "teinte": 120,
+      "saturation": 1,
+      "clarte": 0.16
+    },
+    {
+      "teinte": 60,
+      "saturation": 0.87,
+      "clarte": 0.19
+    },
+    {
+      "teinte": 184,
+      "saturation": 0.81,
+      "clarte": 0.22
+    },
+    {
+      "teinte": 300,
+      "saturation": 1,
+      "clarte": 0.17
+    },
+    {
+      "teinte": 25,
+      "saturation": 0.93,
+      "clarte": 0.14
+    },
+    {
+      "teinte": 273,
+      "saturation": 0.93,
+      "clarte": 0.18
+    }
+  ],
+  "images": [
+    {
+      "fichier": "000.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "001.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "002.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "003.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "004.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "005.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "006.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "007.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "008.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "009.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "010.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "011.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "012.svg",
+      "largeur": 36,
+      "hauteur": 37,
+      "accrocheX": 18,
+      "accrocheY": 36
+    },
+    {
+      "fichier": "013.svg",
+      "largeur": 35,
+      "hauteur": 35,
+      "accrocheX": 17,
+      "accrocheY": 34
+    },
+    {
+      "fichier": "014.svg",
+      "largeur": 34,
+      "hauteur": 33,
+      "accrocheX": 17,
+      "accrocheY": 32
+    },
+    {
+      "fichier": "015.svg",
+      "largeur": 32,
+      "hauteur": 32,
+      "accrocheX": 16,
+      "accrocheY": 31
+    },
+    {
+      "fichier": "016.svg",
+      "largeur": 30,
+      "hauteur": 30,
+      "accrocheX": 15,
+      "accrocheY": 29
+    },
+    {
+      "fichier": "017.svg",
+      "largeur": 28,
+      "hauteur": 28,
+      "accrocheX": 14,
+      "accrocheY": 27
+    },
+    {
+      "fichier": "018.svg",
+      "largeur": 26,
+      "hauteur": 26,
+      "accrocheX": 13,
+      "accrocheY": 25
+    },
+    {
+      "fichier": "019.svg",
+      "largeur": 25,
+      "hauteur": 25,
+      "accrocheX": 12,
+      "accrocheY": 24
+    },
+    {
+      "fichier": "020.svg",
+      "largeur": 24,
+      "hauteur": 23,
+      "accrocheX": 12,
+      "accrocheY": 22
+    },
+    {
+      "fichier": "021.svg",
+      "largeur": 22,
+      "hauteur": 22,
+      "accrocheX": 11,
+      "accrocheY": 21
+    },
+    {
+      "fichier": "022.svg",
+      "largeur": 36,
+      "hauteur": 34,
+      "accrocheX": 18,
+      "accrocheY": 33
+    },
+    {
+      "fichier": "023.svg",
+      "largeur": 33,
+      "hauteur": 33,
+      "accrocheX": 16,
+      "accrocheY": 32
+    },
+    {
+      "fichier": "024.svg",
+      "largeur": 33,
+      "hauteur": 34,
+      "accrocheX": 16,
+      "accrocheY": 33
+    },
+    {
+      "fichier": "025.svg",
+      "largeur": 36,
+      "hauteur": 34,
+      "accrocheX": 18,
+      "accrocheY": 33
+    },
+    {
+      "fichier": "026.svg",
+      "largeur": 37,
+      "hauteur": 31,
+      "accrocheX": 18,
+      "accrocheY": 30
+    },
+    {
+      "fichier": "027.svg",
+      "largeur": 33,
+      "hauteur": 33,
+      "accrocheX": 16,
+      "accrocheY": 32
+    },
+    {
+      "fichier": "028.svg",
+      "largeur": 33,
+      "hauteur": 34,
+      "accrocheX": 16,
+      "accrocheY": 33
+    },
+    {
+      "fichier": "029.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "030.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "031.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "032.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "033.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "034.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "035.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "036.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "037.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "038.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "039.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "040.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "041.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "042.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "043.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "044.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "045.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "046.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "047.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "048.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "049.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "050.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "051.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "052.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "053.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "054.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "055.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "056.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "057.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "058.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "059.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "060.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "061.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "062.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "063.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "064.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "065.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "066.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "067.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "068.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "069.svg",
+      "largeur": 73,
+      "hauteur": 73,
+      "accrocheX": 36,
+      "accrocheY": 72
+    },
+    {
+      "fichier": "070.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "071.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "072.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "073.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "074.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "075.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "076.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "077.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "078.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "079.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "080.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "081.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "082.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "083.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "084.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "085.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "086.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "087.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "088.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "089.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "090.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "091.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "092.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "093.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "094.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "095.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "096.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "097.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "098.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "099.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "100.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "101.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "102.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "103.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "104.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "105.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "106.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 54,
+      "accrocheY": 98
+    },
+    {
+      "fichier": "107.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 57,
+      "accrocheY": 99
+    },
+    {
+      "fichier": "108.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 57,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "109.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "110.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "111.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "112.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 98
+    },
+    {
+      "fichier": "113.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 98
+    },
+    {
+      "fichier": "114.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 99
+    },
+    {
+      "fichier": "115.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 98
+    },
+    {
+      "fichier": "116.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 100
+    },
+    {
+      "fichier": "117.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "118.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "119.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "120.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "121.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 57,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "122.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "123.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 98
+    },
+    {
+      "fichier": "124.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "125.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "126.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 57,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "127.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 57,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "128.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "129.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "130.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "131.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 54,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "132.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "133.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "134.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "135.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "136.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 98
+    },
+    {
+      "fichier": "137.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "138.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 99
+    },
+    {
+      "fichier": "139.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 99
+    },
+    {
+      "fichier": "140.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 98
+    },
+    {
+      "fichier": "141.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 57,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "142.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 93
+    },
+    {
+      "fichier": "143.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "144.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 95
+    },
+    {
+      "fichier": "145.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "146.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 98
+    },
+    {
+      "fichier": "147.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 57,
+      "accrocheY": 99
+    },
+    {
+      "fichier": "148.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 98
+    },
+    {
+      "fichier": "149.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 98
+    },
+    {
+      "fichier": "150.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 98
+    },
+    {
+      "fichier": "151.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 94
+    },
+    {
+      "fichier": "152.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "153.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 54,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "154.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "155.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "156.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 95
+    },
+    {
+      "fichier": "157.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 57,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "158.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 94
+    },
+    {
+      "fichier": "159.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 95
+    },
+    {
+      "fichier": "160.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 98
+    },
+    {
+      "fichier": "161.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "162.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 94
+    },
+    {
+      "fichier": "163.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 57,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "164.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "165.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 56,
+      "accrocheY": 96
+    },
+    {
+      "fichier": "166.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 97
+    },
+    {
+      "fichier": "167.svg",
+      "largeur": 110,
+      "hauteur": 110,
+      "accrocheX": 55,
+      "accrocheY": 95
+    },
+    {
+      "fichier": "168.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "169.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "170.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "171.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    },
+    {
+      "fichier": "172.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
+    }
+  ],
+  "roles": {
+    "sol": [
+      {
+        "image": 0,
+        "duree": 30
+      }
+    ],
+    "mur": [
+      {
+        "image": 1,
+        "duree": 30
+      }
+    ],
+    "brique": [
+      {
+        "image": 2,
+        "duree": 30
+      }
+    ],
+    "briqueCasse": [
+      {
+        "image": 3,
+        "duree": 30
+      },
+      {
+        "image": 4,
+        "duree": 30
+      },
+      {
+        "image": 5,
+        "duree": 30
+      },
+      {
+        "image": 6,
+        "duree": 30
+      },
+      {
+        "image": 7,
+        "duree": 30
+      },
+      {
+        "image": 8,
+        "duree": 30
+      },
+      {
+        "image": 9,
+        "duree": 30
+      },
+      {
+        "image": 10,
+        "duree": 30
+      },
+      {
+        "image": 11,
+        "duree": 30
+      }
+    ],
+    "bombe": [
+      {
+        "image": 12,
+        "duree": 30
+      },
+      {
+        "image": 13,
+        "duree": 30
+      },
+      {
+        "image": 14,
+        "duree": 30
+      },
+      {
+        "image": 15,
+        "duree": 30
+      },
+      {
+        "image": 16,
+        "duree": 30
+      },
+      {
+        "image": 17,
+        "duree": 30
+      },
+      {
+        "image": 18,
+        "duree": 30
+      },
+      {
+        "image": 19,
+        "duree": 30
+      },
+      {
+        "image": 20,
+        "duree": 30
+      },
+      {
+        "image": 21,
+        "duree": 30
+      },
+      {
+        "image": 20,
+        "duree": 30
+      },
+      {
+        "image": 19,
+        "duree": 30
+      },
+      {
+        "image": 18,
+        "duree": 30
+      },
+      {
+        "image": 17,
+        "duree": 30
+      },
+      {
+        "image": 16,
+        "duree": 30
+      },
+      {
+        "image": 15,
+        "duree": 30
+      },
+      {
+        "image": 14,
+        "duree": 30
+      },
+      {
+        "image": 13,
+        "duree": 30
+      }
+    ],
+    "bombeDetonateur": [
+      {
+        "image": 22,
+        "duree": 30
+      },
+      {
+        "image": 23,
+        "duree": 30
+      },
+      {
+        "image": 24,
+        "duree": 30
+      },
+      {
+        "image": 25,
+        "duree": 30
+      },
+      {
+        "image": 26,
+        "duree": 30
+      },
+      {
+        "image": 27,
+        "duree": 30
+      },
+      {
+        "image": 28,
+        "duree": 30
+      }
+    ],
+    "mort": [
+      {
+        "image": 29,
+        "duree": 30
+      },
+      {
+        "image": 30,
+        "duree": 30
+      },
+      {
+        "image": 31,
+        "duree": 30
+      },
+      {
+        "image": 32,
+        "duree": 30
+      },
+      {
+        "image": 33,
+        "duree": 30
+      },
+      {
+        "image": 34,
+        "duree": 30
+      },
+      {
+        "image": 35,
+        "duree": 30
+      },
+      {
+        "image": 36,
+        "duree": 30
+      },
+      {
+        "image": 37,
+        "duree": 30
+      },
+      {
+        "image": 38,
+        "duree": 30
+      },
+      {
+        "image": 39,
+        "duree": 30
+      },
+      {
+        "image": 40,
+        "duree": 30
+      },
+      {
+        "image": 41,
+        "duree": 30
+      },
+      {
+        "image": 42,
+        "duree": 30
+      },
+      {
+        "image": 43,
+        "duree": 30
+      },
+      {
+        "image": 44,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 46,
+        "duree": 30
+      },
+      {
+        "image": 46,
+        "duree": 30
+      },
+      {
+        "image": 47,
+        "duree": 30
+      },
+      {
+        "image": 47,
+        "duree": 30
+      },
+      {
+        "image": 47,
+        "duree": 30
+      },
+      {
+        "image": 46,
+        "duree": 30
+      },
+      {
+        "image": 46,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 46,
+        "duree": 30
+      },
+      {
+        "image": 46,
+        "duree": 30
+      },
+      {
+        "image": 47,
+        "duree": 30
+      },
+      {
+        "image": 47,
+        "duree": 30
+      },
+      {
+        "image": 46,
+        "duree": 30
+      },
+      {
+        "image": 46,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 45,
+        "duree": 30
+      },
+      {
+        "image": 48,
+        "duree": 30
+      },
+      {
+        "image": 49,
+        "duree": 30
+      },
+      {
+        "image": 50,
+        "duree": 30
+      },
+      {
+        "image": 51,
+        "duree": 30
+      },
+      {
+        "image": 52,
+        "duree": 30
+      },
+      {
+        "image": 53,
+        "duree": 30
+      },
+      {
+        "image": 54,
+        "duree": 30
+      },
+      {
+        "image": 55,
+        "duree": 30
+      },
+      {
+        "image": 56,
+        "duree": 30
+      },
+      {
+        "image": 57,
+        "duree": 30
+      },
+      {
+        "image": 58,
+        "duree": 30
+      },
+      {
+        "image": 59,
+        "duree": 30
+      },
+      {
+        "image": 60,
+        "duree": 30
+      },
+      {
+        "image": 61,
+        "duree": 30
+      },
+      {
+        "image": 62,
+        "duree": 30
+      },
+      {
+        "image": 63,
+        "duree": 30
+      },
+      {
+        "image": 64,
+        "duree": 30
+      },
+      {
+        "image": 65,
+        "duree": 30
+      },
+      {
+        "image": 66,
+        "duree": 30
+      },
+      {
+        "image": 67,
+        "duree": 30
+      },
+      {
+        "image": 68,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      },
+      {
+        "image": 69,
+        "duree": 30
+      }
+    ],
+    "flammeCentre": [
+      {
+        "image": 70,
+        "duree": 30
+      },
+      {
+        "image": 71,
+        "duree": 30
+      },
+      {
+        "image": 72,
+        "duree": 30
+      },
+      {
+        "image": 73,
+        "duree": 30
+      },
+      {
+        "image": 74,
+        "duree": 30
+      },
+      {
+        "image": 71,
+        "duree": 30
+      },
+      {
+        "image": 70,
+        "duree": 30
+      }
+    ],
+    "flammeMilieu0": [
+      {
+        "image": 75,
+        "duree": 30
+      },
+      {
+        "image": 76,
+        "duree": 30
+      },
+      {
+        "image": 77,
+        "duree": 30
+      },
+      {
+        "image": 78,
+        "duree": 30
+      },
+      {
+        "image": 79,
+        "duree": 30
+      },
+      {
+        "image": 76,
+        "duree": 30
+      },
+      {
+        "image": 75,
+        "duree": 30
+      }
+    ],
+    "flammeBout0": [
+      {
+        "image": 80,
+        "duree": 30
+      },
+      {
+        "image": 81,
+        "duree": 30
+      },
+      {
+        "image": 82,
+        "duree": 30
+      },
+      {
+        "image": 83,
+        "duree": 30
+      },
+      {
+        "image": 84,
+        "duree": 30
+      },
+      {
+        "image": 81,
+        "duree": 30
+      },
+      {
+        "image": 80,
+        "duree": 30
+      }
+    ],
+    "flammeMilieu1": [
+      {
+        "image": 85,
+        "duree": 30
+      },
+      {
+        "image": 86,
+        "duree": 30
+      },
+      {
+        "image": 87,
+        "duree": 30
+      },
+      {
+        "image": 88,
+        "duree": 30
+      },
+      {
+        "image": 89,
+        "duree": 30
+      },
+      {
+        "image": 86,
+        "duree": 30
+      },
+      {
+        "image": 85,
+        "duree": 30
+      }
+    ],
+    "flammeBout1": [
+      {
+        "image": 90,
+        "duree": 30
+      },
+      {
+        "image": 91,
+        "duree": 30
+      },
+      {
+        "image": 92,
+        "duree": 30
+      },
+      {
+        "image": 93,
+        "duree": 30
+      },
+      {
+        "image": 94,
+        "duree": 30
+      },
+      {
+        "image": 91,
+        "duree": 30
+      },
+      {
+        "image": 90,
+        "duree": 30
+      }
+    ],
+    "flammeMilieu2": [
+      {
+        "image": 75,
+        "duree": 30
+      },
+      {
+        "image": 76,
+        "duree": 30
+      },
+      {
+        "image": 77,
+        "duree": 30
+      },
+      {
+        "image": 78,
+        "duree": 30
+      },
+      {
+        "image": 79,
+        "duree": 30
+      },
+      {
+        "image": 76,
+        "duree": 30
+      },
+      {
+        "image": 75,
+        "duree": 30
+      }
+    ],
+    "flammeBout2": [
+      {
+        "image": 95,
+        "duree": 30
+      },
+      {
+        "image": 96,
+        "duree": 30
+      },
+      {
+        "image": 97,
+        "duree": 30
+      },
+      {
+        "image": 98,
+        "duree": 30
+      },
+      {
+        "image": 99,
+        "duree": 30
+      },
+      {
+        "image": 96,
+        "duree": 30
+      },
+      {
+        "image": 95,
+        "duree": 30
+      }
+    ],
+    "flammeMilieu3": [
+      {
+        "image": 85,
+        "duree": 30
+      },
+      {
+        "image": 86,
+        "duree": 30
+      },
+      {
+        "image": 87,
+        "duree": 30
+      },
+      {
+        "image": 88,
+        "duree": 30
+      },
+      {
+        "image": 89,
+        "duree": 30
+      },
+      {
+        "image": 86,
+        "duree": 30
+      },
+      {
+        "image": 85,
+        "duree": 30
+      }
+    ],
+    "flammeBout3": [
+      {
+        "image": 100,
+        "duree": 30
+      },
+      {
+        "image": 101,
+        "duree": 30
+      },
+      {
+        "image": 102,
+        "duree": 30
+      },
+      {
+        "image": 103,
+        "duree": 30
+      },
+      {
+        "image": 102,
+        "duree": 30
+      },
+      {
+        "image": 101,
+        "duree": 30
+      },
+      {
+        "image": 100,
+        "duree": 30
+      }
+    ],
+    "marche0": [
+      {
+        "image": 104,
+        "duree": 30
+      },
+      {
+        "image": 105,
+        "duree": 30
+      },
+      {
+        "image": 106,
+        "duree": 30
+      },
+      {
+        "image": 107,
+        "duree": 30
+      },
+      {
+        "image": 108,
+        "duree": 30
+      },
+      {
+        "image": 109,
+        "duree": 30
+      },
+      {
+        "image": 110,
+        "duree": 30
+      },
+      {
+        "image": 111,
+        "duree": 30
+      },
+      {
+        "image": 112,
+        "duree": 30
+      },
+      {
+        "image": 113,
+        "duree": 30
+      },
+      {
+        "image": 114,
+        "duree": 30
+      },
+      {
+        "image": 115,
+        "duree": 30
+      },
+      {
+        "image": 116,
+        "duree": 30
+      },
+      {
+        "image": 117,
+        "duree": 30
+      },
+      {
+        "image": 118,
+        "duree": 30
+      }
+    ],
+    "immobile0": [
+      {
+        "image": 119,
+        "duree": 30
+      }
+    ],
+    "marche1": [
+      {
+        "image": 120,
+        "duree": 30
+      },
+      {
+        "image": 121,
+        "duree": 30
+      },
+      {
+        "image": 122,
+        "duree": 30
+      },
+      {
+        "image": 123,
+        "duree": 30
+      },
+      {
+        "image": 124,
+        "duree": 30
+      },
+      {
+        "image": 125,
+        "duree": 30
+      },
+      {
+        "image": 126,
+        "duree": 30
+      },
+      {
+        "image": 127,
+        "duree": 30
+      },
+      {
+        "image": 128,
+        "duree": 30
+      },
+      {
+        "image": 129,
+        "duree": 30
+      },
+      {
+        "image": 130,
+        "duree": 30
+      },
+      {
+        "image": 131,
+        "duree": 30
+      },
+      {
+        "image": 132,
+        "duree": 30
+      },
+      {
+        "image": 133,
+        "duree": 30
+      },
+      {
+        "image": 134,
+        "duree": 30
+      }
+    ],
+    "immobile1": [
+      {
+        "image": 135,
+        "duree": 30
+      }
+    ],
+    "marche2": [
+      {
+        "image": 136,
+        "duree": 30
+      },
+      {
+        "image": 137,
+        "duree": 30
+      },
+      {
+        "image": 138,
+        "duree": 30
+      },
+      {
+        "image": 139,
+        "duree": 30
+      },
+      {
+        "image": 140,
+        "duree": 30
+      },
+      {
+        "image": 141,
+        "duree": 30
+      },
+      {
+        "image": 142,
+        "duree": 30
+      },
+      {
+        "image": 143,
+        "duree": 30
+      },
+      {
+        "image": 144,
+        "duree": 30
+      },
+      {
+        "image": 145,
+        "duree": 30
+      },
+      {
+        "image": 146,
+        "duree": 30
+      },
+      {
+        "image": 147,
+        "duree": 30
+      },
+      {
+        "image": 148,
+        "duree": 30
+      },
+      {
+        "image": 149,
+        "duree": 30
+      },
+      {
+        "image": 150,
+        "duree": 30
+      }
+    ],
+    "immobile2": [
+      {
+        "image": 151,
+        "duree": 30
+      }
+    ],
+    "marche3": [
+      {
+        "image": 152,
+        "duree": 30
+      },
+      {
+        "image": 153,
+        "duree": 30
+      },
+      {
+        "image": 154,
+        "duree": 30
+      },
+      {
+        "image": 155,
+        "duree": 30
+      },
+      {
+        "image": 156,
+        "duree": 30
+      },
+      {
+        "image": 157,
+        "duree": 30
+      },
+      {
+        "image": 158,
+        "duree": 30
+      },
+      {
+        "image": 159,
+        "duree": 30
+      },
+      {
+        "image": 160,
+        "duree": 30
+      },
+      {
+        "image": 161,
+        "duree": 30
+      },
+      {
+        "image": 162,
+        "duree": 30
+      },
+      {
+        "image": 163,
+        "duree": 30
+      },
+      {
+        "image": 164,
+        "duree": 30
+      },
+      {
+        "image": 165,
+        "duree": 30
+      },
+      {
+        "image": 166,
+        "duree": 30
+      }
+    ],
+    "immobile3": [
+      {
+        "image": 167,
+        "duree": 30
+      }
+    ],
+    "bonusBomb": [
+      {
+        "image": 168,
+        "duree": 30
+      }
+    ],
+    "bonusFlame": [
+      {
+        "image": 169,
+        "duree": 30
+      }
+    ],
+    "bonusSpeed": [
+      {
+        "image": 170,
+        "duree": 30
+      }
+    ],
+    "bonusKick": [
+      {
+        "image": 171,
+        "duree": 30
+      }
+    ],
+    "bonusTrigger": [
+      {
+        "image": 172,
+        "duree": 30
+      }
+    ]
+  }
+}

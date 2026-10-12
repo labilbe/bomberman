@@ -3,5 +3,4 @@ Thumbs.db
 node_modules/
 .wrangler/
 .dev.vars
-assets/
 dist-prive/
