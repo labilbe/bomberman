@@ -47,11 +47,22 @@ test('un bonus brule disparait', () => {
   assert.equal(etat.objets[index(2, 2)], 0);
 });
 
-test('une brique detruite vide sa case et compte pour la version', () => {
+test('une brique qui TOMBE ne vide pas encore sa case', () => {
+  // `brick` annonce la chute : la brique bloque toujours, et seule son
+  // animation demarre. Confondre les deux ouvrait le passage avant le relais.
   const etat = grille();
   etat.tuiles[index(4, 4)] = BRIQUE;
 
   const ecritures = suivreGrille(etat, [['brick', 4, 4]]);
+  assert.equal(etat.tuiles[index(4, 4)], BRIQUE);
+  assert.equal(ecritures, 0, 'rien n est ecrit, donc la version ne bouge pas');
+});
+
+test('une brique tombee vide sa case et compte pour la version', () => {
+  const etat = grille();
+  etat.tuiles[index(4, 4)] = BRIQUE;
+
+  const ecritures = suivreGrille(etat, [['brickgone', 4, 4]]);
   assert.equal(etat.tuiles[index(4, 4)], VIDE);
   // Le relais compte une version par ecriture de tuile : sans ce report, chaque
   // brique cassee declencherait une resynchronisation de la grille entiere.
@@ -75,7 +86,7 @@ test('un pas entier s applique dans l ordre', () => {
   etat.objets[index(1, 1)] = CODES_BONUS.VITESSE;
 
   const ecritures = suivreGrille(etat, [
-    ['brick', 5, 3],
+    ['brickgone', 5, 3],
     ['itemgone', 1, 1],
     ['item', 5, 3, 'trigger'],
   ]);

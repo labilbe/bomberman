@@ -22,6 +22,7 @@ import {
   BRIQUE,
   FLAMME_PAS,
   MECHE_PAS,
+  CHUTE_PAS,
   PAS_MS,
   VITESSE_BASE,
 } from '../engine/constantes.js';
@@ -44,6 +45,16 @@ import { FOND } from './palette.js';
  * de battre.
  */
 const LENTEUR_DEPART = 1.5;
+
+/**
+ * Duree de la chute d'une brique, en millisecondes.
+ *
+ * Elle vient du MOTEUR, qui tient ce decompte parce qu'il commande aussi le
+ * blocage : la case reste infranchissable tant que la brique tombe. Un reglage
+ * a part ici, et le passage se serait ouvert avant ou apres ce que montre
+ * l'ecran.
+ */
+const CHUTE_MS = CHUTE_PAS * PAS_MS;
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -305,13 +316,13 @@ export function creerScene(canvas, jeu = depuisDessins()) {
    * Une brique qui tombe.
    *
    * Avec les sprites du jeu d'origine on joue la vraie animation ; sans eux, on
-   * retombe sur une poignee d'eclats. Les deux durent 320 ms, pour que le reste
+   * retombe sur une poignee d'eclats. Les deux durent le temps de la chute,
    * du rendu n'ait pas a savoir lequel tourne.
    */
   function dessinerGravats(temps) {
-    gravats = gravats.filter((gravat) => temps - gravat.ne < 320);
+    gravats = gravats.filter((gravat) => temps - gravat.ne < CHUTE_MS);
     for (const gravat of gravats) {
-      const avance = (temps - gravat.ne) / 320;
+      const avance = (temps - gravat.ne) / CHUTE_MS;
       if (jeu.briqueCasse) {
         const suite = jeu.briqueCasse;
         const [ax, ay] = accrocheCase(gravat.cx, gravat.cy);

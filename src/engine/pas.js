@@ -26,10 +26,10 @@ import { deplacerJoueurs } from './collision.js';
 import {
   resoudreChaine,
   brulerObjets,
-  revelerBonus,
   brulerJoueurs,
   ramasserBonus,
   vieillirFlammes,
+  vieillirRuines,
 } from './explosion.js';
 import { verdictManche } from './manche.js';
 
@@ -94,12 +94,15 @@ export function pas(etat, entrees = []) {
   deplacerJoueurs(etat, entrees);
 
   const terminees = avancerMeches(etat);
-  const { neuves, briques } = resoudreChaine(etat, terminees);
+  const { neuves } = resoudreChaine(etat, terminees);
   brulerObjets(etat, neuves);
-  revelerBonus(etat, briques);
   brulerJoueurs(etat);
   ramasserBonus(etat);
   vieillirFlammes(etat);
+  // Les briques tombent APRES les ramassages : celle qui finit sa chute a ce
+  // pas ouvre sa case et montre son bonus, qui ne sera donc ramassable qu'au
+  // pas suivant — on ne ramasse pas a travers une brique qui vient de tomber.
+  vieillirRuines(etat);
   conclure(etat);
 
   return etat;

@@ -16,6 +16,7 @@ import {
   DEMI_MORTEL,
   DEMI_BOMBER,
   DETONATEURS_PAR_BONUS,
+  CHUTE_PAS,
 } from '../src/engine/constantes.js';
 import { CODES_BONUS } from '../src/engine/bonus.js';
 import { areneNue, brique, objet, placer, entree, evenements } from './aide.js';
@@ -48,9 +49,12 @@ test('la croix detruit une brique et s arrete la', () => {
   joueur.portee = 5;
   pas(etat, entree(0, { poser: true }));
   detonner(etat, 0);
-  assert.equal(etat.tuiles[index(5, 3)], VIDE, 'la premiere brique tombe');
+  assert.equal(evenements(etat, 'brick').length, 1, 'la premiere est annoncee a terre');
+  assert.equal(etat.tuiles[index(5, 3)], BRIQUE, 'mais elle bloque encore pendant sa chute');
+
+  avancerDe(etat, CHUTE_PAS, entree(0, {}));
+  assert.equal(etat.tuiles[index(5, 3)], VIDE, 'la chute finie, la case s ouvre');
   assert.equal(etat.tuiles[index(6, 3)], BRIQUE, 'la seconde tient');
-  assert.equal(evenements(etat, 'brick').length, 1);
 });
 
 test('l evenement boum porte la longueur reelle des quatre branches', () => {
@@ -120,6 +124,13 @@ test('un bonus revele survit a l explosion qui le decouvre', () => {
 
   pas(etat, entree(0, { poser: true }));
   detonner(etat, 0);
+  // Il n apparait qu une fois la brique tombee : avant, il serait visible sous
+  // une brique encore debout.
+  assert.equal(etat.objets[index(5, 3)], 128 + CODES_BONUS.FLAMME, 'encore cache');
+  // La chute est deja entamee d un pas au moment de l explosion : la case
+  // s ouvre donc CHUTE_PAS - 1 pas plus tard, et c est a ce pas-la que
+  // l evenement part — les evenements ne vivent qu un pas.
+  avancerDe(etat, CHUTE_PAS - 1, entree(0, {}));
   assert.equal(etat.objets[index(5, 3)], CODES_BONUS.FLAMME, 'il doit apparaitre');
   assert.equal(evenements(etat, 'item').length, 1);
   assert.equal(evenements(etat, 'itemgone').length, 0);
@@ -213,8 +224,10 @@ test('un joueur abrite derriere une brique survit a l ouverture du trou', () => 
 
   pas(etat, entree(0, { poser: true }));
   detonner(etat, 0);
-  assert.equal(etat.tuiles[index(5, 3)], VIDE, 'la brique doit tomber');
-  assert.equal(abrite.vivant, true, 'et l abrite ne doit rien sentir');
+  assert.equal(abrite.vivant, true, 'l abrite ne doit rien sentir');
+  // La brique bloque le temps de tomber : le trou ne s ouvre qu apres.
+  avancerDe(etat, CHUTE_PAS, entree(0, {}));
+  assert.equal(etat.tuiles[index(5, 3)], VIDE, 'la brique doit avoir fini de tomber');
 
   // Il avance maintenant vers l explosion, et s arrete des qu il est dans le
   // trou tout juste ouvert. On ne va pas plus loin a dessein : la case suivante
@@ -282,4 +295,61 @@ test('un bomber bien engage dans la flamme meurt, lui', () => {
   victime.x = 5 * 1024 + 120;
   detonner(etat, 0);
   assert.equal(victime.vivant, false);
+});
+
+test('on ne traverse pas une brique tant qu elle tombe', () => {
+  // Le defaut corrige : la case se vidait a l instant de l explosion, et
+  // l animation de chute n etait qu un decor peint par-dessus du vide. On
+  // traversait donc une brique qu on voyait encore tomber.
+  const etat = areneNue({ places: 2 });
+  brique(etat, 5, 3);
+  const poseur = placer(etat, 0, 3, 3);
+  poseur.portee = 4;
+  const marcheur = placer(etat, 1, 6, 3);
+
+  pas(etat, entree(0, { poser: true }));
+  detonner(etat, 0);
+
+  // Il pousse vers la brique pendant toute la chute : elle doit le retenir.
+  avancerDe(etat, CHUTE_PAS - 2, entree(1, { dir: GAUCHE }));
+  assert.equal(etat.tuiles[index(5, 3)], BRIQUE, 'elle est encore la');
+  assert.equal(caseAxe(marcheur.x), 6, 'et il n a pas pu entrer');
+});
+
+test('la case s ouvre quand la chute finit, et le passage avec', () => {
+  const etat = areneNue({ places: 2 });
+  brique(etat, 5, 3);
+  const poseur = placer(etat, 0, 3, 3);
+  poseur.portee = 4;
+  const marcheur = placer(etat, 1, 6, 3);
+
+  pas(etat, entree(0, { poser: true }));
+  detonner(etat, 0);
+  // Juste ce qu il faut pour entrer dans la case liberee, sans la traverser.
+  avancerDe(etat, CHUTE_PAS + 6, entree(1, { dir: GAUCHE }));
+
+  assert.equal(etat.tuiles[index(5, 3)], VIDE);
+  assert.equal(caseAxe(marcheur.x), 5, 'il entre une fois la brique tombee');
+});
+
+test('un second souffle ne relance pas une brique deja a terre', () => {
+  // Elle bloque toujours, donc le souffle s y arrete — mais son animation et
+  // son decompte ne repartent pas de zero, sinon une brique sous le feu ne
+  // tomberait jamais.
+  const etat = areneNue();
+  brique(etat, 5, 3);
+  const joueur = placer(etat, 0, 3, 3);
+  joueur.portee = 4;
+  joueur.bombes = 2;
+
+  pas(etat, entree(0, { poser: true }));
+  detonner(etat, 0);
+  assert.equal(etat.ruines.length, 1);
+
+  // Une seconde bombe, au meme endroit, pendant la chute.
+  placer(etat, 0, 3, 3);
+  pas(etat, entree(0, { poser: true }));
+  detonner(etat, 0);
+  assert.equal(etat.ruines.length, 1, 'une seule chute en cours');
+  assert.equal(evenements(etat, 'brick').length, 0, 'et aucune annonce de plus');
 });

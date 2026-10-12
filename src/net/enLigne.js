@@ -68,7 +68,12 @@ export function suivreGrille(etat, liste) {
     // designant une AUTRE case — on ecrirait au hasard au lieu de refuser.
     if (!dansArene(cx, cy)) continue;
     const i = index(cx, cy);
-    if (nom === 'brick') {
+    // `brick` annonce qu'une brique TOMBE : elle bloque encore, et seule son
+    // animation demarre. C'est `brickgone` qui ouvre la case, une vingtaine de
+    // pas plus tard. Confondre les deux rendait le passage franchissable avant
+    // que le relais ne l'ouvre, et le bomber se faisait refuser l'entree par le
+    // serveur apres s'y etre vu entrer.
+    if (nom === 'brickgone') {
       etat.tuiles[i] = VIDE;
       tuilesEcrites += 1;
     } else if (nom === 'item') {

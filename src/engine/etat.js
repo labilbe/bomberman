@@ -108,6 +108,8 @@ export function creerEtat({ graine, places = 2 }) {
     objets: arene.objets,
     joueurs: Array.from({ length: nb }, (_, place) => creerJoueur(place)),
     bombes: [],
+    /** Briques en train de tomber : elles bloquent encore, mais plus pour longtemps. */
+    ruines: [],
     flammes: [],
     evenements: [],
     prochainId: 1,
@@ -130,6 +132,7 @@ export function cloner(etat) {
     tuiles: etat.tuiles.slice(),
     objets: etat.objets.slice(),
     joueurs: etat.joueurs.map((joueur) => ({ ...joueur })),
+    ruines: etat.ruines.map((ruine) => ({ ...ruine })),
     bombes: etat.bombes.map((bombe) => ({
       ...bombe,
       glisse: bombe.glisse ? { ...bombe.glisse } : null,

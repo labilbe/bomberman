@@ -99,6 +99,21 @@ export const MECHE_PAS = 144;
 export const FLAMME_PAS = 30;
 
 /**
+ * Duree de la chute d'une brique : 0,32 s, pendant lesquelles elle BLOQUE.
+ *
+ * La case ne se vidait pas progressivement, elle se vidait d'un coup : la
+ * brique disparaissait a l'instant de l'explosion et l'animation de chute
+ * n'etait qu'un decor peint par-dessus du vide. On traversait donc une brique
+ * qu'on voyait encore tomber.
+ *
+ * Elle reste BRIQUE pendant ce decompte, donc infranchissable, et un second
+ * souffle s'y arrete comme avant. C'est le moteur qui tient cette duree, et le
+ * rendu qui la lit : deux comptes a rebours separes auraient fini par diverger,
+ * et le passage se serait ouvert avant ou apres ce que montre l'ecran.
+ */
+export const CHUTE_PAS = 19;
+
+/**
  * Dotation de depart d'un bomber a chaque manche.
  *
  * Ce sont les valeurs d'Atomic Bomberman, pas les notres : son fichier

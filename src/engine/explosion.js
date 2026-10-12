@@ -14,7 +14,7 @@
  *    brique ne rapporterait jamais rien.
  */
 
-import { FLAMME_PAS, DEMI_MORTEL, VECTEURS, VIDE, BRIQUE } from './constantes.js';
+import { FLAMME_PAS, CHUTE_PAS, DEMI_MORTEL, VECTEURS, VIDE, BRIQUE } from './constantes.js';
 import { caseDe, poserCase, index, estLibre, boiteSurCase, caseAxe } from './grille.js';
 import { noter } from './etat.js';
 import { bombeSur, rendreLesMeches } from './bombes.js';
@@ -121,11 +121,7 @@ export function exploser(etat, bombe, file, neuves, briques) {
     const branche = rayon(etat, bombe.cx, bombe.cy, dir, bombe.portee);
     longueurs[dir] = branche.cases.length;
     for (const [x, y] of branche.cases) allumer(etat, x, y, bombe.place, neuves);
-    if (branche.brique) {
-      poserCase(etat, branche.brique[0], branche.brique[1], VIDE);
-      noter(etat, ['brick', branche.brique[0], branche.brique[1]]);
-      briques.push(branche.brique);
-    }
+    if (branche.brique) abattre(etat, branche.brique[0], branche.brique[1]);
     for (const id of branche.bombes) file.push(id);
   }
 
@@ -139,6 +135,49 @@ export function exploser(etat, bombe, file, neuves, briques) {
     longueurs[2],
     longueurs[3],
   ]);
+}
+
+/**
+ * Met une brique a terre : elle tombe, mais bloque encore.
+ *
+ * LA CASE NE SE VIDE PAS MAINTENANT. Elle reste BRIQUE pendant toute la chute,
+ * donc infranchissable, et c'est la correction d'une inexactitude : la brique
+ * disparaissait a l'instant de l'explosion et l'animation n'etait qu'un decor
+ * peint par-dessus du vide. On traversait une brique qu'on voyait encore
+ * tomber, ce qu'Atomic Bomberman ne permet pas.
+ *
+ * Une brique deja a terre n'est pas abattue deux fois : un second souffle qui
+ * l'atteint pendant sa chute s'y arrete — elle est toujours la — mais ne
+ * relance ni son animation ni son decompte.
+ */
+function abattre(etat, cx, cy) {
+  if (etat.ruines.some((ruine) => ruine.cx === cx && ruine.cy === cy)) return;
+  etat.ruines.push({ cx, cy, reste: CHUTE_PAS });
+  noter(etat, ['brick', cx, cy]);
+}
+
+/**
+ * Fait tomber les briques d'un pas, et vide celles qui ont fini.
+ *
+ * C'est ICI que la case s'ouvre, et que le bonus cache dessous se montre. Le
+ * reveler plus tot l'aurait fait apparaitre sous une brique encore debout.
+ *
+ * L'ecriture de la case est la SEULE du cycle de vie d'une brique, donc le
+ * compteur de version n'avance que d'un cran par brique — ce que le client sait
+ * reproduire sans demander la grille entiere.
+ *
+ * @param {import('./etat.js').Etat} etat
+ */
+export function vieillirRuines(etat) {
+  for (let i = etat.ruines.length - 1; i >= 0; i -= 1) {
+    const ruine = etat.ruines[i];
+    ruine.reste -= 1;
+    if (ruine.reste > 0) continue;
+    etat.ruines.splice(i, 1);
+    poserCase(etat, ruine.cx, ruine.cy, VIDE);
+    noter(etat, ['brickgone', ruine.cx, ruine.cy]);
+    revelerBonus(etat, [[ruine.cx, ruine.cy]]);
+  }
 }
 
 /**
