@@ -6,19 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "npx --yes serve . -l 1987",
-    "relais": "wrangler dev --port 8787 --local",
-    "deploy": "wrangler deploy",
-    "test": "node --test",
-    "test:relais": "node scripts/relais.e2e.mjs",
-    "prod": "node scripts/preparer-prod.mjs",
-    "prod:deploy": "node scripts/preparer-prod.mjs && wrangler pages deploy dist-prive --project-name bomberman-prive --force"
+    "test": "node --test"
   },
-  "license": "MIT",
-  "devDependencies": {
-    "wrangler": "^4.149.0"
-  },
-  "allowScripts": {
-    "esbuild@0.28.2": true,
-    "workerd@1.20261006.1": true
-  }
+  "license": "MIT"
 }
