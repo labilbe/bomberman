@@ -433,7 +433,19 @@ function jouerEnLigne() {
  * modifiee, ce qui evite de tenir a jour des noeuds un par un pour trois lignes
  * de texte.
  */
-function montrerAttente(transport, { code, assis, total, noms }) {
+function montrerAttente(transport, { code, assis, total, noms, erreur }) {
+  // Le relais a refuse : c'est le SEUL ecran affiche a ce moment, donc le seul
+  // endroit ou le dire. Sans ca, on reste devant une salle d'attente muette,
+  // a se demander pourquoi personne n'arrive.
+  if (erreur) {
+    banniere.montrer({
+      titre: 'Impossible de rejoindre',
+      detail: erreur,
+      boutons: [{ texte: 'Retour au menu', action: arreterSession }],
+    });
+    return;
+  }
+
   const sieges = Array.from({ length: total }, (_, place) => noms?.[place] || '— libre —');
   const manque = total - assis;
 

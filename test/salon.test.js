@@ -106,12 +106,34 @@ test('ajouter des bots jusqu a remplir lance la partie', () => {
   assert.equal(du(envois, SERVER.START).length, 1);
 });
 
-test('un salon complet refuse le suivant', () => {
+test('un salon ou l on joue refuse le suivant, et le dit', () => {
   const { salon } = salonLance();
   const envois = salon.rejoindre('c', { type: CLIENT.JOIN, name: 'Carol' }, 0);
   const [erreur] = du(envois, SERVER.ERROR);
   assert.ok(erreur);
-  assert.match(erreur.message, /commence/);
+  assert.match(erreur.message, /en cours/);
+});
+
+test('un match termine libere le salon, et son code sert de nouveau', () => {
+  // Sans cela, jouer une fois dans un salon le condamnait : la page garde le
+  // dernier code, et l'on ne pouvait plus repartir sans en changer.
+  // Un salon de quatre lance a un seul humain : il reste donc des places.
+  const salon = creerSalon({ code: 'TEST', maintenant: 0, graine: 1 });
+  salon.rejoindre('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  salon.message('a', { type: CLIENT.BEGIN }, 0);
+  assert.equal(salon.lancee, true);
+
+  // En pleine partie, on refuse.
+  const pendant = salon.rejoindre('c', { type: CLIENT.JOIN, name: 'Carol' }, 500);
+  assert.match(du(pendant, SERVER.ERROR)[0].message, /en cours/);
+
+  // Le match fini, le salon se rouvre et les bots s en vont.
+  salon.partie.fini = true;
+  const apres = salon.rejoindre('c', { type: CLIENT.JOIN, name: 'Carol', places: 4 }, 1000);
+  assert.equal(du(apres, SERVER.ERROR).length, 0, 'plus de refus');
+  const [attente] = du(apres, SERVER.WAITING);
+  assert.ok(attente, 'on revient en salle d attente');
+  assert.equal(attente.places, 2, 'Alice et Carol, sans les bots de la partie passee');
 });
 
 test('le format du salon est fixe par le premier arrive', () => {

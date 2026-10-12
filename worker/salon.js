@@ -227,6 +227,24 @@ export function creerSalon({ code, maintenant, graine = randomSeed() }) {
     aTous({ type: SERVER.ROUND, manche: partie.manche, graine: partie.etat.graine, attente: partie.depart, ...grilleDe(partie.etat) });
   }
 
+  /**
+   * Remet le salon en salle d'attente, le match fini.
+   *
+   * Les humains gardent leur siege ; les bots s'en vont, puisque le prochain
+   * depart les recomptera selon qui est la. Le salon redevient ce qu'il etait
+   * avant la premiere partie, et son code sert de nouveau.
+   */
+  function rouvrir() {
+    partie = null;
+    horloge = null;
+    for (const place of Object.keys(pilotes)) {
+      delete pilotes[place];
+      delete nomsDeBot[place];
+    }
+    intentions.length = 0;
+    sequences.length = 0;
+  }
+
   /** Les entrees du pas : humains tels quels, bots calcules a l'instant. */
   function entreesDuPas() {
     const entrees = [];
@@ -317,8 +335,13 @@ export function creerSalon({ code, maintenant, graine = randomSeed() }) {
         return envois.slice();
       }
 
+      // Un match TERMINE ne tient plus le salon : on le reouvre, et le code
+      // reste utilisable. Sans ca, jouer une fois dans un salon le condamnait —
+      // et comme la page garde le dernier code, on ne pouvait plus repartir.
+      if (partie && partie.fini) rouvrir();
+
       if (partie) {
-        aLui(id, { type: SERVER.ERROR, message: 'La partie a deja commence dans ce salon.' });
+        aLui(id, { type: SERVER.ERROR, message: 'Une partie est en cours dans ce salon.' });
         return envois.slice();
       }
 

@@ -288,6 +288,12 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
 
     if (message.type === SERVER.ERROR) {
       dire(message.message);
+      // Elle part AUSSI vers la salle d'attente. Tant que la partie n'a pas
+      // commence, c'est le seul ecran affiche — et `surEtatReseau` n'est
+      // branche qu'une fois la partie formee, ce qui n'arrivera jamais si le
+      // relais refuse. Sans ce second chemin, le joueur restait devant une
+      // salle d'attente muette, a se demander ce qui se passait.
+      diffuser(salons, { erreur: message.message });
     }
   }
 
