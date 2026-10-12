@@ -217,7 +217,26 @@ function jouerEnLocal() {
  * code servira au jeu en ligne : seul le transport change.
  */
 async function demarrer(transport, { humains, places, noms }) {
+  // LA SESSION EXISTE DES LA CREATION DU TRANSPORT, et non a l'arrivee de la
+  // premiere arene. En ligne, `demarrer()` ne rend la main qu'une fois le salon
+  // complet : tant qu'on attend un adversaire, une session posee plus bas
+  // n'existerait pas encore, `arreterSession()` sortirait sans rien faire, et un
+  // second clic sur « Jouer en ligne » ouvrirait une DEUXIEME connexion sans
+  // fermer la premiere. Chacune prenait un siege, et le salon se remplissait du
+  // meme joueur repete.
+  //
+  // Le jeton distingue les sessions entre elles : si quelqu'un repart au menu
+  // pendant l'attente, celle-ci doit se taire au lieu de reprendre la main a
+  // l'arrivee tardive de son arene.
+  const jeton = Symbol('session');
+  session = { transport, image: 0, jeton };
+
   const depart = await transport.demarrer();
+  if (session?.jeton !== jeton) {
+    transport.fermer();
+    return;
+  }
+
   const nombre = depart.places ?? places;
   const etiquettes = Array.from({ length: nombre }, (_, place) =>
     nommer(place, humains, depart.noms ?? noms),
@@ -296,7 +315,7 @@ async function demarrer(transport, { humains, places, noms }) {
     session.image = requestAnimationFrame(image);
   }
 
-  session = { transport, image: requestAnimationFrame(image) };
+  session.image = requestAnimationFrame(image);
 }
 
 /**
