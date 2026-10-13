@@ -1003,24 +1003,30 @@ keyboard.shortcut('Escape', () => {
  * typed for one evening — a friend's — must not take its place for good. Leaving
  * the old code there made the option look as if it were ignored.
  *
- * What the player TYPED is never wiped, though: we only replace a field that is
- * empty or still holds the last thing we proposed ourselves. Going to the
- * options to check something and coming back must not lose the code being
- * dialled.
+ * A code TYPED BY HAND holds its ground against a drawn code, which is worth
+ * nothing to anybody: going to the options to check something and coming back
+ * must not lose the code being dialled.
+ *
+ * It does NOT hold against the room set in the options, and that is the whole
+ * point of that setting: a group that always plays in the same room asks for it
+ * once, and finds it on the join screen every evening. Keeping the code typed
+ * for one game against a friend made the option look dead — which is how it was
+ * reported.
  */
 const proposed = new WeakMap();
 
 function proposeRooms() {
   const invited = cleanRoom(new URLSearchParams(location.search).get('room') ?? '');
   const preferred = cleanRoom(readPref(PREF_ROOM, ''));
-  for (const [field, code] of [
+  for (const [field, code, standing] of [
     // Joining answers an invitation: the link wins over the standing choice.
-    [roomInput, invited || preferred || randomRoom()],
+    [roomInput, invited || preferred || randomRoom(), invited || preferred],
     // Creating lays a new table: the link is somebody else's room, so it is not
-    // proposed here.
-    [createRoomInput, preferred || randomRoom()],
+    // proposed here. And the code of the room one is laying is one's own
+    // business — the options only fill the field in, they do not take it over.
+    [createRoomInput, preferred || randomRoom(), ''],
   ]) {
-    if (field.value !== '' && field.value !== proposed.get(field)) continue;
+    if (field.value !== '' && field.value !== proposed.get(field) && !standing) continue;
     field.value = code;
     proposed.set(field, code);
   }
