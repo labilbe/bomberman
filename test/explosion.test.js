@@ -83,10 +83,13 @@ test('une chaine de cinq bombes se resout dans le meme pas', () => {
   const etat = areneNue();
   const joueur = placer(etat, 0, 1, 1);
   joueur.bombes = 5;
+  // Posees par le moteur et non au bouton : deux appuis rapproches vaudraient
+  // RAFALE, et c'est la chaine qu'on mesure ici, pas le geste.
   for (const cx of [1, 2, 3, 4, 5]) {
     placer(etat, 0, cx, 1);
-    pas(etat, entree(0, { poser: true }));
+    poser(etat, etat.joueurs[0]);
   }
+  pas(etat, entree(0, {}));
   assert.equal(etat.bombes.length, 5);
 
   placer(etat, 0, 9, 9);
@@ -100,9 +103,10 @@ test('deux bombes qui se declenchent mutuellement n explosent qu une fois', () =
   const etat = areneNue();
   const joueur = placer(etat, 0, 3, 3);
   joueur.bombes = 2;
-  pas(etat, entree(0, { poser: true }));
+  poser(etat, joueur);
   placer(etat, 0, 4, 3);
-  pas(etat, entree(0, { poser: true }));
+  poser(etat, joueur);
+  pas(etat, entree(0, {}));
 
   placer(etat, 0, 9, 9);
   detonner(etat, 0);

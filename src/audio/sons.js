@@ -174,7 +174,9 @@ export function creerSons() {
       const vus = new Set();
       for (const evenement of evenements) {
         const nom = evenement[0];
-        if (nom === 'boom' || nom === 'brick' || nom === 'itemgone') {
+        // 'bomb' est du lot depuis la rafale : huit bombes posees au meme pas
+        // jouaient huit fois le meme son, ce qui sature au lieu d'en imposer.
+        if (nom === 'boom' || nom === 'brick' || nom === 'itemgone' || nom === 'bomb') {
           if (vus.has(nom)) continue;
           vus.add(nom);
         }

@@ -38,7 +38,7 @@ import { DEPARTS, genererArene } from './arene.js';
  *   dir: number, marche: boolean,
  *   vitesse: number, bombes: number, portee: number,
  *   kick: boolean, detonateur: number, gant: boolean, goutte: boolean,
- *   frappeAu: number | null,
+ *   frappeAu: number | null, poseAu: number | null,
  *   posees: number, surBombe: number | null, mortAu: number | null
  * }} Joueur
  *
@@ -95,6 +95,11 @@ export function creerJoueur(place) {
      * regles : c'est le rendu qui s'en sert pour jouer le geste.
      */
     frappeAu: null,
+    /**
+     * Pas du dernier appui sur le bouton des bombes, ou null : c'est lui qui
+     * distingue un double appui — donc une rafale — de deux poses separees.
+     */
+    poseAu: null,
     posees: 0,
     surBombe: null,
     mortAu: null,

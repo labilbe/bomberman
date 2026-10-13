@@ -101,8 +101,23 @@ export function peutPoser(etat, joueur) {
  */
 export function poser(etat, joueur) {
   if (!peutPoser(etat, joueur)) return null;
-  const cx = caseAxe(joueur.x);
-  const cy = caseAxe(joueur.y);
+  const bombe = poserSur(etat, joueur, caseAxe(joueur.x), caseAxe(joueur.y));
+  // La permission de traverser sa propre bombe ne vaut QUE pour celle qu'on a
+  // sous les pieds : celles d'une rafale sont posees devant soi, et il faut
+  // qu'elles bloquent, sinon la rafale ne barre plus rien.
+  joueur.surBombe = bombe.id;
+  return bombe;
+}
+
+/**
+ * Cree une bombe du bomber sur une case donnee. Ne verifie rien : les appelants
+ * ont deja juge la case, et chacun a ses propres regles pour cela.
+ *
+ * @param {import('./etat.js').Etat} etat
+ * @param {import('./etat.js').Joueur} joueur
+ * @returns {import('./etat.js').Bombe}
+ */
+function poserSur(etat, joueur, cx, cy) {
   // Le drapeau est lu AVANT le prelevement : sinon la derniere charge se
   // retirerait elle-meme le retardement, et la bombe qu on vient de payer
   // partirait a la meche.
@@ -128,9 +143,48 @@ export function poser(etat, joueur) {
   etat.prochainId += 1;
   etat.bombes.push(bombe);
   joueur.posees += 1;
-  joueur.surBombe = bombe.id;
   noter(etat, ['bomb', cx, cy, joueur.place]);
   return bombe;
+}
+
+/**
+ * LA RAFALE : aligne devant soi toutes les bombes qui restent.
+ *
+ * Declenchee par un DOUBLE APPUI sur le bouton des bombes. Le premier appui
+ * pose sous les pieds comme toujours ; le second, s'il suit de pres, vide le
+ * chargeur en file dans la direction regardee — case apres case, jusqu'a
+ * manquer de bombes ou buter sur quelque chose.
+ *
+ * C'est le geste qui donne un sens a un gros stock de bombes. Avec huit bombes
+ * et une seule paire de mains, on ne pouvait en poser qu'une par case
+ * traversee, donc jamais plus de deux ou trois avant que la premiere ne parte ;
+ * la rafale en fait un mur, ou un couloir entier qu'on condamne d'un coup.
+ *
+ * Elle s'arrete au premier obstacle — mur, brique, bombe, bomber — et non en
+ * les sautant : une file percee de trous ne barre rien, et c'est barrer qui est
+ * tout l'interet. Le bomber ne recoit PAS la permission de traverser ces
+ * bombes-la : elles sont devant lui, pas sous lui, et doivent le bloquer comme
+ * elles bloquent les autres.
+ *
+ * @param {import('./etat.js').Etat} etat
+ * @param {import('./etat.js').Joueur} joueur
+ * @returns {number} nombre de bombes alignees
+ */
+export function aligner(etat, joueur) {
+  if (!joueur.vivant) return 0;
+  const v = VECTEURS[joueur.dir];
+  let cx = caseAxe(joueur.x);
+  let cy = caseAxe(joueur.y);
+  let alignees = 0;
+
+  while (joueur.posees < joueur.bombes) {
+    cx += v.dx;
+    cy += v.dy;
+    if (!caseOuvertePourBombe(etat, cx, cy)) break;
+    poserSur(etat, joueur, cx, cy);
+    alignees += 1;
+  }
+  return alignees;
 }
 
 /**

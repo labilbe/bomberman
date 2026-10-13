@@ -185,6 +185,20 @@ export const VOL_PAS_PAR_CASE = 8;
  */
 export const FRAPPE_PAS = 12;
 
+/**
+ * Delai du DOUBLE APPUI qui declenche une rafale de bombes, en pas.
+ *
+ * Vingt pas, soit un tiers de seconde : la mesure habituelle d'un double-clic.
+ * Plus court, le geste rate une fois sur deux ; plus long, deux bombes posees
+ * coup sur coup dans un couloir — ce qu'on fait sans y penser en fuyant —
+ * partiraient en rafale et condamneraient sa propre sortie.
+ *
+ * Le compte est tenu par le MOTEUR, en pas de simulation, et non par le clavier
+ * en millisecondes : le relais doit voir le meme geste que la page, sans quoi
+ * une rafale partirait chez l'un et pas chez l'autre.
+ */
+export const DOUBLE_POSE_PAS = 20;
+
 /** Plafonds des ramassages, pour qu'une manche ne degenere pas. */
 export const BOMBES_MAX = 8;
 export const FLAMME_MAX = 8;

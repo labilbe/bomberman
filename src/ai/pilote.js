@@ -24,7 +24,7 @@
  * tout seul dans un cul-de-sac.
  */
 
-import { COLS, VECTEURS, MECHE_PAS, FLAMME_PAS } from '../engine/constantes.js';
+import { COLS, VECTEURS, MECHE_PAS, FLAMME_PAS, DOUBLE_POSE_PAS } from '../engine/constantes.js';
 import { index, caseDe, estLibre, estBrique, caseAxe, casesTouchees } from '../engine/grille.js';
 import { estVisible } from '../engine/bonus.js';
 import { ENTREE_VIDE } from '../engine/entrees.js';
@@ -261,7 +261,13 @@ function choisirDeplacement(etat, place, memoire, options, joueur) {
   // bombe sous le centre du personnage, et sa propre bombe ne le bloque pas tant
   // qu'il est dessus. Exiger le centrage empechait en pratique toute pose, le
   // bot etant presque toujours en transit au moment ou il decide.
-  if (adversaireAPortee(etat, joueur) || briqueAPortee(etat, joueur)) {
+  // Deux poses rapprochees valent RAFALE chez le moteur : le bot qui repose
+  // dans la foulee viderait son chargeur devant lui au lieu de semer ses bombes
+  // une a une. Il laisse donc passer la fenetre du double appui — une poignee
+  // de pas — avant d'en redemander une.
+  const vientDePoser =
+    joueur.poseAu !== null && etat.pas - joueur.poseAu <= DOUBLE_POSE_PAS;
+  if (!vientDePoser && (adversaireAPortee(etat, joueur) || briqueAPortee(etat, joueur))) {
     if (sortieApresPose(etat, joueur, danger)) {
       const projete = dangerAvecBombe(etat, joueur, danger, MECHE_PAS);
       const sortie = fuite(etat, joueur, projete);

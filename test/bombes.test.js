@@ -6,6 +6,7 @@ import { peutPoser, bombeSur, pousser } from '../src/engine/bombes.js';
 import { caseAxe, centreAxe } from '../src/engine/grille.js';
 import {
   MECHE_PAS,
+  DOUBLE_POSE_PAS,
   FLAMME_PAS,
   DETONATEURS_PAR_BONUS,
   DROITE,
@@ -27,13 +28,15 @@ test('on ne pose jamais plus de bombes que son quota', () => {
   pas(etat, entree(0, { poser: true }));
   assert.equal(etat.bombes.length, 1);
 
-  // Deuxieme pose : il faut avoir change de case, une bombe par case.
-  avancerDe(etat, 14, entree(0, { dir: DROITE }));
+  // Deuxieme pose : il faut avoir change de case, une bombe par case. On laisse
+  // aussi passer la fenetre du double appui, sans quoi le second appui vaudrait
+  // rafale et poserait devant au lieu de dessous.
+  avancerDe(etat, DOUBLE_POSE_PAS + 1, entree(0, { dir: DROITE }));
   pas(etat, entree(0, { poser: true, dir: DROITE }));
   assert.equal(etat.bombes.length, 2);
   assert.equal(joueur.posees, 2);
 
-  avancerDe(etat, 14, entree(0, { dir: DROITE }));
+  avancerDe(etat, DOUBLE_POSE_PAS + 1, entree(0, { dir: DROITE }));
   pas(etat, entree(0, { poser: true, dir: DROITE }));
   assert.equal(etat.bombes.length, 2, 'le quota de 2 doit tenir');
   assert.equal(peutPoser(etat, joueur), false);
@@ -44,7 +47,10 @@ test('deux bombes ne tiennent pas sur la meme case', () => {
   const joueur = placer(etat, 0, 3, 3);
   joueur.bombes = 4;
   pas(etat, entree(0, { poser: true }));
+  // Espacees, pour qu'il s'agisse bien de trois poses et non d'une rafale.
+  avancerDe(etat, DOUBLE_POSE_PAS + 1, entree(0, {}));
   pas(etat, entree(0, { poser: true }));
+  avancerDe(etat, DOUBLE_POSE_PAS + 1, entree(0, {}));
   pas(etat, entree(0, { poser: true }));
   assert.equal(etat.bombes.length, 1);
 });
@@ -340,6 +346,7 @@ test('la reserve vide, on revient aux bombes a meche', () => {
 
   pas(etat, entree(0, { poser: true }));
   assert.equal(etat.bombes[0].meche, null, 'la derniere charge donne bien une attente');
+  avancerDe(etat, DOUBLE_POSE_PAS + 1, entree(0, {}));
   placer(etat, 0, 5, 5);
   pas(etat, entree(0, { poser: true }));
   assert.equal(etat.bombes[1].meche, MECHE_PAS - 1, 'la suivante a une meche');
@@ -451,6 +458,7 @@ test('sans le gant, rien ne vole, ni au bouton des bombes ni a l autre', () => {
   joueur.dir = DROITE;
   placer(etat, 0, 4, 5);
   pas(etat, entree(0, { poser: true }));
+  avancerDe(etat, DOUBLE_POSE_PAS + 1, entree(0, {}));
   placer(etat, 0, 3, 5);
   joueur.dir = DROITE;
   pas(etat, entree(0, { poser: true, declencher: true }));
@@ -801,4 +809,77 @@ test('une bombe en attente poussee contre une autre ne s allume pas', () => {
   assert.equal(cible.meche, null, 'celle qui dormait dort encore');
   assert.equal(poussee.meche, null);
   assert.equal(etat.bombes.length, 2);
+});
+
+test('le double appui aligne toutes les bombes devant soi', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 2, 5);
+  joueur.bombes = 4;
+  joueur.dir = DROITE;
+
+  // Premier appui : sous les pieds, comme toujours.
+  pas(etat, entree(0, { poser: true }));
+  assert.deepEqual([bombeSur(etat, 2, 5) !== null, etat.bombes.length], [true, 1]);
+
+  // Second appui dans la foulee : le reste part en file devant lui.
+  pas(etat, entree(0, { poser: true }));
+  assert.equal(etat.bombes.length, 4, 'les quatre bombes sont posees');
+  for (const cx of [3, 4, 5]) {
+    assert.ok(bombeSur(etat, cx, 5), `une bombe en (${cx},5)`);
+  }
+  assert.equal(joueur.posees, 4, 'le quota est bien consomme');
+});
+
+test('la rafale s arrete au premier obstacle', () => {
+  // Une file percee de trous ne barre rien, et c est barrer qui est tout
+  // l interet du geste.
+  const etat = areneNue();
+  brique(etat, 5, 5);
+  const joueur = placer(etat, 0, 2, 5);
+  joueur.bombes = 8;
+  joueur.dir = DROITE;
+
+  pas(etat, entree(0, { poser: true }));
+  pas(etat, entree(0, { poser: true }));
+
+  assert.equal(etat.bombes.length, 3, 'sous les pieds, puis (3,5) et (4,5)');
+  assert.equal(bombeSur(etat, 6, 5), null, 'rien ne saute par-dessus la brique');
+  assert.equal(joueur.posees, 3, 'le reste du chargeur est garde');
+});
+
+test('deux appuis espaces ne font pas une rafale', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 2, 5);
+  joueur.bombes = 4;
+  joueur.dir = DROITE;
+
+  pas(etat, entree(0, { poser: true }));
+  avancerDe(etat, DOUBLE_POSE_PAS + 1, entree(0, {}));
+  pas(etat, entree(0, { poser: true }));
+
+  assert.equal(etat.bombes.length, 1, 'le second appui ne pose rien : il est sur sa bombe');
+});
+
+test('un appui sans effet n arme pas la rafale', () => {
+  // On martele le bouton en fuyant : si ces appuis-la armaient le geste, la
+  // rafale partirait toute seule au prochain appui utile.
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 2, 5);
+  joueur.bombes = 3;
+  joueur.dir = DROITE;
+
+  // Trois appuis de suite debout sur sa propre bombe : le premier pose, les
+  // autres ne peuvent rien faire — et n arment rien.
+  pas(etat, entree(0, { poser: true }));
+  avancerDe(etat, DOUBLE_POSE_PAS + 1, entree(0, {}));
+  pas(etat, entree(0, { poser: true }));
+  pas(etat, entree(0, { poser: true }));
+  assert.equal(etat.bombes.length, 1, 'aucune rafale a partir d appuis vides');
+
+  // Il s ecarte, et pose de nouveau : une seule bombe, sous ses pieds.
+  placer(etat, 0, 4, 5);
+  pas(etat, entree(0, { poser: true }));
+  assert.equal(etat.bombes.length, 2);
+  assert.ok(bombeSur(etat, 4, 5));
+  assert.equal(bombeSur(etat, 5, 5), null, 'et rien devant lui');
 });

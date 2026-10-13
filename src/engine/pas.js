@@ -18,11 +18,12 @@
  *   flamme est detruit et non empoche.
  */
 
-import { FIN_MANCHE_PAS } from './constantes.js';
+import { FIN_MANCHE_PAS, DOUBLE_POSE_PAS } from './constantes.js';
 import { ENTREE_VIDE } from './entrees.js';
 import { noter } from './etat.js';
 import {
   poser,
+  aligner,
   frapper,
   declencher,
   avancerMeches,
@@ -87,7 +88,17 @@ export function pas(etat, entrees = []) {
 
   for (const joueur of etat.joueurs) {
     if (!entreeDe(entrees, joueur.place).poser) continue;
-    poser(etat, joueur);
+    // DOUBLE APPUI = RAFALE. Le premier pose sous les pieds ; le second, s'il
+    // suit de pres, aligne tout ce qui reste devant soi.
+    //
+    // SEULE UNE POSE REUSSIE ARME LE GESTE. Un appui qui ne donne rien — plus
+    // de bombes en reserve, ou deja une sous les pieds — est frequent : on
+    // martele le bouton en fuyant. S'il armait la rafale, le geste partirait
+    // tout seul au prochain appui utile, et l'on viderait son chargeur sans
+    // l'avoir demande.
+    const double = joueur.poseAu !== null && etat.pas - joueur.poseAu <= DOUBLE_POSE_PAS;
+    const partie = double ? aligner(etat, joueur) > 0 : poser(etat, joueur) !== null;
+    if (partie) joueur.poseAu = etat.pas;
   }
 
   for (const joueur of etat.joueurs) {
