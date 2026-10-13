@@ -22,9 +22,9 @@ Two things sit on the boundary and are already settled:
   Interplay's assets in our own words would break the only link between the
   extractor and the files it reads.
 
-Two directories keep their French names because they are data read by path, not
-code: `assets/jeu` and `assets/sons`. The `bomberman.*` keys in `localStorage`
-keep theirs for the same reason — they are already on players' machines.
+The `bomberman.*` keys in `localStorage` keep their French names: they are data
+read by name and are already on players' machines, so renaming them would only
+lose everyone's settings.
 
 ## Comments
 

@@ -1,7 +1,7 @@
 /**
  * Extracting only the sprites the engine uses, as SVG.
  *
- *   node scripts/extract-game.mjs "<DATA/ANI>" [--out assets/jeu] [--terrain 0..10]
+ *   node scripts/extract-game.mjs "<DATA/ANI>" [--out assets/game] [--terrain 0..10]
  *
  * `extract-ani.mjs` writes out the whole corpus — 2327 images, some thirty
  * megabytes as SVG. The game only uses a fraction of it, and that is the
@@ -91,12 +91,12 @@ const read = (name, fallback) => {
   const k = argv.indexOf(`--${name}`);
   return k === -1 ? fallback : argv[k + 1];
 };
-const out = read('out', 'assets/jeu');
+const out = read('out', 'assets/game');
 const colours = Number(read('colours', 0));
 const terrain = Number(read('terrain', 0));
 
 if (!source) {
-  console.error('usage : node scripts/extract-game.mjs "<DATA/ANI>" [--out assets/jeu] [--colours N] [--terrain 0..10]');
+  console.error('usage : node scripts/extract-game.mjs "<DATA/ANI>" [--out assets/game] [--colours N] [--terrain 0..10]');
   process.exit(1);
 }
 

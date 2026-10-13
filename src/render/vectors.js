@@ -20,7 +20,7 @@
 import { PLACES } from './palette.js';
 
 /** Where the renderer expects the sprites, relative to the page. */
-const FOLDER = 'assets/jeu';
+const FOLDER = 'assets/game';
 
 /**
  * Hue, saturation, lightness, over [0,360] and [0,1].

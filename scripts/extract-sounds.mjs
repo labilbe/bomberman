@@ -1,7 +1,7 @@
 /**
  * Extracting Atomic Bomberman's sounds and music as WAV.
  *
- *   node scripts/extract-sounds.mjs "<DATA>" [--out assets/sons]
+ *   node scripts/extract-sounds.mjs "<DATA>" [--out assets/sounds]
  *
  * The game keeps its 251 sound effects in DATA/SOUND, as .RSS — raw PCM, with no
  * header — and their table in DATA/RES/SOUNDLST.RES. We only take what the
@@ -54,7 +54,7 @@ const read = (name, fallback) => {
   const k = argv.indexOf(`--${name}`);
   return k === -1 ? fallback : argv[k + 1];
 };
-const out = read('out', 'assets/sons');
+const out = read('out', 'assets/sounds');
 // By default the music is NOT touched: original rate, true stereo. Reducing it
 // to 11 kHz mono did divide its weight by four, but could be heard at once — and
 // since it loads on demand, that weight does not delay the page opening. The
@@ -64,7 +64,7 @@ const out = read('out', 'assets/sons');
 const musicRate = Number(read('music-hz', RATE));
 
 if (!source) {
-  console.error('usage : node scripts/extract-sounds.mjs "<DATA>" [--out assets/sons] [--music-hz 11025]');
+  console.error('usage : node scripts/extract-sounds.mjs "<DATA>" [--out assets/sounds] [--music-hz 11025]');
   process.exit(1);
 }
 
