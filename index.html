@@ -47,7 +47,7 @@
             <div class="track" id="track">
               <nav class="choices">
                 <button type="button" class="row" data-open="game">Lancer une partie</button>
-                <button id="create-online" type="button" class="row">Créer une partie en réseau</button>
+                <button type="button" class="row" data-open="create">Créer une partie en réseau</button>
                 <button type="button" class="row" data-open="join">Rejoindre une partie en réseau</button>
                 <button type="button" class="row" data-open="options">Options</button>
                 <button type="button" class="row" data-open="manual">Manuel</button>
@@ -68,6 +68,32 @@
                       </label>
                       <ol id="seats" class="seats"></ol>
                       <button id="play-local" type="button" class="row small">Lancer</button>
+                  </div>
+                  <button type="button" class="row small back">Retour</button>
+                </section>
+                <!--
+                  Créer, c'est poser la table : le code que l'on donnera à ses
+                  amis, et qui occupe chaque place — un humain qui va rejoindre,
+                  ou un bot tout de suite. Les places laissées aux humains sont
+                  celles qui restent libres dans le salon.
+                -->
+                <section class="screen" id="screen-create" hidden>
+                  <h2 class="screen-title">Créer une partie en réseau</h2>
+                  <div class="panel">
+                      <label class="field field-players">
+                        <span>Joueurs</span>
+                        <select id="net-players">
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Code du salon</span>
+                        <input id="create-room" type="text" maxlength="8" autocomplete="off" spellcheck="false" />
+                      </label>
+                      <ol id="net-seats" class="seats"></ol>
+                      <button id="play-create" type="button" class="row small">Créer ce salon</button>
                   </div>
                   <button type="button" class="row small back">Retour</button>
                 </section>
@@ -99,17 +125,13 @@
                       </label>
                       <label class="field">
                         <!--
-                          A plain number, and not "3 bots": those places go to
-                          whoever joins the room, and only become bots if nobody
-                          comes. In local play it is the launch screen that
-                          decides, player by player.
+                          Le salon proposé par défaut quand on crée ou rejoint
+                          une partie. Laissé vide, un code est tiré au sort à
+                          chaque fois — ce qui convient à qui joue avec des
+                          inconnus, là où un groupe fixe préfère son code à lui.
                         -->
-                        <span>Places en réseau</span>
-                        <select id="bots">
-                          <option value="1">1</option>
-                          <option value="2">2</option>
-                          <option value="3">3</option>
-                        </select>
+                        <span>Salon par défaut</span>
+                        <input id="default-room" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="au hasard" />
                       </label>
                   </div>
                   <button type="button" class="row small back">Retour</button>

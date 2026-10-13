@@ -41,10 +41,13 @@ const roomInput = document.querySelector('#room');
 const playersSelect = document.querySelector('#players');
 const seatsList = document.querySelector('#seats');
 const formatSelect = document.querySelector('#format');
-const botsSelect = document.querySelector('#bots');
+const defaultRoomInput = document.querySelector('#default-room');
+const netPlayersSelect = document.querySelector('#net-players');
+const netSeatsList = document.querySelector('#net-seats');
+const createRoomInput = document.querySelector('#create-room');
 const playLocalButton = document.querySelector('#play-local');
 const playOnlineButton = document.querySelector('#play-online');
-const createOnlineButton = document.querySelector('#create-online');
+const createOnlineButton = document.querySelector('#play-create');
 const quitButton = document.querySelector('#quit');
 const netState = document.querySelector('#net-state');
 const track = document.querySelector('#track');
@@ -55,7 +58,7 @@ const PREF_ROOM = 'bomberman.room';
 const PREF_PLAYERS = 'bomberman.players';
 const PREF_SEATS = 'bomberman.seats';
 const PREF_FORMAT = 'bomberman.format';
-const PREF_BOTS = 'bomberman.bots';
+const PREF_NET_SEATS = 'bomberman.netSeats';
 
 /**
  * The keys this page used to write, when the code was in French.
@@ -292,6 +295,7 @@ window.addEventListener('resize', () => {
 function openScreen(name) {
   const target = document.querySelector(`#screen-${name}`);
   if (!target) return;
+  if (name === 'join' || name === 'create') proposeRooms();
   for (const screen of screens) screen.hidden = screen !== target;
   // `data-screen` on the track, `data-open` on the rows, and the two names must
   // STAY DIFFERENT: the click handler walks up from whatever was clicked looking
@@ -587,6 +591,84 @@ function rememberSeats() {
 }
 
 /**
+ * The seats of a room being created: who waits for a human, who is a bot.
+ *
+ * ONLY TWO CHOICES PER ROW, and no colour: online, the colour comes with the
+ * place, because the relay hands the seats out and does not know what anybody
+ * picked. Showing a colour selector here would promise a choice that the other
+ * players' screens would not honour.
+ *
+ * The first row is you, and it is not a choice either: whoever lays the table
+ * sits at it. It is shown all the same, so that the list reads as the arena will
+ * look — four rows, four corners, four colours.
+ */
+function buildNetSeats() {
+  const count = Math.max(MIN_PLACES, Math.min(MAX_PLACES, Number(netPlayersSelect.value) || MIN_PLACES));
+  const previous = readNetSeats();
+
+  netSeatsList.textContent = '';
+  for (let place = 0; place < count; place += 1) {
+    const row = document.createElement('li');
+    row.className = 'seat';
+
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = placeColour(place).vivid;
+
+    const label = document.createElement('span');
+    label.className = 'seat-name';
+    label.textContent = `Joueur ${place + 1}`;
+
+    row.append(dot, label);
+
+    if (place === 0) {
+      const mine = document.createElement('span');
+      mine.className = 'seat-you';
+      mine.textContent = 'Vous';
+      row.append(mine);
+    } else {
+      const control = document.createElement('select');
+      control.className = 'control';
+      for (const [value, text] of [['human', 'Joueur en réseau'], ['bot', 'Bot']]) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = text;
+        control.append(option);
+      }
+      control.value = previous[place] === 'bot' ? 'bot' : 'human';
+      control.addEventListener('change', rememberNetSeats);
+      row.append(wrap('Commande', control));
+    }
+
+    netSeatsList.append(row);
+  }
+}
+
+/** What the creation screen says, row by row: 'human' or 'bot'. */
+function readNetSeats() {
+  const rows = [...netSeatsList.querySelectorAll('.seat')];
+  if (rows.length === 0) {
+    // Before the first build — the join screen asks too — the remembered list
+    // stands in. Failing that, a room for two: the smallest thing that is a game.
+    try {
+      const remembered = JSON.parse(readPref(PREF_NET_SEATS, '[]'));
+      if (Array.isArray(remembered) && remembered.length >= MIN_PLACES) return remembered;
+    } catch {
+      // Unreadable preference: the default below is just as good.
+    }
+    return ['human', 'human'];
+  }
+  return rows.map((row, place) => {
+    if (place === 0) return 'human';
+    return row.querySelector('.control')?.value === 'bot' ? 'bot' : 'human';
+  });
+}
+
+function rememberNetSeats() {
+  writePref(PREF_NET_SEATS, JSON.stringify(readNetSeats()));
+}
+
+/**
  * Starts a local game, as the launch screen describes it.
  *
  * Each row gives a bomber: its colour, and what drives it — a set of keys, a
@@ -807,6 +889,38 @@ keyboard.shortcut('Escape', () => {
 });
 
 /**
+ * The code the two room fields propose: the invitation first, then the room set
+ * in the options, then a code drawn at random.
+ *
+ * Proposed AGAIN every time one of the two screens opens, and not only when the
+ * page loads: the room from the options is a standing choice, and a one-off code
+ * typed for one evening — a friend's — must not take its place for good. Leaving
+ * the old code there made the option look as if it were ignored.
+ *
+ * What the player TYPED is never wiped, though: we only replace a field that is
+ * empty or still holds the last thing we proposed ourselves. Going to the
+ * options to check something and coming back must not lose the code being
+ * dialled.
+ */
+const proposed = new WeakMap();
+
+function proposeRooms() {
+  const invited = cleanRoom(new URLSearchParams(location.search).get('room') ?? '');
+  const preferred = cleanRoom(readPref(PREF_ROOM, ''));
+  for (const [field, code] of [
+    // Joining answers an invitation: the link wins over the standing choice.
+    [roomInput, invited || preferred || randomRoom()],
+    // Creating lays a new table: the link is somebody else's room, so it is not
+    // proposed here.
+    [createRoomInput, preferred || randomRoom()],
+  ]) {
+    if (field.value !== '' && field.value !== proposed.get(field)) continue;
+    field.value = code;
+    proposed.set(field, code);
+  }
+}
+
+/**
  * Address of the relay.
  *
  * It is written here rather than guessed: the page is served by GitHub Pages and
@@ -826,16 +940,26 @@ const RELAY = 'wss://bomberman-relais.labilbe.workers.dev/room';
 function playOnline({ fresh = false } = {}) {
   stopSession();
 
-  // `fresh` draws a new code rather than taking the one in the field: that is the
-  // whole difference between CREATING a game and JOINING one. The relay does not
-  // tell the two apart — it opens the room if the code is free and seats you in
-  // it otherwise — but the player does: one invites, the other answers.
-  const code = fresh ? randomRoom() : cleanRoom(roomInput.value) || randomRoom();
-  roomInput.value = code;
-  writePref(PREF_ROOM, code);
+  // CREATING AND JOINING ARE THE SAME MESSAGE for the relay — it opens the room
+  // if the code is free and seats you in it otherwise — but not the same gesture
+  // for the player: one lays the table, the other answers an invitation. So
+  // creating reads its own screen (code, seats, bots), joining only reads the
+  // code it has been given.
+  const seats = fresh ? readNetSeats() : [];
+  const field = fresh ? createRoomInput : roomInput;
+  const code = cleanRoom(field.value) || randomRoom();
+  field.value = code;
   writePref(PREF_NICKNAME, cleanName(nicknameInput.value, nicknameInput.value));
+  if (fresh) rememberNetSeats();
 
-  const places = Math.max(MIN_PLACES, Math.min(MAX_PLACES, 1 + (Number(botsSelect.value) || 1)));
+  // The bots are named by their SEAT, and the places left free are those that
+  // await a human. Joining says nothing about any of this: the room was laid out
+  // by whoever created it, and a second opinion would only be heard when the code
+  // turns out to be free — that is, when there was nothing to join.
+  const places = fresh
+    ? seats.length
+    : Math.max(MIN_PLACES, Math.min(MAX_PLACES, readNetSeats().length));
+  const bots = seats.flatMap((seat, place) => (seat === 'bot' ? [place] : []));
   const format = Number(formatSelect.value) || 3;
   const url = new URLSearchParams(location.search).get('relais') || RELAY;
 
@@ -845,6 +969,7 @@ function playOnline({ fresh = false } = {}) {
     nickname: cleanName(nicknameInput.value),
     places,
     format,
+    bots,
   });
 
   // The invitation link, without reloading the page: whoever receives it arrives
@@ -991,14 +1116,37 @@ function initialise() {
     buildSeats();
     rememberSeats();
   });
-  roomInput.value = invited || cleanRoom(readPref(PREF_ROOM, '')) || randomRoom();
+  netPlayersSelect.value = String(readNetSeats().length);
+  buildNetSeats();
+  netPlayersSelect.addEventListener('change', () => {
+    buildNetSeats();
+    rememberNetSeats();
+  });
+
+  // THE DEFAULT ROOM IS SET IN THE OPTIONS, and nowhere else. The code typed on
+  // the create or join screen is a one-off — the evening's room, a friend's code
+  // — and writing it back as the default would quietly replace a group's own
+  // code with the last one tried.
+  defaultRoomInput.value = cleanRoom(readPref(PREF_ROOM, ''));
+  proposeRooms();
   nicknameInput.value = cleanName(readPref(PREF_NICKNAME, ''), randomName());
   formatSelect.value = readPref(PREF_FORMAT, '3');
-  botsSelect.value = readPref(PREF_BOTS, '3');
-  roomInput.addEventListener('change', () => {
-    roomInput.value = cleanRoom(roomInput.value);
-    writePref(PREF_ROOM, roomInput.value);
+  defaultRoomInput.addEventListener('change', () => {
+    defaultRoomInput.value = cleanRoom(defaultRoomInput.value);
+    writePref(PREF_ROOM, defaultRoomInput.value);
+    // The two screens follow at once: a default that only took effect after a
+    // reload would look as if it had been ignored.
+    proposeRooms();
   });
+  // A ROOM CODE IS CASE-INSENSITIVE, here as in the relay: `cleanRoom` upper-cases
+  // it, and the stylesheet shows it upper-cased while it is being typed, so that
+  // what you read is what will be sent. Two friends reading a code out to each
+  // other must land in the same room whichever way they spell it.
+  for (const field of [roomInput, createRoomInput]) {
+    field.addEventListener('change', () => {
+      field.value = cleanRoom(field.value);
+    });
+  }
   showMenu();
 
   // "Lancer une partie" is selected from the start: the game's menu always

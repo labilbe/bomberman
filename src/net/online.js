@@ -89,10 +89,10 @@ export function followGrid(state, list) {
 /**
  * @param {{
  *   url: string, room: string, nickname: string,
- *   places?: number, format?: number
+ *   places?: number, format?: number, bots?: number[]
  * }} options
  */
-export function createOnlineTransport({ url, room, nickname, places = 2, format = 3 }) {
+export function createOnlineTransport({ url, room, nickname, places = 2, format = 3, bots = [] }) {
   const views = new Set();
   const events = new Set();
   const transitions = new Set();
@@ -112,6 +112,8 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
   let last = null;
   /** Version number of the grid, to spot that it has drifted. */
   let version = -1;
+  /** True once the bots asked for at creation have been requested. */
+  let botsSeated = false;
 
   let resolveStart = null;
   let started = false;
@@ -196,6 +198,14 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
 
   function receive(message) {
     if (message.type === SERVER.WAITING) {
+      // THE BOTS ARE SEATED HERE, and only on the first waiting message: it is
+      // the relay's acknowledgement that our own seat is taken, and asking for a
+      // bot before that would seat it in our place. Every later message —
+      // somebody else arriving — must leave the room alone, hence the flag.
+      if (!botsSeated) {
+        botsSeated = true;
+        for (const seat of bots) send({ type: CLIENT.BOT, seat });
+      }
       // The waiting room needs the LIST, not a sentence: who is already here,
       // and how many seats are still empty.
       broadcast(rooms, {

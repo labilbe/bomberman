@@ -98,6 +98,33 @@ test('a bot can be added before the start', () => {
   assert.equal(room.started, false, 'two places are left');
 });
 
+test('a bot asks for a precise seat and gets it', () => {
+  // Whoever creates the room lays the table: a seat is a corner and a colour, so
+  // a bot asked for at place 2 must not land at place 1 — the board shown while
+  // waiting would not be the one played.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  const outgoing = room.message('a', { type: CLIENT.BOT, seat: 2 }, 0);
+
+  const [waiting] = of(outgoing, SERVER.WAITING);
+  assert.equal(waiting.names[0], 'Alice');
+  assert.equal(waiting.names[1], null, 'place 1 awaits a human');
+  assert.ok(waiting.names[2], 'the bot sat where it was asked to');
+  assert.equal(waiting.names[3], null);
+});
+
+test('a seat already held sends the bot to the first free one', () => {
+  // The seat comes off the network: asking for a place that is taken, or for one
+  // that does not exist, must seat the bot rather than lose it.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  const onMine = of(room.message('a', { type: CLIENT.BOT, seat: 0 }, 0), SERVER.WAITING)[0];
+  assert.ok(onMine.names[1], 'it falls back on the first free place');
+
+  const outOfRange = of(room.message('a', { type: CLIENT.BOT, seat: 99 }, 0), SERVER.WAITING)[0];
+  assert.ok(outOfRange.names[2], 'and so does a place that does not exist');
+});
+
 test('adding bots until it is full starts the game', () => {
   const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
   room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2 }, 0);

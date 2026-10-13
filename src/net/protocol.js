@@ -16,7 +16,7 @@
 export const CLIENT = {
   JOIN: 'join', // { type, room, name, places, format, resume? }
   BEGIN: 'begin', // { type } — start without waiting for the room to fill
-  BOT: 'bot', // { type } — fill the room with an artificial opponent
+  BOT: 'bot', // { type, seat? } — seat an artificial opponent, there or anywhere
   INPUT: 'input', // { type, seat, seq, dir, bomb, det } — intent
   RESYNC: 'resync', // { type, v } — my arena no longer matches, send it again
   LEAVE: 'leave', // { type } — voluntary surrender

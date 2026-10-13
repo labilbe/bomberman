@@ -179,14 +179,23 @@ export function createRoom({ code, now, seed = randomSeed() }) {
   }
 
   /**
-   * Seats a bot on a free place, with a first name no other one has.
+   * Seats a bot, with a first name no other one has.
    *
    * Two bots with the same name would make the scoreboard illegible, and the
    * offset by the round counter keeps two games in a row from lining up exactly
    * the same opponents.
+   *
+   * The ASKED-FOR PLACE is honoured when it is free: whoever creates the room
+   * says which seats are bots and which await a human, and a place is a corner
+   * and a colour — seating the bot elsewhere would show a board that is not the
+   * one they laid out. Anything else — a taken place, a number out of range, the
+   * room filling itself at the start — falls back on the first free place.
    */
-  function addBot() {
-    const place = freePlace();
+  function addBot(wanted = null) {
+    const free = freePlace();
+    const place = Number.isInteger(wanted) && wanted >= 0 && wanted < places && !taken().has(wanted)
+      ? wanted
+      : free;
     if (place === null) return false;
     const rank = Object.keys(pilots).length;
     pilots[place] = createPilot({ level: LEVELS[rank % LEVELS.length] });
@@ -194,10 +203,15 @@ export function createRoom({ code, now, seed = randomSeed() }) {
     return true;
   }
 
+  /** The places already held, by a human or by a bot. */
+  function taken() {
+    return new Set([...humans().map((m) => m.place), ...Object.keys(pilots).map(Number)]);
+  }
+
   /** The first free place, or null when the room is full. */
   function freePlace() {
-    const taken = new Set([...humans().map((m) => m.place), ...Object.keys(pilots).map(Number)]);
-    for (let place = 0; place < places; place += 1) if (!taken.has(place)) return place;
+    const held = taken();
+    for (let place = 0; place < places; place += 1) if (!held.has(place)) return place;
     return null;
   }
 
@@ -406,7 +420,8 @@ export function createRoom({ code, now, seed = randomSeed() }) {
 
       if (message.type === CLIENT.BOT) {
         if (game) return outgoing.slice();
-        if (!addBot()) return outgoing.slice();
+        const wanted = Number(message.seat);
+        if (!addBot(Number.isInteger(wanted) ? wanted : null)) return outgoing.slice();
         announceWaiting();
         if (full()) start(nowMs);
         return outgoing.slice();

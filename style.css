@@ -364,6 +364,15 @@ body {
   font-size: 15px;
 }
 
+/* La place de celui qui cree le salon : un constat, pas un choix. */
+.seat-you {
+  font-family: var(--display);
+  font-size: 17px;
+  letter-spacing: 0.02em;
+  color: var(--yellow);
+  margin-bottom: 2px;
+}
+
 .field-players {
   max-width: 7em;
 }
@@ -443,7 +452,16 @@ button:focus-visible {
   outline: none;
 }
 
-#room {
+/*
+ * Un code de salon s'ecrit en capitales, quelle que soit la facon dont on le
+ * tape : le code est insensible a la casse — `cleanRoom` le met en capitales des
+ * la sortie du champ, et le relais le refait de son cote — et l'afficher ainsi
+ * pendant la frappe evite de croire que « monsalon » et « MONSALON » menent a
+ * deux parties differentes.
+ */
+#room,
+#create-room,
+#default-room {
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
