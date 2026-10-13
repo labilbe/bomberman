@@ -99,12 +99,12 @@ test('interface shortcuts never reach the engine', () => {
   });
   press('KeyN');
   assert.equal(calls, 1);
-  assert.deepEqual(keyboard.read(0), { dir: -1, drop: false, detonate: false });
+  assert.deepEqual(keyboard.read(0), { dir: -1, drop: false, detonate: false, hold: false });
 });
 
 test('an unknown seat returns an empty intent rather than throwing', () => {
   const { keyboard } = bench();
-  assert.deepEqual(keyboard.read(9), { dir: -1, drop: false, detonate: false });
+  assert.deepEqual(keyboard.read(9), { dir: -1, drop: false, detonate: false, hold: false });
 });
 
 test('the two key sets do not tread on each other', () => {

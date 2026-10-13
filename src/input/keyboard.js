@@ -55,6 +55,7 @@ export function createKeyboard({ target = window, count = 2 } = {}) {
     held: [],
     drop: false,
     detonate: false,
+    hold: false,
   }));
 
   /** Code -> { seat, role }. Built once: the lookup is O(1). */
@@ -85,7 +86,11 @@ export function createKeyboard({ target = window, count = 2 } = {}) {
     event.preventDefault();
     const seat = seats[found.seat];
     if (found.role === 'bomb') {
+      // The press is a pulse, the key being down is a state: the first drops a
+      // bomb, the second carries one with the blue glove. Auto-repeat gives
+      // neither — it is the same press, told over again.
       if (!event.repeat) seat.drop = true;
+      seat.hold = true;
       return;
     }
     if (found.role === 'trigger') {
@@ -99,6 +104,7 @@ export function createKeyboard({ target = window, count = 2 } = {}) {
     const found = plan.get(event.code);
     if (!found) return;
     const seat = seats[found.seat];
+    if (found.role === 'bomb') seat.hold = false;
     seat.held = seat.held.filter((role) => role !== found.role);
   }
 
@@ -107,7 +113,12 @@ export function createKeyboard({ target = window, count = 2 } = {}) {
    * into a wall on its own until it came back.
    */
   function forget() {
-    for (const seat of seats) seat.held = [];
+    for (const seat of seats) {
+      seat.held = [];
+      // The bomb key too: a tab coming back with a bomb "still held" would throw
+      // it the moment its player pressed anything.
+      seat.hold = false;
+    }
   }
 
   target.addEventListener('keydown', onKeyDown);
@@ -123,12 +134,13 @@ export function createKeyboard({ target = window, count = 2 } = {}) {
      */
     read(index) {
       const seat = seats[index];
-      if (!seat) return { dir: -1, drop: false, detonate: false };
+      if (!seat) return { dir: -1, drop: false, detonate: false, hold: false };
       const last = seat.held[seat.held.length - 1];
       const input = {
         dir: last === undefined ? -1 : DIRECTIONS[last],
         drop: seat.drop,
         detonate: seat.detonate,
+        hold: seat.hold,
       };
       seat.drop = false;
       seat.detonate = false;

@@ -143,7 +143,7 @@ function sprite(canvas, source, scale) {
  * whoever dropped the bomb. It is even how you recognise who has just killed
  * you.
  */
-const PER_PLACE = /^(walk|idle|punch)\d$|^dead$|^bomb|^flame/;
+const PER_PLACE = /^(walk|idle|punch|carry)\d$|^dead$|^bomb|^flame/;
 
 /**
  * An array of one series per colour, BUILT ON DEMAND.

@@ -883,3 +883,121 @@ test('a press with no effect does not arm the burst', () => {
   assert.ok(bombAt(state, 4, 5));
   assert.equal(bombAt(state, 5, 5), null, 'and nothing in front of it');
 });
+
+test('the blue glove lifts the bomb under one feet, and carrying it moves it', () => {
+  const state = bareArena();
+  const player = place(state, 0, 3, 5);
+  player.grab = true;
+  player.dir = RIGHT;
+
+  // A press drops; letting go and holding again takes it back up. That release
+  // is the gesture, not a formality: holding on from the drop would pick the
+  // bomb straight back up and no bomb could ever be left behind.
+  step(state, input(0, { drop: true, hold: true }));
+  const bomb = state.bombs[0];
+  assert.equal(bomb.held, null, 'the bomb just dropped stays on the ground');
+
+  step(state, input(0, {}));
+  step(state, input(0, { hold: true }));
+  assert.equal(bomb.held, 0, 'held in the hands');
+  assert.equal(bombAt(state, 3, 5), null, 'and gone from the grid');
+
+  // It follows its carrier, square by square: that is where it would go off.
+  advanceBy(state, 40, input(0, { dir: RIGHT, hold: true }));
+  assert.equal(bomb.held, 0, 'still carried');
+  assert.equal(bomb.cx, cellOnAxis(player.x), 'and on the carrier square');
+  assert.ok(bomb.cx > 3, 'which has moved');
+});
+
+test('letting go throws the carried bomb, like a punch', () => {
+  const state = bareArena();
+  const player = place(state, 0, 3, 5);
+  player.grab = true;
+  player.dir = RIGHT;
+
+  step(state, input(0, { drop: true, hold: true }));
+  step(state, input(0, {}));
+  step(state, input(0, { hold: true }));
+  const bomb = state.bombs[0];
+  assert.equal(bomb.held, 0);
+
+  step(state, input(0, {}));
+  assert.equal(bomb.held, null, 'the hand opens');
+  assert.ok(bomb.flight, 'and the bomb flies');
+  assert.deepEqual([bomb.cx, bomb.cy], [6, 5], 'three cells ahead, as the red glove throws');
+});
+
+test('without the bonus, holding the key carries nothing', () => {
+  const state = bareArena();
+  const player = place(state, 0, 3, 5);
+  player.dir = RIGHT;
+
+  step(state, input(0, { drop: true, hold: true }));
+  step(state, input(0, {}));
+  advanceBy(state, 5, input(0, { hold: true }));
+  assert.equal(state.bombs[0].held, null, 'it stays on the ground');
+});
+
+test('a carried bomb has left the grid: it blocks nobody', () => {
+  const state = bareArena({ places: 2 });
+  const carrier = place(state, 0, 3, 5);
+  carrier.grab = true;
+  step(state, input(0, { drop: true, hold: true }));
+  step(state, input(0, {}));
+  step(state, input(0, { hold: true }));
+  const carried = state.bombs.find((bomb) => bomb.held === 0);
+  assert.ok(carried);
+  assert.equal(bombAt(state, 3, 5), null, 'its square is free again');
+
+  // Another bomber walks straight across that square: a bomb in a pair of hands
+  // bars nothing, where one on the ground would have stopped them dead.
+  const other = place(state, 1, 1, 5);
+  for (let i = 0; i < 60; i += 1) step(state, input(1, { dir: RIGHT }));
+  assert.ok(cellOnAxis(other.x) > 3, 'they got past');
+});
+
+test('the fuse burns on in the hands, and the carrier pays for it', () => {
+  const state = bareArena({ places: 2 });
+  const carrier = place(state, 0, 7, 7);
+  carrier.grab = true;
+  place(state, 1, 1, 1);
+
+  step(state, input(0, { drop: true, hold: true }));
+  step(state, input(0, {}));
+  step(state, input(0, { hold: true }));
+  assert.equal(state.bombs[0].held, 0);
+
+  advanceBy(state, FUSE_STEPS, input(0, { hold: true }));
+  assert.equal(state.bombs.length, 0, 'it went off');
+  assert.equal(carrier.alive, false, 'in its carrier own hands');
+});
+
+test('a carrier that dies lets the bomb fall where it stood', () => {
+  const state = bareArena({ places: 3 });
+  const carrier = place(state, 0, 7, 7);
+  carrier.grab = true;
+  place(state, 2, 13, 11);
+  step(state, input(0, { drop: true, hold: true }));
+  step(state, input(0, {}));
+  step(state, input(0, { hold: true }));
+  const carried = state.bombs.find((bomb) => bomb.held === 0);
+  assert.ok(carried);
+
+  const killer = place(state, 1, 7, 5);
+  killer.range = 1;
+  killer.triggers = TRIGGERS_PER_BONUS;
+  // The carrier keeps holding on all the while: releasing would throw the bomb,
+  // and we want to see what dying does, not what letting go does.
+  const holdAndDetonate = [
+    { dir: -1, drop: false, detonate: false, hold: true },
+    { dir: -1, drop: false, detonate: true, hold: false },
+  ];
+  step(state, [holdAndDetonate[0], { dir: -1, drop: true, detonate: false, hold: false }]);
+  place(state, 1, 13, 1);
+  place(state, 0, 7, 6);
+  step(state, holdAndDetonate);
+
+  assert.equal(carrier.alive, false);
+  assert.equal(carried.held, null, 'the hands open');
+  assert.equal(carried.flight, null, 'and the bomb falls rather than flying off');
+});

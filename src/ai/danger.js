@@ -41,6 +41,11 @@ export function dangerMap(state) {
   }
 
   for (const bomb of state.bombs) {
+    // A bomb in somebody's hands threatens the square they are standing on, and
+    // that square moves: counting its cross here would paint a danger that walks
+    // about, and the bot would flee a blast that follows it. Whoever carries it
+    // is the one at risk, and they chose to be.
+    if (bomb.held !== null) continue;
     // A trigger bomb has no fuse: it can go off this very instant, at the whim
     // of a finger. So we count it as zero, that is at maximum danger. That is
     // not excessive caution, it is the truth of the game: there is no delay a
@@ -92,12 +97,13 @@ export function dangerWithBomb(state, player, base, fuse) {
   return map;
 }
 
-/** Can a bot walk onto this cell? Bombs block, all of them. */
+/** Can a bot walk onto this cell? Bombs block, all of them — but a carried one
+ * is in a pair of hands, not on the ground, and blocks nothing. */
 export function open(state, cx, cy) {
   if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS) return false;
   if (!isFree(cellAt(state, cx, cy))) return false;
   for (const bomb of state.bombs) {
-    if (bomb.cx === cx && bomb.cy === cy) return false;
+    if (bomb.held === null && bomb.cx === cx && bomb.cy === cy) return false;
   }
   return true;
 }

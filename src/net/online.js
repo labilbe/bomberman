@@ -162,6 +162,7 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
       player.triggers = j.g;
       player.glove = j.n === 1;
       player.jelly = j.l === 1;
+      player.grab = j.r === 1;
       player.punchedAt = j.u ?? null;
     }
 
@@ -173,6 +174,7 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
       place: b.p,
       range: 0,
       slide: b.g ? { dir: b.g.d, x: b.g.x, y: b.g.y } : null,
+      held: b.c ?? null,
       flight: b.w ? { fromX: b.w.x, fromY: b.w.y, left: b.w.r, duration: b.w.d, dir: b.w.s } : null,
     }));
 
@@ -387,9 +389,14 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
       // repeating "I am still going right" takes up the wire and makes the relay
       // work for nothing. A pulse, on the other hand, always goes out — it is
       // only worth once, and keeping quiet about it would lose a bomb.
+      // The bomb key being HELD is a state like the direction, so it travels the
+      // same way: on change only. Missing a release would leave a bomb in the
+      // hands for ever; sending it sixty times a second would say the same thing
+      // sixty times.
       const pulse = useful.drop || useful.detonate;
-      if (!pulse && last !== null && last.dir === useful.dir) return;
-      last = { dir: useful.dir };
+      const held = useful.hold === true;
+      if (!pulse && last !== null && last.dir === useful.dir && last.hold === held) return;
+      last = { dir: useful.dir, hold: held };
 
       sequence += 1;
       send({
@@ -399,6 +406,7 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
         dir: useful.dir,
         bomb: useful.drop,
         det: useful.detonate,
+        hold: held,
       });
     },
 

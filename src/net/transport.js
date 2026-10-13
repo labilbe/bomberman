@@ -104,6 +104,9 @@ export function createLocalTransport({
         // the simulation step.
         drop: intents[place].drop || input.drop,
         detonate: intents[place].detonate || input.detonate,
+        // The held key is a state: the latest reading is the truth, and keeping
+        // the older one would carry a bomb somebody has let go of.
+        hold: input.hold === true,
       };
     },
 

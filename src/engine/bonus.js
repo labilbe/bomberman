@@ -32,6 +32,7 @@ export const BONUS_CODES = {
   TRIGGER: 5,
   GLOVE: 6,
   JELLY: 7,
+  GRAB: 8,
 };
 
 /** Network names of the bonuses: what the wire carries, and what the sprites are keyed on. */
@@ -43,6 +44,7 @@ export const BONUS_NAMES = {
   [BONUS_CODES.TRIGGER]: 'trigger',
   [BONUS_CODES.GLOVE]: 'punch',
   [BONUS_CODES.JELLY]: 'jelly',
+  [BONUS_CODES.GRAB]: 'grab',
 };
 
 /**
@@ -52,7 +54,7 @@ export const BONUS_NAMES = {
  * them often rewards breaking bricks. Kick and triggers are rare because they
  * change the way you play, not just how strong you are.
  *
- * The jelly ranks with the glove: it is useless without the kick, and seeing it
+ * The jelly ranks with the gloves: it is useless without the kick, and seeing it
  * too often would fill the arena with mad bombs owned by players who have
  * nothing to throw them with.
  */
@@ -64,6 +66,7 @@ export const BONUS_TABLE = [
   [BONUS_CODES.TRIGGER, 8],
   [BONUS_CODES.GLOVE, 8],
   [BONUS_CODES.JELLY, 8],
+  [BONUS_CODES.GRAB, 8],
 ];
 
 /** True when the byte names a bonus still hidden under a brick. */
@@ -88,7 +91,7 @@ export function codeOf(value) {
  * of range fifteen each, the whole arena burns permanently and nobody is
  * playing any more.
  *
- * @param {{ bombs: number, range: number, speed: number, kick: boolean, triggers: number, jelly: boolean }} player
+ * @param {{ bombs: number, range: number, speed: number, kick: boolean, triggers: number, jelly: boolean, grab: boolean }} player
  * @param {number} code
  */
 export function apply(player, code) {
@@ -113,6 +116,9 @@ export function apply(player, code) {
       break;
     case BONUS_CODES.JELLY:
       player.jelly = true;
+      break;
+    case BONUS_CODES.GRAB:
+      player.grab = true;
       break;
     default:
       break;

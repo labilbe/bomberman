@@ -253,6 +253,9 @@ export function createScene(canvas, set = fromDrawings()) {
 
   function drawBombs(view, time) {
     for (const bomb of view.bombs) {
+      // A carried bomb is drawn with its carrier, above the head: here it would
+      // land on the ground, under the feet of the one holding it.
+      if (bomb.held !== null && bomb.held !== undefined) continue;
       const airborne = bomb.flight ? inFlight(bomb, fliesOverObstacle(view, bomb)) : null;
       const x = airborne ? airborne[0] : (bomb.slide ? bomb.slide.x : bomb.cx * UNITS + UNITS / 2);
       const y = airborne ? airborne[1] : (bomb.slide ? bomb.slide.y : bomb.cy * UNITS + UNITS / 2);
@@ -484,11 +487,24 @@ export function createScene(canvas, set = fromDrawings()) {
         const v = VECTORS[player.dir];
         const ex = px + v.dx * lunge;
         const ey = py + v.dy * lunge * 0.7;
-        if (player.walking) {
+        const carried = view.bombs.find((bomb) => bomb.held === player.place);
+        if (carried && set.carry) {
+          // The game draws the whole thing — bomber AND bomb above the head — in
+          // one sequence, so there is nothing to add on top of it.
+          const run = set.carry[tint(player.place)][player.dir];
+          put(run[player.walking ? walkFrame(player, run.length) : 0], ex, ey);
+        } else if (player.walking) {
           const run = set.bombers[tint(player.place)][player.dir];
           put(run[walkFrame(player, run.length)], ex, ey);
         } else {
           put(set.idle[tint(player.place)][player.dir], ex, ey);
+        }
+        // Failing that sequence — the sprites drawn in code have none — the bomb
+        // is laid on the head by hand: a bomber carrying nothing visible would
+        // make the bonus unreadable, and its own bomb a surprise.
+        if (carried && !set.carry) {
+          const run = set.bomb[tint(carried.place)] ?? set.bomb[0];
+          put(run[Math.floor(time / 120) % run.length], ex, ey - TILE_H * 0.95);
         }
         if (punch !== null) drawPunchArm(player, ex, ey, punch);
       }

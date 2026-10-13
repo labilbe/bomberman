@@ -86,6 +86,8 @@ function snapshot(state, away) {
       // The jelly: it changes nothing in the drawing, but the HUD shows it, and
       // without it the player does not know why their bombs set off again.
       l: player.jelly ? 1 : 0,
+      // The blue glove, for the HUD — what it carries is read off the bomb.
+      r: player.grab ? 1 : 0,
       // And the STEP of its last punch, as for the death: the renderer plays the
       // gesture from that date.
       u: player.punchedAt,
@@ -97,6 +99,10 @@ function snapshot(state, away) {
       m: bomb.fuse,
       p: bomb.place,
       g: bomb.slide ? { d: bomb.slide.dir, x: bomb.slide.x, y: bomb.slide.y } : null,
+      // Who is carrying it, or null. The scene draws it above their head instead
+      // of on the ground, and that is the only way it can tell: its coordinates
+      // are the carrier's own square.
+      c: bomb.held,
       // The glove's flight: where it sets off from, and where it stands. Without
       // it, the punched bomb would teleport from one end of its trajectory to
       // the other.
@@ -434,7 +440,12 @@ export function createRoom({ code, now, seed = randomSeed() }) {
         const seq = Number(message.seq);
         if (!Number.isFinite(seq) || seq <= sequences[member.place]) return outgoing.slice();
         sequences[member.place] = seq;
-        const input = normalise({ dir: message.dir, drop: message.bomb, detonate: message.det });
+        const input = normalise({
+          dir: message.dir,
+          drop: message.bomb,
+          detonate: message.det,
+          hold: message.hold,
+        });
         const wanted = intents[member.place];
         intents[member.place] = {
           dir: input.dir,
@@ -442,6 +453,10 @@ export function createRoom({ code, now, seed = randomSeed() }) {
           // simulation steps.
           drop: wanted.drop || input.drop,
           detonate: wanted.detonate || input.detonate,
+          // The held key, on the other hand, REPLACES what was known: it is a
+          // state, and keeping the old one would hold a bomb the player has let
+          // go of.
+          hold: input.hold,
         };
         return outgoing.slice();
       }

@@ -87,6 +87,10 @@ export const BONUS_COLOURS = {
   trigger: { background: '#70e000', glyph: '#14331f', glow: '#ccff33' },
   // The glove: leather red, the colour you expect of a boxing glove.
   punch: { background: '#e5383b', glyph: '#4a0d10', glow: '#ff9a94' },
+  // The other glove, the one that picks a bomb up, is BLUE — and in the game
+  // that is the only thing telling the two apart at a glance. Ours says it the
+  // same way, because a player reads the colour before the shape.
+  grab: { background: '#2d6cdf', glyph: '#0a1f52', glow: '#9ec5ff' },
   // The jelly: the purple of Interplay's own 'jelly', which looks like no other
   // bonus — that is all you ask of sixteen pixels.
   jelly: { background: '#9d4edd', glyph: '#2d0a45', glow: '#e0aaff' },

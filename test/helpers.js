@@ -49,9 +49,9 @@ export function place(state, seat, cx, cy) {
 }
 
 /** An input for a single place, the others idle. */
-export function input(seat, { dir = -1, drop = false, detonate = false } = {}) {
+export function input(seat, { dir = -1, drop = false, detonate = false, hold = false } = {}) {
   const inputs = [];
-  inputs[seat] = { dir, drop, detonate };
+  inputs[seat] = { dir, drop, detonate, hold };
   return inputs;
 }
 

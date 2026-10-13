@@ -64,6 +64,10 @@ const rolesOf = (terrain) => ({
   ...Object.fromEntries(DIRECTIONS.flatMap((d, k) => [
     [`walk${k}`, ['WALK.ANI', `walk ${d}`]],
     [`idle${k}`, ['STAND.ANI', `stand ${d}`]],
+    // Walking with a bomb in one's arms, for the blue glove. The game draws the
+    // whole thing — bomber and bomb above the head — in a single sequence, which
+    // is why the scene has nothing to add on top of it.
+    [`carry${k}`, ['BOMBWALK.ANI', `bombwalk ${d} green`]],
   ])),
 
   // The boxing glove's punch: the bomber draws back, strikes, and returns to
@@ -83,6 +87,8 @@ const rolesOf = (terrain) => ({
   bonusGlove: ['POWERS.ANI', 'power punch'],
   // The jelly, which makes bombs bounce: 'jelly' at Interplay too.
   bonusJelly: ['POWERS.ANI', 'power jelly'],
+  // The blue glove, which picks a bomb up: 'grab' at Interplay.
+  bonusGrab: ['POWERS.ANI', 'power grab'],
 });
 
 const argv = process.argv.slice(2);

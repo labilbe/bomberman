@@ -213,12 +213,12 @@ test('howMany counts the gamepads actually plugged in', () => {
 
 test('with no gamepad, the intent is empty rather than thrown', () => {
   const b = bench([]);
-  assert.deepEqual(b.read(0), { dir: -1, drop: false, detonate: false });
+  assert.deepEqual(b.read(0), { dir: -1, drop: false, detonate: false, hold: false });
 });
 
 test('an unknown seat returns an empty intent', () => {
   const b = bench([gamepad({ dpad: ['up'] })]);
-  assert.deepEqual(b.read(7), { dir: -1, drop: false, detonate: false });
+  assert.deepEqual(b.read(7), { dir: -1, drop: false, detonate: false, hold: false });
 });
 
 test('an analogue trigger counts as pressed past halfway', () => {

@@ -13,7 +13,7 @@
  * in the scene.
  */
 
-import { buildSprites, paintGlove, paintJelly, SIDE, WALK_FRAMES } from './sprites.js';
+import { buildSprites, paintGlove, paintGrabGlove, paintJelly, SIDE, WALK_FRAMES } from './sprites.js';
 import { PLACES } from './palette.js';
 
 /** Number of frames in the walk cycle, for both providers. */
@@ -324,6 +324,8 @@ export function fromDrawings(places = PLACES.length) {
     // The sprites drawn in code have no punch sequence: the scene plays its own
     // over the bomber.
     punches: null,
+    // Nor a carrying pose: the scene lays the bomb on the head by hand.
+    carry: null,
     dead: perPlace((p) => raw.dead[p].map(sprite)),
   };
 }
@@ -369,6 +371,10 @@ export function fromVectors(loaded, places = PLACES.length) {
       jelly: roles.bonusJelly
         ? one('bonusJelly')
         : tileSprite(paintJelly(tile.width, tile.height), tile),
+      // The blue glove, same story again.
+      grab: roles.bonusGrab
+        ? one('bonusGrab')
+        : tileSprite(paintGrabGlove(tile.width, tile.height), tile),
     },
     bomb: lazyPerPlace(places, (p) => roles.bomb[p % roles.bomb.length]),
     bombTrigger: lazyPerPlace(places, (p) => runWithBand(roles.bomb[p % roles.bomb.length])),
@@ -390,6 +396,11 @@ export function fromVectors(loaded, places = PLACES.length) {
     // bonus silent everywhere else.
     punches: roles.punch0
       ? lazyPerPlace(places, (p) => DIRS.map((d) => roles[`punch${d}`][p]))
+      : null,
+    // Walking with a bomb in one's arms. Null when the extraction predates the
+    // blue glove, and the scene then lays the bomb on the head itself.
+    carry: roles.carry0
+      ? lazyPerPlace(places, (p) => DIRS.map((d) => roles[`carry${d}`][p]))
       : null,
     dead: lazyPerPlace(places, (p) => roles.dead[p]),
   };

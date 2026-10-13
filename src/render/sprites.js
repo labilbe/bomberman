@@ -326,6 +326,7 @@ export function buildSprites(places = 4) {
       // for any name it does not know, and we would have had two identical packs
       // for two bonuses that do nothing like the same thing.
       punch: paintGlove(),
+      grab: paintGrabGlove(),
       jelly: paintBonus('jelly'),
     },
     bombers,
@@ -347,9 +348,8 @@ export function buildSprites(places = 4) {
  * recognise a compact red shape — which is all it takes to tell it from the five
  * other packs.
  */
-export function paintGlove(width = SIDE, height = width) {
+export function paintGlove(width = SIDE, height = width, colours = BONUS_COLOURS.punch) {
   const { canvas, ctx } = surface(width, height);
-  const colours = BONUS_COLOURS.punch;
   const u = (f) => Math.round(f * width);
   const v = (f) => Math.round(f * height);
 
@@ -373,6 +373,18 @@ export function paintGlove(width = SIDE, height = width) {
   disc(ctx, px + Math.round(r * 0.45), py - Math.round(r * 0.45), r * 0.3, colours.glow);
 
   return canvas;
+}
+
+/**
+ * The blue glove's pack: the same glove, the other colour.
+ *
+ * The same drawing on purpose. These are two gloves, and the game itself only
+ * tells them apart by their colour — red throws what is in front of you, blue
+ * picks up what is under your feet. Inventing a different shape here would make
+ * our packs say something the game's own never did.
+ */
+export function paintGrabGlove(width = SIDE, height = width) {
+  return paintGlove(width, height, BONUS_COLOURS.grab);
 }
 
 /**

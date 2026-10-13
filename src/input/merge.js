@@ -31,13 +31,17 @@ export function merge(...sources) {
   let dir = -1;
   let drop = false;
   let detonate = false;
+  let hold = false;
 
   for (const source of sources) {
     if (!source) continue;
     if (dir === -1 && source.dir !== -1 && source.dir !== undefined) dir = source.dir;
     drop = drop || source.drop === true;
     detonate = detonate || source.detonate === true;
+    // Holding is a state, not a pulse, and one hand is enough to hold: a bomb
+    // carried with the keyboard must not fall because the pad's button is up.
+    hold = hold || source.hold === true;
   }
 
-  return { dir, drop, detonate };
+  return { dir, drop, detonate, hold };
 }

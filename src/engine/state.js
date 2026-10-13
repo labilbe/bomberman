@@ -36,15 +36,15 @@ import { STARTS, generateArena } from './arena.js';
  *   place: number, alive: boolean, x: number, y: number,
  *   dir: number, walking: boolean,
  *   speed: number, bombs: number, range: number,
- *   kick: boolean, triggers: number, glove: boolean, jelly: boolean,
- *   punchedAt: number | null, droppedAt: number | null,
+ *   kick: boolean, triggers: number, glove: boolean, jelly: boolean, grab: boolean,
+ *   punchedAt: number | null, droppedAt: number | null, holdDropped: number | null,
  *   dropped: number, onBomb: number | null, diedAt: number | null
  * }} Player
  *
  * @typedef {{
  *   id: number, cx: number, cy: number, place: number, range: number,
  *   fuse: number, slide: { dir: number, x: number, y: number } | null,
- *   bounce: boolean,
+ *   bounce: boolean, held: number | null,
  *   flight: { dir: number, fromX: number, fromY: number, left: number, duration: number } | null
  * }} Bomb
  *
@@ -89,6 +89,8 @@ export function createPlayer(place) {
     glove: false,
     /** The jelly: its bombs bounce instead of stopping at the first wall. */
     jelly: false,
+    /** The blue glove: it picks a bomb up and carries it rather than kicking it. */
+    grab: false,
     /**
      * The step of the last punch, or null. It has no effect on the rules: the
      * renderer uses it to play the gesture.
@@ -99,6 +101,16 @@ export function createPlayer(place) {
      * double tap — hence a burst — from two separate drops.
      */
     droppedAt: null,
+    /**
+     * The bomb dropped during the press currently held down, or null.
+     *
+     * The blue glove picks up what is under one's feet, and one is always on
+     * one's own bomb the instant it is dropped: without this, pressing the key
+     * would drop a bomb and lift it straight back up, and no bomb could be left
+     * on the ground any more. Letting go and pressing again picks it up — which
+     * is the gesture one makes anyway.
+     */
+    holdDropped: null,
     dropped: 0,
     onBomb: null,
     diedAt: null,

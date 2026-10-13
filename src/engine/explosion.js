@@ -32,7 +32,7 @@ import {
 import { cellAt, setCell, index, isFree, boxOnCell, cellOnAxis } from './grid.js';
 import { record } from './state.js';
 import { draw } from './rng.js';
-import { bombAt, restoreFuses } from './bombs.js';
+import { bombAt, restoreFuses, carriedBy } from './bombs.js';
 import { isHidden, isVisible, codeOf, apply, BONUS_NAMES, BONUS_CODES } from './bonus.js';
 
 /** Causes of death, as they go out on the network. */
@@ -310,6 +310,7 @@ function loot(player) {
   if (player.kick) add(BONUS_CODES.KICK, 1);
   if (player.glove) add(BONUS_CODES.GLOVE, 1);
   if (player.jelly) add(BONUS_CODES.JELLY, 1);
+  if (player.grab) add(BONUS_CODES.GRAB, 1);
   // One pack per part-used pack: three charges out of five left is still a
   // trigger, and giving it back whole is better than losing it.
   add(BONUS_CODES.TRIGGER, Math.ceil(player.triggers / TRIGGERS_PER_BONUS));
@@ -378,6 +379,12 @@ export function kill(state, player, cause) {
   player.walking = false;
   player.diedAt = state.step;
   player.onBomb = null;
+
+  // What it was carrying falls where it stood: hands that open let go, they do
+  // not throw. The bomb comes back to the grid on the square of the body, which
+  // is burning — it will go off in the fire, and that reads right.
+  const carried = carriedBy(state, player.place);
+  if (carried) carried.held = null;
 
   // Its trigger bombs are waiting for nobody any more: we give them a fuse back.
   restoreFuses(state, player.place);

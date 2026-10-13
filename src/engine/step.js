@@ -26,11 +26,17 @@ import {
   lineUp,
   punch,
   detonate,
+  grabBomb,
+  throwCarried,
+  carriedBy,
   advanceFuses,
   advanceSlides,
   advanceFlights,
+  advanceCarried,
+  bombDroppedAt,
 } from './bombs.js';
 import { movePlayers } from './collision.js';
+import { cellOnAxis } from './grid.js';
 import {
   resolveChain,
   burnItems,
@@ -45,6 +51,20 @@ import { roundVerdict } from './round.js';
 function inputOf(inputs, place) {
   const input = inputs[place];
   return input ?? EMPTY_INPUT;
+}
+
+/**
+ * Is there, under this bomber's feet, a bomb the blue glove could lift?
+ *
+ * Not the one dropped by the press still held down: see `holdDropped`. And
+ * nothing at all without the bonus, which is what keeps every other bomber's
+ * bomb key exactly as it was.
+ */
+function liftableUnder(state, player) {
+  if (!player.grab || !player.alive) return false;
+  if (carriedBy(state, player.place) !== null) return false;
+  const bomb = bombDroppedAt(state, cellOnAxis(player.x), cellOnAxis(player.y));
+  return bomb !== null && bomb.id !== player.holdDropped;
 }
 
 /**
@@ -86,18 +106,52 @@ export function step(state, inputs = []) {
   state.step += 1;
 
   for (const player of state.players) {
-    if (!inputOf(inputs, player.place).drop) continue;
-    // DOUBLE TAP = BURST. The first drops under the feet; the second, if it
-    // follows closely, lines up everything left in front.
+    const input = inputOf(inputs, player.place);
+
+    // THE BLUE GLOVE IS THE BOMB KEY HELD DOWN, and the order of this block is
+    // the whole gesture: press to drop, keep pressing over a bomb to take it in
+    // your hands, let go to throw it. One key, three meanings.
     //
-    // ONLY A SUCCESSFUL DROP ARMS THE GESTURE. A press that gives nothing — no
-    // bombs left in reserve, or one already underfoot — is common: you hammer
-    // the button while fleeing. If it armed the burst, the gesture would go off
-    // by itself on the next useful press, and you would empty your magazine
-    // without having asked.
-    const double = player.droppedAt !== null && state.step - player.droppedAt <= DOUBLE_TAP_STEPS;
-    const dropped = double ? lineUp(state, player) > 0 : drop(state, player) !== null;
-    if (dropped) player.droppedAt = state.step;
+    // A BOMB ONE COULD LIFT TAKES THE KEY OVER. Without the blue glove nothing
+    // changes; with it, pressing while standing on a bomb means "that one, into
+    // my hands", and neither drops nor bursts. The two gestures needed the same
+    // second press and could not both have it: dropping on an occupied square
+    // was refused anyway, and a burst that went off while one meant to lift
+    // emptied the magazine at one's own feet — which is how it was found.
+    const liftable = liftableUnder(state, player);
+
+    if (input.drop && !liftable) {
+      // DOUBLE TAP = BURST. The first drops under the feet; the second, if it
+      // follows closely, lines up everything left in front.
+      //
+      // ONLY A SUCCESSFUL DROP ARMS THE GESTURE. A press that gives nothing — no
+      // bombs left in reserve, or one already underfoot — is common: you hammer
+      // the button while fleeing. If it armed the burst, the gesture would go off
+      // by itself on the next useful press, and you would empty your magazine
+      // without having asked.
+      //
+      // Hands full, no drop: you are holding the bomb you would be dropping.
+      const carrying = carriedBy(state, player.place) !== null;
+      const double = player.droppedAt !== null && state.step - player.droppedAt <= DOUBLE_TAP_STEPS;
+      const dropped = carrying
+        ? null
+        : (double ? (lineUp(state, player) > 0 ? state.bombs.at(-1) : null) : drop(state, player));
+      if (dropped) {
+        player.droppedAt = state.step;
+        player.holdDropped = dropped.id;
+      }
+    }
+
+    if (input.hold) {
+      // Taken on a step where the key is merely held: a bomb walked onto with
+      // the key already down comes up by itself, which is what "carrying" means.
+      grabBomb(state, player);
+    } else {
+      // LETTING GO THROWS. The hand opens, the bomb goes where a punch would
+      // have sent it — over the walls, to the first hole past three cells.
+      if (throwCarried(state, player) && player.alive) player.punchedAt = state.step;
+      player.holdDropped = null;
+    }
   }
 
   for (const player of state.players) {
@@ -130,6 +184,9 @@ export function step(state, inputs = []) {
   advanceSlides(state);
   advanceFlights(state);
   movePlayers(state, inputs);
+  // The carried bombs follow AFTER their carriers have moved: a bomb left on the
+  // cell behind would burn the one square its owner has just left.
+  advanceCarried(state);
 
   const done = advanceFuses(state);
   const { fresh } = resolveChain(state, done);

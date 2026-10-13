@@ -62,7 +62,11 @@ export function createHud(root) {
       `<span>Vitesse <b>${speed}</b></span>`,
     ];
     if (player.kick) parts.push('<span class="on">Kick</span>');
-    if (player.glove) parts.push('<span class="on">Gant</span>');
+    // Two gloves, told apart by their colour, exactly as the game tells them
+    // apart: red throws what is in front of you, blue picks up what is under
+    // your feet. "Gant" alone was enough while there was only one.
+    if (player.glove) parts.push('<span class="on">Gant rouge</span>');
+    if (player.grab) parts.push('<span class="on">Gant bleu</span>');
     if (player.jelly) parts.push('<span class="on">Goutte</span>');
     // The trigger is a reserve, not a state: we show what is left of it. The
     // count is that of the DELAYED BOMBS left to drop, since the charge is taken

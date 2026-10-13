@@ -26,9 +26,18 @@ import {
 import { cellAt, isFree, cellOnAxis, centreOnAxis, boxOnCell, wrap } from './grid.js';
 import { record } from './state.js';
 
-/** The bomb on this cell, or null. */
+/**
+ * The bomb on this cell, or null.
+ *
+ * A bomb CARRIED above a head is not on any cell: it has left the grid with the
+ * blue glove, and it blocks nobody, stops no flame and takes no square. Its
+ * coordinates follow its carrier all the same, so that it goes off on their own
+ * square if the fuse wins — which is what this one line hides from everybody
+ * else.
+ */
 export function bombAt(state, cx, cy) {
   for (const bomb of state.bombs) {
+    if (bomb.held !== null) continue;
     if (bomb.cx === cx && bomb.cy === cy) return bomb;
   }
   return null;
@@ -136,8 +145,10 @@ function dropOn(state, player, cx, cy) {
     // kick time would have made the same bomb tame or mad depending on who
     // touched it.
     bounce: player.jelly,
-    /** Boxing-glove flight: non-null as long as the bomb is in the air. */
+    /** Red-glove flight: non-null as long as the bomb is in the air. */
     flight: null,
+    /** Place of the bomber carrying it in its hands, or null. */
+    held: null,
   };
   state.nextId += 1;
   state.bombs.push(bomb);
@@ -361,6 +372,25 @@ export function punch(state, player) {
   // flight.
   if (!bomb || bomb.flight) return null;
 
+  return sendFlying(state, bomb, player.dir, fromX, fromY);
+}
+
+/**
+ * Sends a bomb over the arena, from a cell towards the first hole.
+ *
+ * Shared by the two gloves: the red one punches what is in front of it, the blue
+ * one throws what it carries. Their flights are the same — and they must be, or
+ * the same bomb would land in two different places depending on how it left.
+ *
+ * @param {import('./state.js').State} state
+ * @param {import('./state.js').Bomb} bomb
+ * @param {number} dir
+ * @param {number} fromX cell it sets off from
+ * @param {number} fromY
+ * @returns {import('./state.js').Bomb | null} the bomb, or null when nothing can take it
+ */
+function sendFlying(state, bomb, dir, fromX, fromY) {
+  const v = VECTORS[dir];
   // The flight line goes round the board and comes back to the start: walking it
   // whole means having seen every possible cell. Beyond that we would be going
   // round in circles, literally.
@@ -386,19 +416,19 @@ export function punch(state, player) {
     cells = i;
     break;
   }
-  // The starting cell still carries the bomb, so it is never "free": a line that
-  // is taken from end to end cannot make it land on itself.
+  // A line taken from end to end takes nothing: the bomb stays where it is.
   if (toX === null) return null;
 
   bomb.cx = toX;
   bomb.cy = toY;
   bomb.slide = null;
+  bomb.held = null;
   // The bomb ALREADY belongs to the cell it is heading for: flames, chains and
   // the danger map therefore reason about where it is going to fall, not about
   // where it left. `flight` only drives how it is drawn and the fact that it
   // still blocks nobody.
   bomb.flight = {
-    dir: player.dir,
+    dir,
     fromX,
     fromY,
     left: cells * FLIGHT_STEPS_PER_CELL,
@@ -406,6 +436,94 @@ export function punch(state, player) {
   };
   record(state, ['punch', bomb.id, fromX, fromY, toX, toY]);
   return bomb;
+}
+
+/** The bomb this bomber is carrying above its head, or null. */
+export function carriedBy(state, place) {
+  for (const bomb of state.bombs) {
+    if (bomb.held === place) return bomb;
+  }
+  return null;
+}
+
+/**
+ * THE BLUE GLOVE: takes the bomb underfoot into one's hands.
+ *
+ * It is the other way of moving a bomb, and the one that asks for nerve: the
+ * kick sends it away at once and the red glove throws it over the walls, but
+ * this one keeps it — the fuse goes on burning two hands away from the face.
+ * Carrying it is how you walk a bomb round a corner, into a corridor no blow
+ * reaches, or simply onto somebody.
+ *
+ * A carried bomb LEAVES THE GRID: it blocks nobody, no flame chains it, and the
+ * danger map stops counting it where it used to be. It travels with its carrier,
+ * cell by cell, so that the explosion — should the fuse win — goes off on the
+ * carrier's own square.
+ *
+ * @param {import('./state.js').State} state
+ * @param {import('./state.js').Player} player
+ * @returns {import('./state.js').Bomb | null} the bomb taken, or null
+ */
+export function grabBomb(state, player) {
+  if (!player.grab || !player.alive) return null;
+  if (carriedBy(state, player.place)) return null;
+
+  const cx = cellOnAxis(player.x);
+  const cy = cellOnAxis(player.y);
+  const bomb = bombAt(state, cx, cy);
+  // Nothing underfoot, or a bomb still in the air: you catch neither.
+  if (!bomb || bomb.flight) return null;
+  // The bomb dropped by this very press is left alone — see `holdDropped`.
+  if (bomb.id === player.holdDropped) return null;
+
+  bomb.held = player.place;
+  bomb.slide = null;
+  // The permission to walk through it goes with it: the cell is free again, and
+  // keeping it would let its owner walk through the NEXT bomb dropped there.
+  if (player.onBomb === bomb.id) player.onBomb = null;
+  record(state, ['grab', bomb.id, player.place]);
+  return bomb;
+}
+
+/**
+ * Throws the carried bomb ahead, exactly as the red glove punches.
+ *
+ * @param {import('./state.js').State} state
+ * @param {import('./state.js').Player} player
+ * @returns {import('./state.js').Bomb | null}
+ */
+export function throwCarried(state, player) {
+  const bomb = carriedBy(state, player.place);
+  if (!bomb) return null;
+  const thrown = sendFlying(state, bomb, player.dir, cellOnAxis(player.x), cellOnAxis(player.y));
+  // Nowhere to land — a line taken from end to end — so it stays in the hands
+  // rather than vanishing: the carrier keeps the problem, which is fair.
+  return thrown;
+}
+
+/**
+ * Carries the held bombs along with their bomber.
+ *
+ * The bomb is kept ON the carrier's cell, step after step, and that is what
+ * makes it explode under their feet when the fuse runs out — it is the whole
+ * risk of the bonus. Nothing else looks at those coordinates: `bombAt` ignores a
+ * held bomb, so it blocks nobody on the way.
+ *
+ * @param {import('./state.js').State} state
+ */
+export function advanceCarried(state) {
+  for (const bomb of state.bombs) {
+    if (bomb.held === null) continue;
+    const carrier = state.players.find((player) => player.place === bomb.held);
+    // The carrier is gone — eliminated, or never there: the bomb falls where it
+    // was last seen rather than following a ghost.
+    if (!carrier || !carrier.alive) {
+      bomb.held = null;
+      continue;
+    }
+    bomb.cx = cellOnAxis(carrier.x);
+    bomb.cy = cellOnAxis(carrier.y);
+  }
 }
 
 /** Advances the bombs in flight by one step, and lands those that arrive. */

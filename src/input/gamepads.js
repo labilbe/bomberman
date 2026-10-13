@@ -131,11 +131,17 @@ export function createGamepads({
     }
 
     const pulse = {};
+    const down = {};
     for (const role of /** @type {const} */ (['bomb', 'trigger'])) {
       const now = pressed(buttons[BUTTONS[role]]);
       pulse[role] = now && !seat.before[role] && !seat.resumed;
+      down[role] = now;
       seat.before[role] = now;
     }
+    // A pad discovered with the button already down holds nothing yet: the same
+    // caution as for the pulse, and for the same reason — it is a state we are
+    // finding, not a gesture somebody made.
+    const holding = down.bomb && !seat.resumed;
     seat.resumed = false;
 
     const last = seat.held[seat.held.length - 1];
@@ -143,6 +149,7 @@ export function createGamepads({
       dir: last === undefined ? fromStick(pad?.axes, deadZone) : DIRECTIONS[last],
       drop: pulse.bomb,
       detonate: pulse.trigger,
+      hold: holding,
     };
   }
 
@@ -163,14 +170,14 @@ export function createGamepads({
      */
     read(index) {
       const seat = seats[index];
-      if (!seat) return { dir: -1, drop: false, detonate: false };
+      if (!seat) return { dir: -1, drop: false, detonate: false, hold: false };
 
       const pad = connected(probe)[index];
       if (!pad) {
         // Gamepad unplugged mid-game: we release everything rather than let the
         // bomber run into a wall with its last direction.
         clear(seat);
-        return { dir: -1, drop: false, detonate: false };
+        return { dir: -1, drop: false, detonate: false, hold: false };
       }
       return poll(seat, pad);
     },

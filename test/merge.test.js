@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { merge } from '../src/input/merge.js';
 import { UP, DOWN, RIGHT } from '../src/engine/constants.js';
 
-const empty = { dir: -1, drop: false, detonate: false };
+const empty = { dir: -1, drop: false, detonate: false, hold: false };
 
 test('a single active source gives its direction', () => {
   assert.equal(merge(empty, { ...empty, dir: RIGHT }).dir, RIGHT);
@@ -52,4 +52,12 @@ test('only true and a valid direction get through', () => {
   // through.
   const result = merge({ dir: undefined, drop: 1, detonate: 'oui' });
   assert.deepEqual(result, empty);
+});
+
+test('one hand holding is enough: the held key adds up like a pulse', () => {
+  // A bomb carried with the keyboard must not fall because the pad's button is
+  // up — the two sources are read on every frame, and either may be at rest.
+  assert.equal(merge({ ...empty, hold: true }, empty).hold, true);
+  assert.equal(merge(empty, { ...empty, hold: true }).hold, true);
+  assert.equal(merge(empty, empty).hold, false);
 });

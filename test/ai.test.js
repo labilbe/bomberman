@@ -145,7 +145,7 @@ test('a dead bot asks for nothing any more', () => {
   const state = bareArena({ places: 2 });
   state.players[0].alive = false;
   const { input: intent } = decide(state, 0, createMemory());
-  assert.deepEqual(intent, { dir: -1, drop: false, detonate: false });
+  assert.deepEqual(intent, { dir: -1, drop: false, detonate: false, hold: false });
 });
 
 test('four bots play a whole game without bogging down', () => {

@@ -231,4 +231,5 @@ export const BONUS = {
   TRIGGER: 'trigger',
   GLOVE: 'punch',
   JELLY: 'jelly',
+  GRAB: 'grab',
 };

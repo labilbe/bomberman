@@ -37,15 +37,16 @@ test('a clock going backwards does not rewind the game', () => {
 test('an input off the network is brought back to something usable', () => {
   assert.deepEqual(normalise(null), { ...EMPTY_INPUT });
   assert.deepEqual(normalise('nord'), { ...EMPTY_INPUT });
-  assert.deepEqual(normalise({ dir: 9 }), { dir: -1, drop: false, detonate: false });
-  assert.deepEqual(normalise({ dir: -4 }), { dir: -1, drop: false, detonate: false });
-  assert.deepEqual(normalise({ dir: '2' }), { dir: 2, drop: false, detonate: false });
-  assert.deepEqual(normalise({ dir: 1.5 }), { dir: -1, drop: false, detonate: false });
-  assert.deepEqual(normalise({ drop: 'oui' }), { dir: -1, drop: false, detonate: false });
-  assert.deepEqual(normalise({ dir: 0, drop: true, detonate: true }), {
+  assert.deepEqual(normalise({ dir: 9 }), { dir: -1, drop: false, detonate: false, hold: false });
+  assert.deepEqual(normalise({ dir: -4 }), { dir: -1, drop: false, detonate: false, hold: false });
+  assert.deepEqual(normalise({ dir: '2' }), { dir: 2, drop: false, detonate: false, hold: false });
+  assert.deepEqual(normalise({ dir: 1.5 }), { dir: -1, drop: false, detonate: false, hold: false });
+  assert.deepEqual(normalise({ drop: 'oui' }), { dir: -1, drop: false, detonate: false, hold: false });
+  assert.deepEqual(normalise({ dir: 0, drop: true, detonate: true, hold: true }), {
     dir: 0,
     drop: true,
     detonate: true,
+    hold: true,
   });
 });
 

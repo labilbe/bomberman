@@ -9,15 +9,19 @@
  *   them on the next step. A held state would have dropped one bomb per step
  *   while the key was held; a lost pulse only loses one bomb — and the network
  *   does not lose it, since it is resent until the relay acknowledges it.
+ * - `hold` is the bomb key HELD DOWN, and it is the blue glove's whole gesture:
+ *   you keep the key pressed to carry a bomb and let go to throw it. A pulse
+ *   could not say that — "still holding" is a state, and the only one here that
+ *   lasts as long as the player wants it to.
  *
  * `normalise` exists because these objects come off the network: they are built
  * by a stranger, and nothing guarantees they look like this.
  */
 
-/** @typedef {{ dir: -1|0|1|2|3, drop: boolean, detonate: boolean }} Input */
+/** @typedef {{ dir: -1|0|1|2|3, drop: boolean, detonate: boolean, hold: boolean }} Input */
 
 /** @type {Input} */
-export const EMPTY_INPUT = Object.freeze({ dir: -1, drop: false, detonate: false });
+export const EMPTY_INPUT = Object.freeze({ dir: -1, drop: false, detonate: false, hold: false });
 
 /**
  * Brings anything back to a usable input. -1 means "standing still".
@@ -33,6 +37,7 @@ export function normalise(raw) {
     dir: Number.isInteger(dir) && dir >= 0 && dir <= 3 ? /** @type {0|1|2|3} */ (dir) : -1,
     drop: source.drop === true,
     detonate: source.detonate === true,
+    hold: source.hold === true,
   };
 }
 
