@@ -202,8 +202,14 @@ export const DOUBLE_TAP_STEPS = 20;
 export const MAX_BOMBS = 8;
 export const MAX_RANGE = 8;
 
-/** Most bombers an arena can hold. */
-export const MAX_PLAYERS = 4;
+/**
+ * Most bombers an arena can hold, as in the original game.
+ *
+ * Ten on a board of this size is a scrum, and that is what it was: the arena
+ * does not grow, the starts spread out along the outer corridor and more of
+ * them are cleared, which is the only room ten bombers get.
+ */
+export const MAX_PLAYERS = 10;
 
 /** Pause after the last death, before the round is announced. */
 export const ROUND_END_STEPS = 90;

@@ -125,7 +125,7 @@ export function createPlayer(place) {
  */
 export function createState({ seed, places = 2 }) {
   const count = Math.max(1, Math.min(MAX_PLAYERS, places));
-  const arena = generateArena(createRng(seed));
+  const arena = generateArena(createRng(seed), count);
   return {
     seed,
     rng: arena.rng,

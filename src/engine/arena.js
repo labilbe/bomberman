@@ -1,9 +1,9 @@
 /**
  * Deterministic arena generation, and sowing of the bonuses.
  *
- * The four corners are cleared in an L shape. Without that a bomber can be born
- * locked between two bricks, lose the round before moving, and blame the game
- * with good reason.
+ * Every start in play is cleared, itself and two ways out. Without that a bomber
+ * can be born locked between two bricks, lose the round before moving, and blame
+ * the game with good reason.
  *
  * Bonuses are sown HERE, at the start of the round, and not when a brick
  * explodes. That is what makes a game replayable: if the draw happened on
@@ -24,17 +24,33 @@ const BRICK_DENSITY = 0.78;
 const BRICKS_WITH_BONUS = 0.35;
 
 /**
- * Starting corners, in the order of the places.
+ * Starting cells, in the order of the places.
  *
- * Diagonally: with two players you face each other across the arena, which
- * leaves time to build up before meeting. Listing them in reading order would
- * have put places 0 and 1 side by side.
+ * TEN, like the original game, and all on the outer corridor: it is the only
+ * ring of the arena where ten bombers can be spread out without any of them
+ * being born in the middle of the board, which is a sentence rather than a
+ * place. Four corners, four quarter-points on the long sides, and the two
+ * middles of the short ones.
+ *
+ * IN PAIRS, each one opposite the one before: with two players you face each
+ * other across the arena, which leaves time to build up before meeting, and
+ * every count in between stays as spread out as it can be. Listing them in
+ * reading order would have put places 0 and 1 side by side.
+ *
+ * THE FIRST FOUR HAVE NOT MOVED. A game of two, three or four is played on the
+ * arena it has always been played on.
  */
 export const STARTS = [
   { x: 1, y: 1 },
   { x: COLS - 2, y: ROWS - 2 },
   { x: COLS - 2, y: 1 },
   { x: 1, y: ROWS - 2 },
+  { x: 1, y: (ROWS - 1) / 2 },
+  { x: COLS - 2, y: (ROWS - 1) / 2 },
+  { x: 5, y: 1 },
+  { x: COLS - 6, y: ROWS - 2 },
+  { x: COLS - 6, y: 1 },
+  { x: 5, y: ROWS - 2 },
 ];
 
 /** True when the cell is one of the checkerboard's indestructible walls. */
@@ -43,17 +59,40 @@ export function isHardWall(x, y) {
 }
 
 /**
- * The three cells to clear around a start: its own, and two neighbours towards
- * the inside of the arena. A bomber therefore always has two ways out.
+ * The three cells to clear around a start: its own, and two neighbours. A bomber
+ * therefore always has two ways out.
+ *
+ * TOWARDS THE INSIDE FIRST, then along the wall. The two orders were the same
+ * thing as long as every start was a corner; a start set against the middle of a
+ * side has its inward neighbour on the checkerboard — one chance in two — and
+ * only the corridor it stands in to offer. Picking blind there cleared a wall
+ * and left the bomber with a single way out.
+ *
+ * Exported for the tests: this is the rule a start has to keep, and rewriting it
+ * in the test would only check that two copies of it agree.
  */
-function clearings(start) {
-  const towardsX = start.x === 1 ? 1 : -1;
-  const towardsY = start.y === 1 ? 1 : -1;
-  return [
-    { x: start.x, y: start.y },
-    { x: start.x + towardsX, y: start.y },
-    { x: start.x, y: start.y + towardsY },
+export function clearings(start) {
+  const inX = Math.sign((COLS - 1) / 2 - start.x);
+  const inY = Math.sign((ROWS - 1) / 2 - start.y);
+  const around = [
+    { x: start.x + inX, y: start.y },
+    { x: start.x, y: start.y + inY },
+    { x: start.x - 1, y: start.y },
+    { x: start.x + 1, y: start.y },
+    { x: start.x, y: start.y - 1 },
+    { x: start.x, y: start.y + 1 },
   ];
+
+  const free = [{ x: start.x, y: start.y }];
+  for (const cell of around) {
+    if (free.length === 3) break;
+    // A sign of zero names the start itself: a start level with the middle of
+    // the arena has no inside on that axis.
+    if (isHardWall(cell.x, cell.y)) continue;
+    if (free.some((kept) => kept.x === cell.x && kept.y === cell.y)) continue;
+    free.push(cell);
+  }
+  return free;
 }
 
 /**
@@ -80,10 +119,16 @@ export function drawBonus(rng) {
 /**
  * Generates an arena and sows the hidden bonuses in it.
  *
+ * `places` ONLY decides which starts are cleared, never the draw: a round of two
+ * is therefore played on the arena it has always been played on, while a round
+ * of ten opens the ten cells its bombers are born on — and, with them, the thirty
+ * or so squares that keep ten people from spawning nose to nose in a brick maze.
+ *
  * @param {{ seed: number }} rng seeded generator
+ * @param {number} places bombers to make room for
  * @returns {{ tiles: Uint8Array, items: Uint8Array, rng: { seed: number } }}
  */
-export function generateArena(rng) {
+export function generateArena(rng, places = STARTS.length) {
   const tiles = new Uint8Array(COLS * ROWS);
   const items = new Uint8Array(COLS * ROWS);
   let current = rng;
@@ -100,10 +145,14 @@ export function generateArena(rng) {
     }
   }
 
-  // After the brick draw, not during it: the sequence of numbers consumed then
-  // does not depend on how many corners are cleared, and stays the same with 2
-  // players as with 4.
-  for (const start of STARTS) {
+  // After the brick draw, not during it: THE BRICK DRAW consumes one number per
+  // free cell whatever the count, so the checkerboard of a given seed is the
+  // same with 2 players as with 10 — only the cells cleared afterwards differ.
+  // The bonus sowing below, which draws per brick, does follow from it: both
+  // sides of the wire therefore have to generate with the SAME count, which they
+  // do, since the arena is born of the state and the state knows how many are
+  // playing.
+  for (const start of STARTS.slice(0, Math.max(1, Math.min(STARTS.length, places)))) {
     for (const free of clearings(start)) tiles[index(free.x, free.y)] = EMPTY;
   }
 

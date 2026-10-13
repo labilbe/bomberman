@@ -129,11 +129,12 @@ export function botNames(count, offset = 0) {
 }
 
 /**
- * It takes at least two bombers to make a game, and the arena only has four
- * corners: unlike Tetris, there is a maximum here.
+ * It takes at least two bombers to make a game, and the arena only has ten
+ * starts: unlike Tetris, there is a maximum here. Ten is the original game's
+ * own, and the same number as the colours a place can wear.
  */
 export const MIN_PLACES = 2;
-export const MAX_PLACES = 4;
+export const MAX_PLACES = 10;
 
 /**
  * Alphabet of the room codes.

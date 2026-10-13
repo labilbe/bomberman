@@ -2,8 +2,8 @@
 
 Un clone d'*Atomic Bomberman* (Interplay, 1997) écrit en JavaScript pur : pas de
 framework, pas d'étape de build, pas de dépendance au chargement. On ouvre
-`index.html` et on joue — seul contre des bots, à deux au clavier ou à quatre en
-réseau.
+`index.html` et on joue — seul contre des bots, à deux au clavier, ou jusqu'à dix
+dans la même arène, en réseau ou contre des bots.
 
 Le moteur est **le même dans la page et sur le relais**. C'est le choix de fond
 du projet : le solo et le réseau jouent exactement aux mêmes règles, et quand une
@@ -92,7 +92,9 @@ Ces images et ces sons restent la propriété d'Interplay.
   scripts).
 - `worker/` — le relais : `index.js` route, `room.js` tient un salon.
 
-Arène de 15 × 13 cases, quatre places, matchs au meilleur des 3, 5 ou 7.
+Arène de 15 × 13 cases, dix places comme le jeu d'origine — les quatre coins,
+les quarts des longs côtés, les milieux des petits — matchs au meilleur des 3, 5
+ou 7.
 
 ## Tests
 
