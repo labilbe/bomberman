@@ -27,7 +27,9 @@ import {
   cleanRoom,
   cleanName,
   randomName,
-  botNames,
+  HUMAN_NAMES,
+  BOT_NAMES,
+  NAME_MAX,
   MIN_PLACES,
   MAX_PLACES,
 } from './net/protocol.js';
@@ -296,6 +298,9 @@ function openScreen(name) {
   const target = document.querySelector(`#screen-${name}`);
   if (!target) return;
   if (name === 'join' || name === 'create') proposeRooms();
+  // The nickname may have been changed in the options since the rows were built:
+  // the first row wears it, so it is re-read here rather than at the start.
+  if (name === 'game') refreshProposals();
   for (const screen of screens) screen.hidden = screen !== target;
   // `data-screen` on the track, `data-open` on the rows, and the two names must
   // STAY DIFFERENT: the click handler walks up from whatever was clicked looking
@@ -471,10 +476,68 @@ function nameOf(place, humans, names, colours = null) {
  * The choices already made are read back before the rows are rebuilt: so player
  * 3's colour is not lost because player 1 took a gamepad.
  */
+/**
+ * Where the drawn names start, for this page load.
+ *
+ * Drawn ONCE and not at each build: the list of rows is rebuilt on the slightest
+ * change — a colour swapped, a gamepad plugged in — and names that reshuffled
+ * under the hand would look like a field clearing itself. Two games in a row
+ * still do not have the same cast, which is the point of the draw.
+ */
+const NAME_START = Math.floor(Math.random() * HUMAN_NAMES.length);
+const BOT_START = Math.floor(Math.random() * BOT_NAMES.length);
+
+/**
+ * The name offered to a row that has not been named.
+ *
+ * The first human takes the nickname from the options — it is the one holding
+ * the keyboard, and they have already said what they are called. The others are
+ * drawn, from two lists that share nothing: at a glance in a four-way scrum, a
+ * bot's first name is not a human's.
+ *
+ * Indexed BY PLACE and not by rank among the humans, so that turning row 2 into
+ * a bot does not rename row 3.
+ */
+function proposedName(place, control, first) {
+  if (control === 'bot') return BOT_NAMES[(BOT_START + place) % BOT_NAMES.length];
+  const drawn = HUMAN_NAMES[(NAME_START + place) % HUMAN_NAMES.length];
+  if (place === first) return cleanName(nicknameInput.value, drawn);
+  return drawn;
+}
+
+/**
+ * Rewrites the names nobody has typed.
+ *
+ * Called rather than rebuilding the rows, because this happens WHILE the player
+ * is in a drop-down list: rebuilding would take the focus away from the select
+ * they have just used.
+ */
+function refreshProposals() {
+  const rows = [...seatsList.querySelectorAll('.seat')];
+  const controls = rows.map((row) => row.querySelector('.control').value);
+  const first = controls.findIndex((code) => code !== 'bot');
+  rows.forEach((row, place) => {
+    const nick = row.querySelector('.nick');
+    if (nick.dataset.typed) return;
+    nick.value = proposedName(place, controls[place], first);
+  });
+}
+
 function buildSeats() {
   const count = Math.max(2, Math.min(MAX_PLAYERS, Number(playersSelect.value) || 2));
   const previous = readSeats();
   const connected = gamepads.howMany();
+  // A gamepad we do not have cannot drive a row: the control falls back to a bot,
+  // and it has to be known BEFORE the rows are built, since it is what decides
+  // which name each one is offered.
+  const usable = (code) =>
+    CONTROLS.some(
+      (choice) => choice.code === code && (choice.gamepad === undefined || choice.gamepad < connected),
+    );
+  const controls = Array.from({ length: count }, (_, place) => {
+    const wanted = previous[place]?.control ?? (place === 0 ? 'clavier1' : 'bot');
+    return usable(wanted) ? wanted : 'bot';
+  });
   // Two bombers of the same colour cannot be told apart: the first row to ask
   // for it gets it, the following ones take the first one free.
   const taken = new Set();
@@ -505,6 +568,31 @@ function buildSeats() {
     label.className = 'seat-name';
     label.textContent = `Joueur ${place + 1}`;
 
+    // A NAME TYPED BY HAND IS KEPT, a name merely offered is replaced: that is
+    // what `typed` marks. Without it the drawn name would be remembered as a
+    // choice, and the nickname from the options would never reach the first row
+    // again — the same rule as the room fields, which remember what they
+    // proposed.
+    const nick = document.createElement('input');
+    nick.className = 'nick';
+    nick.type = 'text';
+    nick.maxLength = NAME_MAX;
+    nick.autocomplete = 'off';
+    nick.spellcheck = false;
+    if (old.name) {
+      nick.value = old.name;
+      nick.dataset.typed = '1';
+    }
+    nick.addEventListener('change', () => {
+      nick.value = cleanName(nick.value, '');
+      // Emptying the field hands the row back to the draw rather than leaving a
+      // nameless bomber.
+      if (nick.value === '') delete nick.dataset.typed;
+      else nick.dataset.typed = '1';
+      refreshProposals();
+      rememberSeats();
+    });
+
     const colour = document.createElement('select');
     colour.className = 'colour';
     PLACES.forEach((tint, index) => {
@@ -526,8 +614,7 @@ function buildSeats() {
       option.textContent = choice.label;
       control.append(option);
     }
-    const wanted = old.control ?? (place === 0 ? 'clavier1' : 'bot');
-    control.value = [...control.options].some((o) => o.value === wanted) ? wanted : 'bot';
+    control.value = controls[place];
 
     const paint = () => {
       dot.style.background = placeColour(Number(colour.value)).vivid;
@@ -559,11 +646,19 @@ function buildSeats() {
       held = Number(colour.value);
       paint();
     });
-    control.addEventListener('change', rememberSeats);
+    // Changing the control changes who is a human and who is a bot, therefore
+    // the names offered: a row that becomes a bot takes a bot's first name.
+    control.addEventListener('change', () => {
+      refreshProposals();
+      rememberSeats();
+    });
 
-    row.append(dot, label, wrap('Couleur', colour), wrap('Commande', control));
+    row.append(dot, label, wrap('Nom', nick), wrap('Couleur', colour), wrap('Commande', control));
     seatsList.append(row);
   }
+
+  // After the rows, since the proposal of one depends on the controls of all.
+  refreshProposals();
 }
 
 /** A field dressed in its label, like those of the options. */
@@ -576,17 +671,31 @@ function wrap(title, control) {
   return label;
 }
 
-/** What the launch screen says, row by row. */
+/**
+ * What the launch screen says, row by row.
+ *
+ * `name` is what was TYPED — empty when the row wears an offered name — and
+ * `label` what the bomber will be called either way. The first is what gets
+ * remembered, the second what the game is given.
+ */
 function readSeats() {
-  return [...seatsList.querySelectorAll('.seat')].map((row) => ({
-    colour: Number(row.querySelector('.colour').value),
-    control: row.querySelector('.control').value,
-  }));
+  return [...seatsList.querySelectorAll('.seat')].map((row, place) => {
+    const nick = row.querySelector('.nick');
+    return {
+      colour: Number(row.querySelector('.colour').value),
+      control: row.querySelector('.control').value,
+      name: nick?.dataset.typed ? nick.value : '',
+      label: cleanName(nick?.value ?? '', `Joueur ${place + 1}`),
+    };
+  });
 }
 
 function rememberSeats() {
   const seats = readSeats();
-  writePref(PREF_SEATS, JSON.stringify(seats));
+  writePref(
+    PREF_SEATS,
+    JSON.stringify(seats.map(({ colour, control, name }) => ({ colour, control, name }))),
+  );
   writePref(PREF_PLAYERS, String(seats.length));
 }
 
@@ -690,24 +799,21 @@ function playLocal() {
   const sources = {};
   const names = [];
   const colours = seats.map((seat) => seat.colour);
-  const humans = seats.filter((seat) => seat.control !== 'bot').length;
-  // First names all different, and not the same from one game to the next.
-  const firstNames = botNames(places, Math.floor(Math.random() * 8));
   let botRank = 0;
   let humanRank = 0;
 
   for (let place = 0; place < places; place += 1) {
     const choice = controlOf(seats[place].control);
+    // EVERY NAME COMES FROM ITS ROW, typed there or offered there. The screen
+    // showed it before the game started: announcing another one in the HUD would
+    // make a liar of the field one has just filled in.
+    names[place] = seats[place].label;
     if (!choice || choice.code === 'bot') {
       pilots[place] = createPilot({ level: levels[botRank % levels.length] });
-      names[place] = firstNames[botRank];
       botRank += 1;
       continue;
     }
     sources[place] = choice.read;
-    // A single human: it is their nickname. Several: each is announced by their
-    // control, which is what they look at to know which one is them.
-    names[place] = humans === 1 ? cleanName(nicknameInput.value) : choice.label;
     humanRank += 1;
   }
 

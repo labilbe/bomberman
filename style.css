@@ -364,7 +364,13 @@ body {
   font-size: 15px;
 }
 
-/* La place de celui qui cree le salon : un constat, pas un choix. */
+/* The bomber's name, on the row of its place: narrow, but wide enough for a
+   whole first name rather than half of one. */
+.seat .nick {
+  width: 7.5em;
+}
+
+/* The seat of whoever lays the table: a statement, not a choice. */
 .seat-you {
   font-family: var(--display);
   font-size: 17px;
