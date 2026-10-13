@@ -956,7 +956,7 @@ test('a carried bomb has left the grid: it blocks nobody', () => {
   assert.ok(cellOnAxis(other.x) > 3, 'they got past');
 });
 
-test('the fuse burns on in the hands, and the carrier pays for it', () => {
+test('the fuse stops in the hands, and starts again once let go', () => {
   const state = bareArena({ places: 2 });
   const carrier = place(state, 0, 7, 7);
   carrier.grab = true;
@@ -965,11 +965,22 @@ test('the fuse burns on in the hands, and the carrier pays for it', () => {
   step(state, input(0, { drop: true, hold: true }));
   step(state, input(0, {}));
   step(state, input(0, { hold: true }));
-  assert.equal(state.bombs[0].held, 0);
+  const bomb = state.bombs[0];
+  assert.equal(bomb.held, 0);
+  const left = bomb.fuse;
 
-  advanceBy(state, FUSE_STEPS, input(0, { hold: true }));
-  assert.equal(state.bombs.length, 0, 'it went off');
-  assert.equal(carrier.alive, false, 'in its carrier own hands');
+  // Twice the fuse in the hands: carrying is a way of moving a bomb, not a race
+  // against it.
+  advanceBy(state, FUSE_STEPS * 2, input(0, { hold: true }));
+  assert.equal(state.bombs.length, 1, 'it is still there');
+  assert.equal(state.bombs[0].fuse, left, 'and still as far from going off');
+  assert.equal(carrier.alive, true);
+
+  // Letting go lights it again: thrown, it burns down and goes off.
+  step(state, input(0, {}));
+  advanceBy(state, left + FLIGHT_STEPS_PER_CELL * 4, input(0, {}));
+  assert.equal(state.bombs.length, 0, 'it went off, elsewhere');
+  assert.equal(carrier.alive, true, 'and not on the one who threw it');
 });
 
 test('a carrier that dies lets the bomb fall where it stood', () => {

@@ -212,6 +212,11 @@ export function advanceFuses(state) {
     // `null` means "no fuse": a trigger bomb, waiting. It does not age, and that
     // is all that sets it apart here.
     if (bomb.fuse === null) continue;
+    // A BOMB IN THE HANDS DOES NOT BURN DOWN, as in the original game: carrying
+    // it is a way of moving it, not a race against its own fuse. Letting the
+    // fuse run meant blowing up in the carrier's own face, which no gesture
+    // could avoid — the glove then cost more than it gave.
+    if (bomb.held !== null) continue;
     bomb.fuse -= 1;
     if (bomb.fuse <= 0) done.push(bomb);
   }
@@ -557,6 +562,11 @@ export function detonate(state, player) {
   let chosen = null;
   for (const bomb of state.bombs) {
     if (bomb.place !== player.place || bomb.fuse !== null) continue;
+    // Not the one in one's own hands: its fuse is stopped as long as it is
+    // carried, so the trigger would arm a bomb that only went off once thrown,
+    // one step later and in mid-flight. The button ignores it instead — and
+    // with the red glove on it is the punch that answers anyway.
+    if (bomb.held === player.place) continue;
     if (chosen === null || bomb.id < chosen.id) chosen = bomb;
   }
   return chosen;
