@@ -22,9 +22,9 @@ Two things sit on the boundary and are already settled:
   Interplay's assets in our own words would break the only link between the
   extractor and the files it reads.
 
-The `bomberman.*` keys in `localStorage` keep their French names: they are data
-read by name and are already on players' machines, so renaming them would only
-lose everyone's settings.
+The `bomberman.*` keys in `localStorage` are English too. They were renamed late,
+and `migratePrefs` in `main.js` carries the old French names over once: a key
+that lives on someone else's machine cannot simply be dropped.
 
 ## Comments
 

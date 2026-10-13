@@ -50,12 +50,27 @@ const netState = document.querySelector('#net-state');
 const track = document.querySelector('#track');
 const screens = [...document.querySelectorAll('.screen')];
 
-const PREF_NICKNAME = 'bomberman.pseudo';
-const PREF_ROOM = 'bomberman.salon';
-const PREF_PLAYERS = 'bomberman.joueurs';
-const PREF_SEATS = 'bomberman.sieges';
+const PREF_NICKNAME = 'bomberman.nickname';
+const PREF_ROOM = 'bomberman.room';
+const PREF_PLAYERS = 'bomberman.players';
+const PREF_SEATS = 'bomberman.seats';
 const PREF_FORMAT = 'bomberman.format';
 const PREF_BOTS = 'bomberman.bots';
+
+/**
+ * The keys this page used to write, when the code was in French.
+ *
+ * They are already on the players' machines: dropping them would silently reset
+ * everyone's nickname, colours and controls. So they are read once, copied under
+ * their English name, and erased. This table is the only thing left to delete
+ * the day nobody has an old browser profile any more.
+ */
+const OLD_PREFS = [
+  ['bomberman.pseudo', PREF_NICKNAME],
+  ['bomberman.salon', PREF_ROOM],
+  ['bomberman.joueurs', PREF_PLAYERS],
+  ['bomberman.sieges', PREF_SEATS],
+];
 
 /** Tolerant reading of storage: a browser in private mode refuses it. */
 function readPref(key, fallback) {
@@ -73,6 +88,27 @@ function writePref(key, value) {
     // Never mind: the preference will not survive the tab being closed.
   }
 }
+
+/**
+ * Moves the preferences written under the old French names.
+ *
+ * Done before anything reads them, and only when the new name is still empty: a
+ * setting changed since the rename must not be overwritten by the one from
+ * before.
+ */
+function migratePrefs() {
+  for (const [old, now] of OLD_PREFS) {
+    try {
+      const value = localStorage.getItem(old);
+      if (value !== null && localStorage.getItem(now) === null) localStorage.setItem(now, value);
+      localStorage.removeItem(old);
+    } catch {
+      // Storage refused: there is nothing to migrate, and nothing to lose.
+    }
+  }
+}
+
+migratePrefs();
 
 /**
  * Atomic Bomberman's sprites if they have been extracted, otherwise those
