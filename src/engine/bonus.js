@@ -1,122 +1,118 @@
 /**
- * Bonus : codes, table de tirage, et effet sur un bomber.
+ * Bonuses: codes, draw table, and effect on a bomber.
  *
- * Les bonus sont des OCTETS dans un Uint8Array parallele a la grille, pas des
- * objets dans une liste. Deux raisons : l'arene entiere tient alors en 195
- * octets de plus, qui partent d'un bloc au debut de la manche ; et un bonus est
- * toujours sur une case, jamais entre deux, donc une liste n'apporterait rien
- * qu'une indirection.
+ * Bonuses are BYTES in a Uint8Array parallel to the grid, not objects in a
+ * list. Two reasons: the whole arena then fits in 195 extra bytes, which go out
+ * in one block at the start of the round; and a bonus always sits on a cell,
+ * never between two, so a list would add nothing but an indirection.
  *
- * Le meme tableau porte les bonus VISIBLES (code 1 a 5) et ceux CACHES sous une
- * brique (CACHE + code). Un seul tableau, parce qu'un bonus revele ne change
- * alors que de valeur, sans qu'il faille le deplacer d'une structure a l'autre —
- * deplacement qui est exactement l'endroit ou l'on oublie un cas.
+ * The same array carries the VISIBLE bonuses (codes 1 to 7) and those HIDDEN
+ * under a brick (HIDDEN + code). A single array, because a revealed bonus then
+ * only changes value, with no need to move it from one structure to another —
+ * and moving is exactly where a case gets forgotten.
  */
 
 import {
-  BOMBES_MAX,
-  FLAMME_MAX,
-  VITESSE_MAX,
-  VITESSE_PALIER,
-  DETONATEURS_PAR_BONUS,
-} from './constantes.js';
+  MAX_BOMBS,
+  MAX_RANGE,
+  MAX_SPEED,
+  SPEED_STEP,
+  TRIGGERS_PER_BONUS,
+} from './constants.js';
 
-/** Decalage des bonus encore caches sous une brique. */
-export const CACHE = 128;
+/** Offset of the bonuses still hidden under a brick. */
+export const HIDDEN = 128;
 
-/** Codes des bonus, tels qu'ils vivent dans le tableau des objets. */
-export const CODES_BONUS = {
-  BOMBE: 1,
-  FLAMME: 2,
-  VITESSE: 3,
+/** Bonus codes, as they live in the item array. */
+export const BONUS_CODES = {
+  BOMB: 1,
+  FLAME: 2,
+  SPEED: 3,
   KICK: 4,
-  DETONATEUR: 5,
-  GANT: 6,
-  GOUTTE: 7,
+  TRIGGER: 5,
+  GLOVE: 6,
+  JELLY: 7,
+};
+
+/** Network names of the bonuses: what the wire carries, and what the sprites are keyed on. */
+export const BONUS_NAMES = {
+  [BONUS_CODES.BOMB]: 'bomb',
+  [BONUS_CODES.FLAME]: 'flame',
+  [BONUS_CODES.SPEED]: 'speed',
+  [BONUS_CODES.KICK]: 'kick',
+  [BONUS_CODES.TRIGGER]: 'trigger',
+  [BONUS_CODES.GLOVE]: 'punch',
+  [BONUS_CODES.JELLY]: 'jelly',
 };
 
 /**
- * Noms reseau des bonus. Le protocole est en anglais, comme au Tetris : la
- * frontiere entre le code (francais) et le fil (anglais) doit rester nette.
- */
-export const NOMS_BONUS = {
-  [CODES_BONUS.BOMBE]: 'bomb',
-  [CODES_BONUS.FLAMME]: 'flame',
-  [CODES_BONUS.VITESSE]: 'speed',
-  [CODES_BONUS.KICK]: 'kick',
-  [CODES_BONUS.DETONATEUR]: 'trigger',
-  [CODES_BONUS.GANT]: 'punch',
-  [CODES_BONUS.GOUTTE]: 'jelly',
-};
-
-/**
- * Table ponderee.
+ * Weighted table.
  *
- * Bombe et flamme dominent : ce sont elles qui font progresser une manche, et
- * les voir souvent recompense le fait de casser des briques. Kick et detonateur
- * sont rares parce qu'ils changent la facon de jouer, pas seulement sa force.
+ * Bomb and flame dominate: they are what makes a round progress, and seeing
+ * them often rewards breaking bricks. Kick and triggers are rare because they
+ * change the way you play, not just how strong you are.
  *
- * La goutte est au meme rang que le gant : elle ne sert a rien sans le kick, et
- * la voir trop souvent remplirait l'arene de bombes folles chez des joueurs qui
- * n'ont rien pour les lancer.
+ * The jelly ranks with the glove: it is useless without the kick, and seeing it
+ * too often would fill the arena with mad bombs owned by players who have
+ * nothing to throw them with.
  */
-export const TABLE_BONUS = [
-  [CODES_BONUS.BOMBE, 30],
-  [CODES_BONUS.FLAMME, 30],
-  [CODES_BONUS.VITESSE, 15],
-  [CODES_BONUS.KICK, 12],
-  [CODES_BONUS.DETONATEUR, 8],
-  [CODES_BONUS.GANT, 8],
-  [CODES_BONUS.GOUTTE, 8],
+export const BONUS_TABLE = [
+  [BONUS_CODES.BOMB, 30],
+  [BONUS_CODES.FLAME, 30],
+  [BONUS_CODES.SPEED, 15],
+  [BONUS_CODES.KICK, 12],
+  [BONUS_CODES.TRIGGER, 8],
+  [BONUS_CODES.GLOVE, 8],
+  [BONUS_CODES.JELLY, 8],
 ];
 
-/** Vrai si l'octet designe un bonus encore cache sous une brique. */
-export function estCache(valeur) {
-  return valeur > CACHE;
+/** True when the byte names a bonus still hidden under a brick. */
+export function isHidden(value) {
+  return value > HIDDEN;
 }
 
-/** Vrai si l'octet designe un bonus pose au sol, ramassable. */
-export function estVisible(valeur) {
-  return valeur > 0 && valeur < CACHE;
+/** True when the byte names a bonus lying on the ground, there to be picked up. */
+export function isVisible(value) {
+  return value > 0 && value < HIDDEN;
 }
 
-/** Code du bonus, qu'il soit cache ou visible. */
-export function codeDe(valeur) {
-  return estCache(valeur) ? valeur - CACHE : valeur;
+/** Code of the bonus, hidden or visible. */
+export function codeOf(value) {
+  return isHidden(value) ? value - HIDDEN : value;
 }
 
 /**
- * Applique un bonus a un bomber. Mute le bomber, qui appartient a l'etat.
+ * Applies a bonus to a bomber. Mutates the bomber, which belongs to the state.
  *
- * Les plafonds ne sont pas de la prudence : sans eux, une manche longue finit
- * avec huit bombes de portee quinze chacune, l'arene entiere brule en
- * permanence et plus personne ne joue.
+ * The ceilings are not caution: without them a long round ends with eight bombs
+ * of range fifteen each, the whole arena burns permanently and nobody is
+ * playing any more.
  *
- * @param {{ bombes: number, portee: number, vitesse: number, kick: boolean, detonateur: number, goutte: boolean }} joueur
+ * @param {{ bombs: number, range: number, speed: number, kick: boolean, triggers: number, jelly: boolean }} player
  * @param {number} code
  */
-export function appliquer(joueur, code) {
+export function apply(player, code) {
   switch (code) {
-    case CODES_BONUS.BOMBE:
-      joueur.bombes = Math.min(BOMBES_MAX, joueur.bombes + 1);
+    case BONUS_CODES.BOMB:
+      player.bombs = Math.min(MAX_BOMBS, player.bombs + 1);
       break;
-    case CODES_BONUS.FLAMME:
-      joueur.portee = Math.min(FLAMME_MAX, joueur.portee + 1);
+    case BONUS_CODES.FLAME:
+      player.range = Math.min(MAX_RANGE, player.range + 1);
       break;
-    case CODES_BONUS.VITESSE:
-      joueur.vitesse = Math.min(VITESSE_MAX, joueur.vitesse + VITESSE_PALIER);
+    case BONUS_CODES.SPEED:
+      player.speed = Math.min(MAX_SPEED, player.speed + SPEED_STEP);
       break;
-    case CODES_BONUS.KICK:
-      joueur.kick = true;
+    case BONUS_CODES.KICK:
+      player.kick = true;
       break;
-    case CODES_BONUS.DETONATEUR:
-      joueur.detonateur += DETONATEURS_PAR_BONUS;
+    case BONUS_CODES.TRIGGER:
+      player.triggers += TRIGGERS_PER_BONUS;
       break;
-    case CODES_BONUS.GANT:
-      joueur.gant = true;
+    case BONUS_CODES.GLOVE:
+      player.glove = true;
       break;
-    case CODES_BONUS.GOUTTE:
-      joueur.goutte = true;
+    case BONUS_CODES.JELLY:
+      player.jelly = true;
       break;
     default:
       break;

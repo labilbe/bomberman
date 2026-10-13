@@ -1,75 +1,76 @@
 /**
- * Lecture d'un .ANI complet : les images, et les sequences qui les animent.
+ * Reading a whole .ANI file: the images, and the sequences that animate them.
  *
- * Un fichier contient une suite de FRAM — chacun une image et son nom de
- * fichier d'origine — puis des SEQ nommes (« walkbomb south », « standbomb
- * north ») qui pointent ces images dans l'ordre, avec une duree. C'est cette
- * seconde partie qui vaut d'etre lue : sans elle on a 2327 images en vrac, et il
- * faut deviner a l'oeil lesquelles forment un cycle de marche.
+ * A file contains a run of FRAMs — each one an image and its original file name
+ * — then named SEQs ("walkbomb south", "standbomb north") which point at those
+ * images in order, with a duration. It is that second part that is worth
+ * reading: without it you have 2327 images in a heap, and you have to guess by
+ * eye which ones make up a walk cycle.
  */
 
-import { u16, i16 } from './octets.js';
+import { u16, i16 } from './bytes.js';
 
-import { lireMorceaux, charge, chaine, lireEntete } from './chfile.js';
-import { decoder } from './cimg.js';
+import { readChunks, payload, string, readHeader } from './chfile.js';
+import { decode } from './cimg.js';
 
 /**
- * Duree qui veut dire « la meme que le pas precedent ».
+ * Duration meaning "the same as the previous frame".
  *
- * Le format ne repete pas une duree inchangee : seul le premier pas d'une
- * sequence porte la sienne, les suivants valent 0xFFFF. Lu au premier degre, ce
- * 65535 passait pour une duree de 65 secondes — la bombe additionnait dix-huit
- * minutes de cycle et restait donc figee sur sa premiere image pendant toute sa
- * meche.
+ * The format does not repeat an unchanged duration: only a sequence's first
+ * frame carries its own, the following ones are 0xFFFF. Read at face value, that
+ * 65535 passed for a duration of 65 seconds — the bomb added up eighteen minutes
+ * of cycle and therefore stayed frozen on its first frame for the whole of its
+ * fuse.
  */
-const DUREE_HERITEE = 0xffff;
+const INHERITED_DURATION = 0xffff;
 
-/** Un pas de sequence vit dans un STAT : une duree, puis un renvoi vers un FRAM. */
-function lirePas(octets, stat, dureePrecedente) {
-  const sous = lireMorceaux(octets, stat.debut, stat.debut + stat.taille);
-  const tete = sous.find((n) => n.id === 'HEAD');
-  const renvoi = sous.find((n) => n.id === 'FRAM');
-  if (!renvoi) return null;
-  const r = charge(octets, renvoi);
-  const brute = tete ? u16(charge(octets, tete), 0) : 0;
+/** A sequence frame lives in a STAT: a duration, then a reference to a FRAM. */
+function readFrame(bytes, stat, previousDuration) {
+  const children = readChunks(bytes, stat.start, stat.start + stat.size);
+  const head = children.find((n) => n.id === 'HEAD');
+  const reference = children.find((n) => n.id === 'FRAM');
+  if (!reference) return null;
+  const r = payload(bytes, reference);
+  const raw = head ? u16(payload(bytes, head), 0) : 0;
   return {
     image: u16(r, 2),
-    duree: brute === DUREE_HERITEE ? dureePrecedente : brute,
-    // Decalages par pas : le jeu bouge le sprite sans bouger son point
-    // d'accroche, c'est ce qui donne le dandinement de la marche.
+    duration: raw === INHERITED_DURATION ? previousDuration : raw,
+    // Per-frame offsets: the game moves the sprite without moving its anchor
+    // point, and that is what gives the waddle of the walk.
     dx: i16(r, 4),
     dy: i16(r, 6),
   };
 }
 
-/** Ouvre un .ANI et rend ses images decodees et ses sequences nommees. */
-export function lireAnimation(octets) {
-  lireEntete(octets);
-  const racine = lireMorceaux(octets);
+/** Opens an .ANI and returns its decoded images and its named sequences. */
+export function readAnimation(bytes) {
+  readHeader(bytes);
+  const root = readChunks(bytes);
 
-  const images = racine
+  const images = root
     .filter((n) => n.id === 'FRAM')
     .map((fram) => {
-      const nom = fram.enfants.find((n) => n.id === 'FNAM');
-      const cimg = fram.enfants.find((n) => n.id === 'CIMG');
-      return { nom: nom ? chaine(charge(octets, nom)) : '', ...decoder(charge(octets, cimg)) };
+      const name = fram.children.find((n) => n.id === 'FNAM');
+      const cimg = fram.children.find((n) => n.id === 'CIMG');
+      return { name: name ? string(payload(bytes, name)) : '', ...decode(payload(bytes, cimg)) };
     });
 
-  const sequences = racine
+  const sequences = root
     .filter((n) => n.id === 'SEQ ')
     .map((seq) => {
-      // La duree se propage de pas en pas : on la porte le long de la sequence.
-      let duree = 0;
-      const pas = [];
-      for (const stat of seq.enfants.filter((n) => n.id === 'STAT')) {
-        const lu = lirePas(octets, stat, duree);
-        if (!lu) continue;
-        duree = lu.duree;
-        pas.push(lu);
+      // The duration propagates from frame to frame: we carry it along the
+      // sequence.
+      let duration = 0;
+      const frames = [];
+      for (const stat of seq.children.filter((n) => n.id === 'STAT')) {
+        const read = readFrame(bytes, stat, duration);
+        if (!read) continue;
+        duration = read.duration;
+        frames.push(read);
       }
       return {
-        nom: chaine(charge(octets, seq.enfants.find((n) => n.id === 'HEAD'))),
-        pas,
+        name: string(payload(bytes, seq.children.find((n) => n.id === 'HEAD'))),
+        frames,
       };
     });
 

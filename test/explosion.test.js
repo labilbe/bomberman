@@ -1,495 +1,497 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { pas, avancerDe } from '../src/engine/pas.js';
-import { rayon } from '../src/engine/explosion.js';
-import { poser } from '../src/engine/bombes.js';
-import { index, caseAxe } from '../src/engine/grille.js';
+import { step, advanceBy } from '../src/engine/step.js';
+import { ray } from '../src/engine/explosion.js';
+import { drop } from '../src/engine/bombs.js';
+import { index, cellOnAxis } from '../src/engine/grid.js';
 import {
-  MECHE_PAS,
-  FLAMME_PAS,
-  BRIQUE,
-  VIDE,
-  DROITE,
-  GAUCHE,
-  HAUT,
-  DEMI_MORTEL,
-  DEMI_BOMBER,
-  DETONATEURS_PAR_BONUS,
-  CHUTE_PAS,
-} from '../src/engine/constantes.js';
-import { CODES_BONUS } from '../src/engine/bonus.js';
-import { areneNue, brique, objet, placer, entree, evenements } from './aide.js';
+  FUSE_STEPS,
+  FLAME_STEPS,
+  BRICK,
+  EMPTY,
+  RIGHT,
+  LEFT,
+  UP,
+  HALF_DEADLY,
+  HALF_BOMBER,
+  TRIGGERS_PER_BONUS,
+  FALL_STEPS,
+} from '../src/engine/constants.js';
+import { BONUS_CODES } from '../src/engine/bonus.js';
+import { bareArena, brick, item, place, input, events } from './helpers.js';
 
 /**
- * Fait exploser sur-le-champ la plus ancienne bombe d un joueur.
+ * Makes a player's oldest bomb explode on the spot.
  *
- * On raccourcit sa meche plutot que d appuyer sur le detonateur : celui-ci ne
- * commande que les bombes posees EN ATTENTE, et les tests d explosion posent
- * des bombes ordinaires. C est d ailleurs exactement ce que fait le moteur
- * quand on declenche — une meche a 1, qui part au releve du pas.
+ * We shorten its fuse rather than press the trigger: the trigger only commands
+ * bombs dropped WAITING, and the explosion tests drop ordinary ones. It is in
+ * fact exactly what the engine does on detonation — a fuse at 1, which goes off
+ * when the step is collected.
  */
-function detonner(etat, place) {
-  const siennes = etat.bombes.filter((bombe) => bombe.place === place);
-  const choisie = siennes.sort((a, b) => a.id - b.id)[0];
-  if (choisie) choisie.meche = 1;
-  pas(etat, entree(place, {}));
+function detonate(state, seat) {
+  const theirs = state.bombs.filter((bomb) => bomb.place === seat);
+  const chosen = theirs.sort((a, b) => a.id - b.id)[0];
+  if (chosen) chosen.fuse = 1;
+  step(state, input(seat, {}));
 }
 
-test('la croix s arrete au premier mur dur', () => {
-  const etat = areneNue();
-  // (2,2) est un pilier du damier : la branche vers le haut depuis (2,3)
-  // s arrete avant lui.
-  const branche = rayon(etat, 2, 3, HAUT, 5);
-  assert.deepEqual(branche.cases, []);
-  assert.equal(branche.brique, null);
+test('the cross stops at the first hard wall', () => {
+  const state = bareArena();
+  // (2,2) is a checkerboard pillar: the branch upwards from (2,3) stops before
+  // it.
+  const branch = ray(state, 2, 3, UP, 5);
+  assert.deepEqual(branch.cells, []);
+  assert.equal(branch.brick, null);
 });
 
-test('la croix detruit une brique et s arrete la', () => {
-  const etat = areneNue();
-  brique(etat, 5, 3);
-  brique(etat, 6, 3);
-  const branche = rayon(etat, 3, 3, DROITE, 5);
-  // La case de la brique n'est PAS enflammee : la brique absorbe le souffle.
-  assert.deepEqual(branche.cases, [[4, 3]]);
-  assert.deepEqual(branche.brique, [5, 3]);
+test('the cross destroys one brick and stops there', () => {
+  const state = bareArena();
+  brick(state, 5, 3);
+  brick(state, 6, 3);
+  const branch = ray(state, 3, 3, RIGHT, 5);
+  // The brick's cell is NOT set alight: the brick absorbs the blast.
+  assert.deepEqual(branch.cells, [[4, 3]]);
+  assert.deepEqual(branch.brick, [5, 3]);
 
-  const joueur = placer(etat, 0, 3, 3);
-  joueur.portee = 5;
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
-  assert.equal(evenements(etat, 'brick').length, 1, 'la premiere est annoncee a terre');
-  assert.equal(etat.tuiles[index(5, 3)], BRIQUE, 'mais elle bloque encore pendant sa chute');
+  const player = place(state, 0, 3, 3);
+  player.range = 5;
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
+  assert.equal(events(state, 'brick').length, 1, 'the first is announced as coming down');
+  assert.equal(state.tiles[index(5, 3)], BRICK, 'but it still blocks during its fall');
 
-  avancerDe(etat, CHUTE_PAS, entree(0, {}));
-  assert.equal(etat.tuiles[index(5, 3)], VIDE, 'la chute finie, la case s ouvre');
-  assert.equal(etat.tuiles[index(6, 3)], BRIQUE, 'la seconde tient');
+  advanceBy(state, FALL_STEPS, input(0, {}));
+  assert.equal(state.tiles[index(5, 3)], EMPTY, 'the fall over, the cell opens');
+  assert.equal(state.tiles[index(6, 3)], BRICK, 'the second holds');
 });
 
-test('l evenement boum porte la longueur reelle des quatre branches', () => {
-  const etat = areneNue();
-  const joueur = placer(etat, 0, 3, 3);
-  joueur.portee = 2;
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
-  const [boum] = evenements(etat, 'boom');
-  assert.ok(boum, 'un evenement boum doit partir');
-  const [, , cx, cy, haut, droite, bas, gauche] = boum;
+test('the boom event carries the real length of all four branches', () => {
+  const state = bareArena();
+  const player = place(state, 0, 3, 3);
+  player.range = 2;
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
+  const [boom] = events(state, 'boom');
+  assert.ok(boom, 'a boom event has to go out');
+  const [, , cx, cy, up, right, down, left] = boom;
   assert.deepEqual([cx, cy], [3, 3]);
-  assert.deepEqual([haut, droite, bas, gauche], [2, 2, 2, 2]);
+  assert.deepEqual([up, right, down, left], [2, 2, 2, 2]);
 });
 
-test('une chaine de cinq bombes se resout dans le meme pas', () => {
-  const etat = areneNue();
-  const joueur = placer(etat, 0, 1, 1);
-  joueur.bombes = 5;
-  // Posees par le moteur et non au bouton : deux appuis rapproches vaudraient
-  // RAFALE, et c'est la chaine qu'on mesure ici, pas le geste.
+test('a chain of five bombs resolves within the same step', () => {
+  const state = bareArena();
+  const player = place(state, 0, 1, 1);
+  player.bombs = 5;
+  // Dropped by the engine and not by the button: two presses close together
+  // would mean BURST, and it is the chain we measure here, not the gesture.
   for (const cx of [1, 2, 3, 4, 5]) {
-    placer(etat, 0, cx, 1);
-    poser(etat, etat.joueurs[0]);
+    place(state, 0, cx, 1);
+    drop(state, state.players[0]);
   }
-  pas(etat, entree(0, {}));
-  assert.equal(etat.bombes.length, 5);
+  step(state, input(0, {}));
+  assert.equal(state.bombs.length, 5);
 
-  placer(etat, 0, 9, 9);
-  detonner(etat, 0);
-  assert.equal(etat.bombes.length, 0, 'tout doit partir dans le meme pas');
-  assert.equal(evenements(etat, 'boom').length, 5);
-  assert.equal(joueur.posees, 0);
+  place(state, 0, 9, 9);
+  detonate(state, 0);
+  assert.equal(state.bombs.length, 0, 'everything has to go off within the same step');
+  assert.equal(events(state, 'boom').length, 5);
+  assert.equal(player.dropped, 0);
 });
 
-test('deux bombes qui se declenchent mutuellement n explosent qu une fois', () => {
-  const etat = areneNue();
-  const joueur = placer(etat, 0, 3, 3);
-  joueur.bombes = 2;
-  poser(etat, joueur);
-  placer(etat, 0, 4, 3);
-  poser(etat, joueur);
-  pas(etat, entree(0, {}));
+test('two bombs that set each other off only explode once', () => {
+  const state = bareArena();
+  const player = place(state, 0, 3, 3);
+  player.bombs = 2;
+  drop(state, player);
+  place(state, 0, 4, 3);
+  drop(state, player);
+  step(state, input(0, {}));
 
-  placer(etat, 0, 9, 9);
-  detonner(etat, 0);
-  assert.equal(evenements(etat, 'boom').length, 2);
-  assert.equal(etat.bombes.length, 0);
+  place(state, 0, 9, 9);
+  detonate(state, 0);
+  assert.equal(events(state, 'boom').length, 2);
+  assert.equal(state.bombs.length, 0);
 });
 
-test('deux bombers sur la meme flamme meurent au meme pas', () => {
-  const etat = areneNue({ places: 2 });
-  const un = placer(etat, 0, 3, 3);
-  const deux = placer(etat, 1, 4, 3);
-  un.portee = 2;
+test('two bombers in the same flame die on the same step', () => {
+  const state = bareArena({ places: 2 });
+  const one = place(state, 0, 3, 3);
+  const two = place(state, 1, 4, 3);
+  one.range = 2;
 
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
-  assert.equal(un.vivant, false);
-  assert.equal(deux.vivant, false);
-  assert.equal(un.mortAu, deux.mortAu);
-  assert.equal(evenements(etat, 'death').length, 2);
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
+  assert.equal(one.alive, false);
+  assert.equal(two.alive, false);
+  assert.equal(one.diedAt, two.diedAt);
+  assert.equal(events(state, 'death').length, 2);
 });
 
-test('un bonus revele survit a l explosion qui le decouvre', () => {
-  const etat = areneNue();
-  brique(etat, 5, 3);
-  objet(etat, 5, 3, 128 + CODES_BONUS.FLAMME);
-  const joueur = placer(etat, 0, 3, 3);
-  joueur.portee = 3;
+test('a revealed bonus survives the explosion that uncovers it', () => {
+  const state = bareArena();
+  brick(state, 5, 3);
+  item(state, 5, 3, 128 + BONUS_CODES.FLAME);
+  const player = place(state, 0, 3, 3);
+  player.range = 3;
 
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
-  // Il n apparait qu une fois la brique tombee : avant, il serait visible sous
-  // une brique encore debout.
-  assert.equal(etat.objets[index(5, 3)], 128 + CODES_BONUS.FLAMME, 'encore cache');
-  // La chute est deja entamee d un pas au moment de l explosion : la case
-  // s ouvre donc CHUTE_PAS - 1 pas plus tard, et c est a ce pas-la que
-  // l evenement part — les evenements ne vivent qu un pas.
-  avancerDe(etat, CHUTE_PAS - 1, entree(0, {}));
-  assert.equal(etat.objets[index(5, 3)], CODES_BONUS.FLAMME, 'il doit apparaitre');
-  assert.equal(evenements(etat, 'item').length, 1);
-  assert.equal(evenements(etat, 'itemgone').length, 0);
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
+  // It only appears once the brick has fallen: before that, it would be visible
+  // under a brick still standing.
+  assert.equal(state.items[index(5, 3)], 128 + BONUS_CODES.FLAME, 'still hidden');
+  // The fall is already one step in when the explosion happens: the cell
+  // therefore opens FALL_STEPS - 1 steps later, and it is on that step that the
+  // event goes out — events only live for one step.
+  advanceBy(state, FALL_STEPS - 1, input(0, {}));
+  assert.equal(state.items[index(5, 3)], BONUS_CODES.FLAME, 'it has to appear');
+  assert.equal(events(state, 'item').length, 1);
+  assert.equal(events(state, 'itemgone').length, 0);
 
-  // Et il survit tant que la flamme qui l a decouvert brule encore.
-  avancerDe(etat, FLAMME_PAS + 2, entree(0, {}));
-  assert.equal(etat.objets[index(5, 3)], CODES_BONUS.FLAMME);
+  // And it survives as long as the flame that uncovered it is still burning.
+  advanceBy(state, FLAME_STEPS + 2, input(0, {}));
+  assert.equal(state.items[index(5, 3)], BONUS_CODES.FLAME);
 });
 
-test('un bonus deja visible est detruit par une flamme neuve', () => {
-  const etat = areneNue();
-  objet(etat, 5, 3, CODES_BONUS.BOMBE);
-  const joueur = placer(etat, 0, 3, 3);
-  joueur.portee = 3;
+test('a bonus already visible is destroyed by a fresh flame', () => {
+  const state = bareArena();
+  item(state, 5, 3, BONUS_CODES.BOMB);
+  const player = place(state, 0, 3, 3);
+  player.range = 3;
 
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
-  assert.equal(etat.objets[index(5, 3)], 0);
-  assert.equal(evenements(etat, 'itemgone').length, 1);
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
+  assert.equal(state.items[index(5, 3)], 0);
+  assert.equal(events(state, 'itemgone').length, 1);
 });
 
-test('on ramasse un bonus en marchant dessus', () => {
-  const etat = areneNue();
-  objet(etat, 4, 3, CODES_BONUS.BOMBE);
-  const joueur = placer(etat, 0, 3, 3);
-  assert.equal(joueur.bombes, 1);
+test('you pick a bonus up by walking over it', () => {
+  const state = bareArena();
+  item(state, 4, 3, BONUS_CODES.BOMB);
+  const player = place(state, 0, 3, 3);
+  assert.equal(player.bombs, 1);
 
-  avancerDe(etat, 20, entree(0, { dir: DROITE }));
-  assert.equal(joueur.bombes, 2);
-  assert.equal(etat.objets[index(4, 3)], 0);
+  advanceBy(state, 20, input(0, { dir: RIGHT }));
+  assert.equal(player.bombs, 2);
+  assert.equal(state.items[index(4, 3)], 0);
 });
 
-test('un bomber qui meurt ne ramasse pas le bonus sous ses pieds', () => {
-  // Montage : la flamme touche la case (3,3), ou la victime ne fait que mordre,
-  // tandis que son CENTRE est en (3,4) avec un bonus intact. Le bonus n est donc
-  // pas brule, et seul l ordre « bruler avant de ramasser » peut l empecher
-  // d etre empoche par un mort.
-  const etat = areneNue({ places: 2 });
-  const tueur = placer(etat, 1, 3, 2);
-  tueur.detonateur = DETONATEURS_PAR_BONUS;
-  // La portee est fixee ICI et ne doit pas suivre la dotation de depart : tout
-  // le montage tient a ce que la flamme s arrete en (3,3). A deux cases, elle
-  // atteindrait (3,4), brulerait le bonus, et le test ne verifierait plus rien.
-  tueur.portee = 1;
-  const victime = placer(etat, 0, 3, 4);
-  victime.y = 4300;
+test('a bomber that dies does not pick up the bonus under its feet', () => {
+  // The setup: the flame touches the cell (3,3), which the victim only bites
+  // into, while its CENTRE is at (3,4) with an untouched bonus. The bonus is
+  // therefore not burnt, and only the "burn before picking up" order can keep it
+  // from being pocketed by a corpse.
+  const state = bareArena({ places: 2 });
+  const killer = place(state, 1, 3, 2);
+  killer.triggers = TRIGGERS_PER_BONUS;
+  // The range is set HERE and must not follow the starting kit: the whole setup
+  // rests on the flame stopping at (3,3). At two cells, it would reach (3,4),
+  // burn the bonus, and the test would no longer check anything.
+  killer.range = 1;
+  const victim = place(state, 0, 3, 4);
+  victim.y = 4300;
 
-  // La bombe est posee sans jouer de pas, et le bonus seme juste apres : sinon
-  // la victime l aurait ramasse tranquillement avant l explosion.
-  poser(etat, tueur);
-  objet(etat, 3, 4, CODES_BONUS.BOMBE);
+  // The bomb is dropped without playing a step, and the bonus sown just after:
+  // otherwise the victim would have picked it up at leisure before the
+  // explosion.
+  drop(state, killer);
+  item(state, 3, 4, BONUS_CODES.BOMB);
 
-  pas(etat, entree(1, { declencher: true }));
-  assert.equal(victime.vivant, false, 'elle doit mourir de la flamme de (3,3)');
-  assert.equal(etat.objets[index(3, 4)], CODES_BONUS.BOMBE, 'le bonus n est pas brule');
-  assert.equal(victime.bombes, 1, 'aucun bonus posthume');
-  assert.equal(evenements(etat, 'pick').length, 0);
+  step(state, input(1, { detonate: true }));
+  assert.equal(victim.alive, false, 'it has to die of the flame at (3,3)');
+  assert.equal(state.items[index(3, 4)], BONUS_CODES.BOMB, 'the bonus is not burnt');
+  assert.equal(victim.bombs, 1, 'no posthumous bonus');
+  assert.equal(events(state, 'pick').length, 0);
 });
 
-test('la flamme s eteint apres sa duree', () => {
-  const etat = areneNue();
-  placer(etat, 0, 3, 3);
-  pas(etat, entree(0, { poser: true }));
-  placer(etat, 0, 9, 9);
-  detonner(etat, 0);
-  assert.ok(etat.flammes.length > 0);
-  avancerDe(etat, FLAMME_PAS, entree(0, {}));
-  assert.equal(etat.flammes.length, 0);
+test('the flame goes out after its duration', () => {
+  const state = bareArena();
+  place(state, 0, 3, 3);
+  step(state, input(0, { drop: true }));
+  place(state, 0, 9, 9);
+  detonate(state, 0);
+  assert.ok(state.flames.length > 0);
+  advanceBy(state, FLAME_STEPS, input(0, {}));
+  assert.equal(state.flames.length, 0);
 });
 
-test('une bombe explose seule a la fin de sa meche', () => {
-  const etat = areneNue();
-  placer(etat, 0, 7, 7);
-  pas(etat, entree(0, { poser: true }));
-  placer(etat, 0, 1, 1);
-  avancerDe(etat, MECHE_PAS - 2, entree(0, {}));
-  assert.equal(etat.bombes.length, 1, 'elle ne doit pas partir avant l heure');
-  avancerDe(etat, 3, entree(0, {}));
-  assert.equal(etat.bombes.length, 0);
+test('a bomb explodes on its own at the end of its fuse', () => {
+  const state = bareArena();
+  place(state, 0, 7, 7);
+  step(state, input(0, { drop: true }));
+  place(state, 0, 1, 1);
+  advanceBy(state, FUSE_STEPS - 2, input(0, {}));
+  assert.equal(state.bombs.length, 1, 'it must not go off before time');
+  advanceBy(state, 3, input(0, {}));
+  assert.equal(state.bombs.length, 0);
 });
 
-test('un joueur abrite derriere une brique survit a l ouverture du trou', () => {
-  // Le bug rapporte : la case de la brique etait videe ET enflammee au meme
-  // pas. Le joueur du bon cote de l'abri avancait dans le trou qui venait de
-  // s'ouvrir et mourait, puni d'avoir ete a couvert.
-  const etat = areneNue();
-  brique(etat, 5, 3);
-  const poseur = placer(etat, 0, 3, 3);
-  poseur.portee = 4;
-  const abrite = placer(etat, 1, 6, 3);
+test('a player sheltered behind a brick survives the hole opening', () => {
+  // The bug reported: the brick's cell was emptied AND set alight on the same
+  // step. The player on the right side of the shelter walked into the hole that
+  // had just opened and died, punished for having taken cover.
+  const state = bareArena();
+  brick(state, 5, 3);
+  const dropper = place(state, 0, 3, 3);
+  dropper.range = 4;
+  const sheltered = place(state, 1, 6, 3);
 
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
-  assert.equal(abrite.vivant, true, 'l abrite ne doit rien sentir');
-  // La brique bloque le temps de tomber : le trou ne s ouvre qu apres.
-  avancerDe(etat, CHUTE_PAS, entree(0, {}));
-  assert.equal(etat.tuiles[index(5, 3)], VIDE, 'la brique doit avoir fini de tomber');
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
+  assert.equal(sheltered.alive, true, 'the sheltered one must feel nothing');
+  // The brick blocks for as long as it takes to fall: the hole only opens after.
+  advanceBy(state, FALL_STEPS, input(0, {}));
+  assert.equal(state.tiles[index(5, 3)], EMPTY, 'the brick must have finished falling');
 
-  // Il avance maintenant vers l explosion, et s arrete des qu il est dans le
-  // trou tout juste ouvert. On ne va pas plus loin a dessein : la case suivante
-  // brule pour de bon, et y mourir serait juste.
-  let franchis = 0;
-  while (caseAxe(abrite.x) !== 5 && franchis < FLAMME_PAS) {
-    pas(etat, entree(1, { dir: GAUCHE }));
-    franchis += 1;
+  // It now walks towards the explosion, and stops as soon as it is in the hole
+  // that has just opened. We go no further on purpose: the next cell really is
+  // burning, and dying there would be fair.
+  let steps = 0;
+  while (cellOnAxis(sheltered.x) !== 5 && steps < FLAME_STEPS) {
+    step(state, input(1, { dir: LEFT }));
+    steps += 1;
   }
 
-  assert.equal(caseAxe(abrite.x), 5, 'il doit atteindre le trou avant la fin du feu');
-  assert.ok(etat.flammes.length > 0, 'et la case voisine doit encore bruler');
-  assert.equal(abrite.vivant, true, 'entrer dans le trou ne doit pas tuer');
+  assert.equal(cellOnAxis(sheltered.x), 5, 'it has to reach the hole before the fire is out');
+  assert.ok(state.flames.length > 0, 'and the neighbouring cell must still be burning');
+  assert.equal(sheltered.alive, true, 'walking into the hole must not kill');
 });
 
-test('la case d une brique tombee ne brule pas', () => {
-  const etat = areneNue();
-  brique(etat, 5, 3);
-  const joueur = placer(etat, 0, 3, 3);
-  joueur.portee = 4;
+test('the cell of a fallen brick does not burn', () => {
+  const state = bareArena();
+  brick(state, 5, 3);
+  const player = place(state, 0, 3, 3);
+  player.range = 4;
 
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
 
-  const enFeu = etat.flammes.some((flamme) => flamme.cx === 5 && flamme.cy === 3);
-  assert.equal(enFeu, false);
-  // La case juste avant, elle, brule bien : le souffle va jusqu a la brique.
-  assert.ok(etat.flammes.some((flamme) => flamme.cx === 4 && flamme.cy === 3));
+  const alight = state.flames.some((flame) => flame.cx === 5 && flame.cy === 3);
+  assert.equal(alight, false);
+  // The cell just before does burn: the blast goes as far as the brick.
+  assert.ok(state.flames.some((flame) => flame.cx === 4 && flame.cy === 3));
 });
 
-test('on peut se tenir dans le trou pendant que la case voisine brule', () => {
-  // La garantie qui compte pour le joueur : le trou ouvert par la brique est un
-  // abri, et pas seulement un passage ou l on meurt un pas plus tard.
-  const etat = areneNue({ places: 2 });
-  brique(etat, 5, 3);
-  const poseur = placer(etat, 0, 3, 3);
-  poseur.portee = 4;
+test('you can stand in the hole while the neighbouring cell burns', () => {
+  // The guarantee that counts for the player: the hole opened by the brick is a
+  // shelter, and not merely a passage where you die a step later.
+  const state = bareArena({ places: 2 });
+  brick(state, 5, 3);
+  const dropper = place(state, 0, 3, 3);
+  dropper.range = 4;
 
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
-  assert.ok(etat.flammes.some((f) => f.cx === 4 && f.cy === 3), 'la case voisine doit bruler');
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
+  assert.ok(state.flames.some((f) => f.cx === 4 && f.cy === 3), 'the neighbouring cell must burn');
 
-  // On se place au centre du trou, et on ne bouge plus.
-  const abrite = placer(etat, 1, 5, 3);
-  avancerDe(etat, FLAMME_PAS + 2, entree(1, {}));
-  assert.equal(abrite.vivant, true);
+  // We stand in the middle of the hole, and do not move again.
+  const sheltered = place(state, 1, 5, 3);
+  advanceBy(state, FLAME_STEPS + 2, input(1, {}));
+  assert.equal(sheltered.alive, true);
 });
 
-test('la boite qui prend feu est plus petite que celle qui se cogne', () => {
-  // Les deux etaient confondues, et on mourait avant d atteindre la flamme.
-  // Ce test fige la distinction, pas la valeur exacte.
-  assert.ok(DEMI_MORTEL < DEMI_BOMBER);
-  // Elle reste non nulle : un bomber a moitie dans le feu doit mourir.
-  assert.ok(DEMI_MORTEL > 0);
+test('the box that catches fire is smaller than the one that bumps', () => {
+  // The two used to be the same, and you died before reaching the flame. This
+  // test locks the distinction down, not the exact value.
+  assert.ok(HALF_DEADLY < HALF_BOMBER);
+  // It stays non-zero: a bomber half in the fire has to die.
+  assert.ok(HALF_DEADLY > 0);
 });
 
-test('un bomber bien engage dans la flamme meurt, lui', () => {
-  const etat = areneNue({ places: 2 });
-  const poseur = placer(etat, 0, 3, 3);
-  poseur.portee = 2;
-  pas(etat, entree(0, { poser: true }));
+test('a bomber well into the flame does die', () => {
+  const state = bareArena({ places: 2 });
+  const dropper = place(state, 0, 3, 3);
+  dropper.range = 2;
+  step(state, input(0, { drop: true }));
 
-  // Centre dans la case voisine du foyer, mais largement mordu dedans.
-  const victime = placer(etat, 1, 5, 3);
-  victime.x = 5 * 1024 + 120;
-  detonner(etat, 0);
-  assert.equal(victime.vivant, false);
+  // Centred in the cell next to the blast, but well bitten into it.
+  const victim = place(state, 1, 5, 3);
+  victim.x = 5 * 1024 + 120;
+  detonate(state, 0);
+  assert.equal(victim.alive, false);
 });
 
-test('on ne traverse pas une brique tant qu elle tombe', () => {
-  // Le defaut corrige : la case se vidait a l instant de l explosion, et
-  // l animation de chute n etait qu un decor peint par-dessus du vide. On
-  // traversait donc une brique qu on voyait encore tomber.
-  const etat = areneNue({ places: 2 });
-  brique(etat, 5, 3);
-  const poseur = placer(etat, 0, 3, 3);
-  poseur.portee = 4;
-  const marcheur = placer(etat, 1, 6, 3);
+test('you do not walk through a brick while it is falling', () => {
+  // The flaw this fixes: the cell emptied at the instant of the explosion, and
+  // the falling animation was only scenery painted over nothing. So you walked
+  // through a brick you could still see falling.
+  const state = bareArena({ places: 2 });
+  brick(state, 5, 3);
+  const dropper = place(state, 0, 3, 3);
+  dropper.range = 4;
+  const walker = place(state, 1, 6, 3);
 
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
 
-  // Il pousse vers la brique pendant toute la chute : elle doit le retenir.
-  avancerDe(etat, CHUTE_PAS - 2, entree(1, { dir: GAUCHE }));
-  assert.equal(etat.tuiles[index(5, 3)], BRIQUE, 'elle est encore la');
-  assert.equal(caseAxe(marcheur.x), 6, 'et il n a pas pu entrer');
+  // It pushes towards the brick for the whole fall: the brick has to hold it.
+  advanceBy(state, FALL_STEPS - 2, input(1, { dir: LEFT }));
+  assert.equal(state.tiles[index(5, 3)], BRICK, 'it is still there');
+  assert.equal(cellOnAxis(walker.x), 6, 'and it could not get in');
 });
 
-test('la case s ouvre quand la chute finit, et le passage avec', () => {
-  const etat = areneNue({ places: 2 });
-  brique(etat, 5, 3);
-  const poseur = placer(etat, 0, 3, 3);
-  poseur.portee = 4;
-  const marcheur = placer(etat, 1, 6, 3);
+test('the cell opens when the fall ends, and the way with it', () => {
+  const state = bareArena({ places: 2 });
+  brick(state, 5, 3);
+  const dropper = place(state, 0, 3, 3);
+  dropper.range = 4;
+  const walker = place(state, 1, 6, 3);
 
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
-  // Juste ce qu il faut pour entrer dans la case liberee, sans la traverser.
-  avancerDe(etat, CHUTE_PAS + 6, entree(1, { dir: GAUCHE }));
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
+  // Just what it takes to step into the freed cell, without crossing it.
+  advanceBy(state, FALL_STEPS + 6, input(1, { dir: LEFT }));
 
-  assert.equal(etat.tuiles[index(5, 3)], VIDE);
-  assert.equal(caseAxe(marcheur.x), 5, 'il entre une fois la brique tombee');
+  assert.equal(state.tiles[index(5, 3)], EMPTY);
+  assert.equal(cellOnAxis(walker.x), 5, 'it steps in once the brick has fallen');
 });
 
-test('un second souffle ne relance pas une brique deja a terre', () => {
-  // Elle bloque toujours, donc le souffle s y arrete — mais son animation et
-  // son decompte ne repartent pas de zero, sinon une brique sous le feu ne
-  // tomberait jamais.
-  const etat = areneNue();
-  brique(etat, 5, 3);
-  const joueur = placer(etat, 0, 3, 3);
-  joueur.portee = 4;
-  joueur.bombes = 2;
+test('a second blast does not restart a brick already coming down', () => {
+  // It still blocks, so the blast stops there — but its animation and its
+  // countdown do not start again from scratch, otherwise a brick under fire
+  // would never fall.
+  const state = bareArena();
+  brick(state, 5, 3);
+  const player = place(state, 0, 3, 3);
+  player.range = 4;
+  player.bombs = 2;
 
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
-  assert.equal(etat.ruines.length, 1);
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
+  assert.equal(state.rubble.length, 1);
 
-  // Une seconde bombe, au meme endroit, pendant la chute.
-  placer(etat, 0, 3, 3);
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
-  assert.equal(etat.ruines.length, 1, 'une seule chute en cours');
-  assert.equal(evenements(etat, 'brick').length, 0, 'et aucune annonce de plus');
+  // A second bomb, in the same spot, during the fall.
+  place(state, 0, 3, 3);
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
+  assert.equal(state.rubble.length, 1, 'a single fall in progress');
+  assert.equal(events(state, 'brick').length, 0, 'and no further announcement');
 });
 
-test('un bonus au sol arrete la branche, comme une brique', () => {
-  // Sans quoi un bonus se faisait detruire sans rien couvrir, et deux joueurs
-  // separes par un bonus etaient a decouvert l un de l autre.
-  const etat = areneNue();
-  objet(etat, 5, 3, CODES_BONUS.BOMBE);
-  const branche = rayon(etat, 3, 3, DROITE, 5);
+test('a bonus on the ground stops the branch, like a brick', () => {
+  // Otherwise a bonus was destroyed while covering nothing, and two players
+  // separated by a bonus were exposed to each other.
+  const state = bareArena();
+  item(state, 5, 3, BONUS_CODES.BOMB);
+  const branch = ray(state, 3, 3, RIGHT, 5);
 
-  // Sa case brule, elle : un bonus ne bouche pas le passage, on peut s y tenir,
-  // donc on peut y mourir. C'est la difference avec la brique.
-  assert.deepEqual(branche.cases, [[4, 3], [5, 3]]);
-  assert.equal(branche.brique, null, 'aucune brique la-dedans');
+  // Its cell does burn: a bonus does not block the way, you can stand on it, so
+  // you can die on it. That is the difference from a brick.
+  assert.deepEqual(branch.cells, [[4, 3], [5, 3]]);
+  assert.equal(branch.brick, null, 'no brick in there');
 });
 
-test('ce que le bonus couvre survit a l explosion', () => {
-  const etat = areneNue();
-  objet(etat, 5, 3, CODES_BONUS.BOMBE);
-  objet(etat, 6, 3, CODES_BONUS.FLAMME);
-  const joueur = placer(etat, 0, 3, 3);
-  joueur.portee = 5;
-  pas(etat, entree(0, { poser: true }));
-  detonner(etat, 0);
+test('what the bonus covers survives the explosion', () => {
+  const state = bareArena();
+  item(state, 5, 3, BONUS_CODES.BOMB);
+  item(state, 6, 3, BONUS_CODES.FLAME);
+  const player = place(state, 0, 3, 3);
+  player.range = 5;
+  step(state, input(0, { drop: true }));
+  detonate(state, 0);
 
-  assert.equal(etat.objets[index(5, 3)], 0, 'le premier est brule');
-  assert.equal(etat.objets[index(6, 3)], CODES_BONUS.FLAMME, 'le second est a l abri derriere lui');
+  assert.equal(state.items[index(5, 3)], 0, 'the first is burnt');
+  assert.equal(state.items[index(6, 3)], BONUS_CODES.FLAME, 'the second is sheltered behind it');
 });
 
-test('un mort lache tout ce qu il avait ramasse', () => {
-  // Sans cela, tuer le joueur le mieux equipe retirait ses bonus de la manche
-  // pour de bon, et le survivant n avait plus rien a convoiter.
-  const etat = areneNue({ places: 3 });
-  const riche = placer(etat, 0, 7, 7);
-  riche.bombes = 3;      // deux bonus bombe
-  riche.portee = 4;      // deux bonus flamme
-  riche.kick = true;     // un
-  riche.gant = true;     // un
-  riche.goutte = true;   // un
-  riche.detonateur = 3;  // un paquet entame
+test('a corpse drops everything it had picked up', () => {
+  // Without that, killing the best-equipped player removed their bonuses from
+  // the round for good, and the survivor had nothing to covet any more.
+  const state = bareArena({ places: 3 });
+  const rich = place(state, 0, 7, 7);
+  rich.bombs = 3;      // two bomb bonuses
+  rich.range = 4;      // two flame bonuses
+  rich.kick = true;    // one
+  rich.glove = true;   // one
+  rich.jelly = true;   // one
+  rich.triggers = 3;   // a part-used pack
 
-  const tueur = placer(etat, 1, 7, 5);
-  tueur.portee = 1;
-  placer(etat, 2, 13, 11);
-  poser(etat, tueur);
-  placer(etat, 1, 13, 1);
-  placer(etat, 0, 7, 6);
-  detonner(etat, 1);
+  const killer = place(state, 1, 7, 5);
+  killer.range = 1;
+  place(state, 2, 13, 11);
+  drop(state, killer);
+  place(state, 1, 13, 1);
+  place(state, 0, 7, 6);
+  detonate(state, 1);
 
-  assert.equal(riche.vivant, false, 'il doit mourir');
-  const semes = evenements(etat, 'item');
-  assert.equal(semes.length, 8, 'deux bombes, deux flammes, kick, gant, goutte, detonateur');
-  const noms = semes.map((evenement) => evenement[3]).sort();
-  assert.deepEqual(noms, ['bomb', 'bomb', 'flame', 'flame', 'jelly', 'kick', 'punch', 'trigger']);
+  assert.equal(rich.alive, false, 'it has to die');
+  const sown = events(state, 'item');
+  assert.equal(sown.length, 8, 'two bombs, two flames, kick, glove, jelly, trigger');
+  const names = sown.map((event) => event[3]).sort();
+  assert.deepEqual(names, ['bomb', 'bomb', 'flame', 'flame', 'jelly', 'kick', 'punch', 'trigger']);
 
-  // Et chacun est bien pose sur la grille, sur une case a lui.
-  const cases = new Set(semes.map((evenement) => `${evenement[1]},${evenement[2]}`));
-  assert.equal(cases.size, 8, 'un bonus par case, jamais empiles');
+  // And each one is laid on the grid, on a cell of its own.
+  const cells = new Set(sown.map((event) => `${event[1]},${event[2]}`));
+  assert.equal(cells.size, 8, 'one bonus per cell, never stacked');
 });
 
-test('les bonus laches ne tombent pas dans les flammes', () => {
-  const etat = areneNue({ places: 3 });
-  const riche = placer(etat, 0, 7, 7);
-  riche.kick = true;
-  const tueur = placer(etat, 1, 7, 5);
-  tueur.portee = 3;
-  placer(etat, 2, 13, 11);
-  poser(etat, tueur);
-  placer(etat, 1, 13, 1);
-  placer(etat, 0, 7, 6);
-  detonner(etat, 1);
+test('the bonuses dropped do not fall into the flames', () => {
+  const state = bareArena({ places: 3 });
+  const rich = place(state, 0, 7, 7);
+  rich.kick = true;
+  const killer = place(state, 1, 7, 5);
+  killer.range = 3;
+  place(state, 2, 13, 11);
+  drop(state, killer);
+  place(state, 1, 13, 1);
+  place(state, 0, 7, 6);
+  detonate(state, 1);
 
-  const [seme] = evenements(etat, 'item');
-  assert.ok(seme, 'le kick doit etre lache quelque part');
-  const [, cx, cy] = seme;
+  const [sown] = events(state, 'item');
+  assert.ok(sown, 'the kick has to be dropped somewhere');
+  const [, cx, cy] = sown;
   assert.equal(
-    etat.flammes.some((flamme) => flamme.cx === cx && flamme.cy === cy),
+    state.flames.some((flame) => flame.cx === cx && flame.cy === cy),
     false,
-    'et jamais sur une case en feu',
+    'and never on a burning cell',
   );
 });
 
-test('un mort sans bonus ne lache rien', () => {
-  const etat = areneNue({ places: 3 });
-  placer(etat, 0, 7, 7);
-  const tueur = placer(etat, 1, 7, 5);
-  tueur.portee = 3;
-  placer(etat, 2, 13, 11);
-  poser(etat, tueur);
-  placer(etat, 1, 13, 1);
-  placer(etat, 0, 7, 6);
-  detonner(etat, 1);
+test('a corpse with no bonus drops nothing', () => {
+  const state = bareArena({ places: 3 });
+  place(state, 0, 7, 7);
+  const killer = place(state, 1, 7, 5);
+  killer.range = 3;
+  place(state, 2, 13, 11);
+  drop(state, killer);
+  place(state, 1, 13, 1);
+  place(state, 0, 7, 6);
+  detonate(state, 1);
 
-  assert.equal(etat.joueurs[0].vivant, false);
-  assert.equal(evenements(etat, 'item').length, 0);
+  assert.equal(state.players[0].alive, false);
+  assert.equal(events(state, 'item').length, 0);
 });
 
-test('le butin tombe au hasard dans l arene, et pas autour du corps', () => {
-  // Autour du corps, les bonus seraient tombes dans le souffle qui vient de le
-  // tuer, et le tueur — seul sur place — les aurait tous ramasses en passant.
-  const semis = (graine) => {
-    const etat = areneNue({ places: 3, graine });
-    const riche = placer(etat, 0, 7, 7);
-    riche.bombes = 4;
-    riche.portee = 5;
-    riche.kick = true;
-    const tueur = placer(etat, 1, 7, 5);
-    tueur.portee = 1;
-    placer(etat, 2, 13, 11);
-    poser(etat, tueur);
-    placer(etat, 1, 13, 1);
-    placer(etat, 0, 7, 6);
-    detonner(etat, 1);
-    assert.equal(riche.vivant, false);
-    return evenements(etat, 'item').map((evenement) => [evenement[1], evenement[2]]);
+test('the loot falls at random across the arena, and not around the body', () => {
+  // Around the body, the bonuses would have fallen into the blast that has just
+  // killed it, and the killer — alone on the spot — would have picked them all
+  // up on the way through.
+  const sowing = (seed) => {
+    const state = bareArena({ places: 3, seed });
+    const rich = place(state, 0, 7, 7);
+    rich.bombs = 4;
+    rich.range = 5;
+    rich.kick = true;
+    const killer = place(state, 1, 7, 5);
+    killer.range = 1;
+    place(state, 2, 13, 11);
+    drop(state, killer);
+    place(state, 1, 13, 1);
+    place(state, 0, 7, 6);
+    detonate(state, 1);
+    assert.equal(rich.alive, false);
+    return events(state, 'item').map((event) => [event[1], event[2]]);
   };
 
-  const premier = semis(1);
-  assert.equal(premier.length, 7, 'trois bombes, trois flammes, un kick');
-  // Aucun empilement, et le tout ne se serre pas contre la case du mort.
-  assert.equal(new Set(premier.map((c) => c.join())).size, premier.length);
-  const colles = premier.filter(([cx, cy]) => Math.abs(cx - 7) <= 1 && Math.abs(cy - 7) <= 1);
-  assert.ok(colles.length < premier.length, 'ils ne sont pas tous voisins du corps');
+  const first = sowing(1);
+  assert.equal(first.length, 7, 'three bombs, three flames, one kick');
+  // No stacking, and the lot does not huddle against the corpse's cell.
+  assert.equal(new Set(first.map((c) => c.join())).size, first.length);
+  const close = first.filter(([cx, cy]) => Math.abs(cx - 7) <= 1 && Math.abs(cy - 7) <= 1);
+  assert.ok(close.length < first.length, 'they are not all neighbours of the body');
 
-  // Meme graine, meme semis : le tirage vient du generateur de l etat, pas du
-  // hasard du navigateur. Sans cela, relais et rejeu divergeraient.
-  assert.deepEqual(semis(1), premier);
-  assert.notDeepEqual(semis(7), premier, 'une autre graine seme ailleurs');
+  // Same seed, same sowing: the draw comes from the state's generator, not from
+  // the browser's randomness. Without that, relay and replay would diverge.
+  assert.deepEqual(sowing(1), first);
+  assert.notDeepEqual(sowing(7), first, 'another seed sows elsewhere');
 });

@@ -2,14 +2,14 @@
   "name": "bomberman",
   "version": "1.0.0",
   "private": true,
-  "description": "Clone d'Atomic Bomberman jouable dans le navigateur, moteur pur en JS vanilla",
+  "description": "Browser clone of Atomic Bomberman, pure vanilla JS engine",
   "type": "module",
   "scripts": {
     "start": "npx --yes serve . -l 1987",
-    "relais": "wrangler dev --port 8787",
+    "relay": "wrangler dev --port 8787",
     "deploy": "wrangler deploy",
     "test": "node --test",
-    "test:relais": "node scripts/relais.e2e.mjs"
+    "test:relay": "node scripts/relay.e2e.mjs"
   },
   "license": "MIT",
   "devDependencies": {

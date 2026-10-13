@@ -1,413 +1,411 @@
 /**
- * Sprites dessines au code, une fois, au demarrage.
+ * Sprites drawn in code, once, at start-up.
  *
- * Aucun fichier image dans ce projet, et c'est un choix structurel : le depot
- * reste sans dependance ni asset binaire, le service worker n'a rien de lourd a
- * mettre en cache, et il n'y a aucune question de droits sur des sprites tires
- * d'un jeu commercial. Tout est peint dans des canvas hors-ecran, puis recopie
- * des milliers de fois par seconde — dessiner a chaque image couterait cent fois
- * plus cher.
+ * No image file in this project, and that is a structural choice: the repository
+ * stays free of dependencies and binary assets, the service worker has nothing
+ * heavy to cache, and there is no question of rights over sprites taken from a
+ * commercial game. Everything is painted into off-screen canvases, then copied
+ * thousands of times a second — drawing on every frame would cost a hundred
+ * times more.
  *
- * Tout est peint sur une grille de 16 x 16 PIXELS, puis agrandi d'un facteur
- * entier avec le lissage coupe. C'est ce qui donne des bords francs : un sprite
- * dessine a 32 pixels puis reduit baverait, et un agrandissement non entier
- * ferait des pixels de largeurs differentes dans la meme image.
+ * Everything is painted on a 16 x 16 PIXEL grid, then scaled up by an integer
+ * factor with smoothing off. That is what gives crisp edges: a sprite drawn at
+ * 32 pixels then shrunk would smear, and a non-integer scale would give pixels
+ * of different widths within the same image.
  */
 
 import {
-  SOL_CLAIR,
-  SOL_SOMBRE,
-  SOL_MOTIF,
-  MUR_FACE,
-  MUR_HAUT,
-  MUR_BAS,
-  MUR_TRAIT,
-  BRIQUE_FACE,
-  BRIQUE_HAUT,
-  BRIQUE_JOINT,
-  BOMBE_CORPS,
-  BOMBE_REFLET,
-  MECHE,
-  ETINCELLE,
-  FLAMME,
-  CONTOUR,
-  OMBRE,
-  BONUS_COULEURS,
-  couleurDePlace,
+  GROUND_LIGHT,
+  GROUND_DARK,
+  GROUND_PATTERN,
+  WALL_FACE,
+  WALL_TOP,
+  WALL_BOTTOM,
+  WALL_LINE,
+  BRICK_FACE,
+  BRICK_TOP,
+  BRICK_JOINT,
+  BOMB_BODY,
+  BOMB_SHINE,
+  FUSE,
+  SPARK,
+  FLAME,
+  OUTLINE,
+  SHADOW,
+  BONUS_COLOURS,
+  placeColour,
 } from './palette.js';
 
-/** Cote d'un sprite, en pixels d'art. */
-export const COTE = 16;
+/** Side of a sprite, in art pixels. */
+export const SIDE = 16;
 
-/** Nombre d'images du cycle de marche. */
-export const IMAGES_MARCHE = 4;
+/** Number of frames in the walk cycle. */
+export const WALK_FRAMES = 4;
 
-function toile(largeur = COTE, hauteur = COTE) {
+function surface(width = SIDE, height = SIDE) {
   const canvas = document.createElement('canvas');
-  canvas.width = largeur;
-  canvas.height = hauteur;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   return { canvas, ctx };
 }
 
-function bloc(ctx, x, y, largeur, hauteur, couleur) {
-  ctx.fillStyle = couleur;
-  ctx.fillRect(x, y, largeur, hauteur);
+function block(ctx, x, y, width, height, colour) {
+  ctx.fillStyle = colour;
+  ctx.fillRect(x, y, width, height);
 }
 
-function point(ctx, x, y, couleur) {
-  bloc(ctx, x, y, 1, 1, couleur);
+function dot(ctx, x, y, colour) {
+  block(ctx, x, y, 1, 1, colour);
 }
 
 /**
- * Disque trace pixel par pixel.
+ * A disc traced pixel by pixel.
  *
- * `arc()` aurait donne un bord lisse, donc flou apres agrandissement : sur une
- * grille de 16 pixels, un contour anticrenele mange la moitie de la silhouette.
+ * `arc()` would have given a smooth edge, hence a blurred one after scaling up:
+ * on a 16-pixel grid, an antialiased outline eats half the silhouette.
  */
-function disque(ctx, cx, cy, rayon, couleur) {
-  const limite = rayon * rayon;
-  for (let y = Math.floor(cy - rayon); y <= Math.ceil(cy + rayon); y += 1) {
-    for (let x = Math.floor(cx - rayon); x <= Math.ceil(cx + rayon); x += 1) {
+function disc(ctx, cx, cy, radius, colour) {
+  const limit = radius * radius;
+  for (let y = Math.floor(cy - radius); y <= Math.ceil(cy + radius); y += 1) {
+    for (let x = Math.floor(cx - radius); x <= Math.ceil(cx + radius); x += 1) {
       const dx = x + 0.5 - cx;
       const dy = y + 0.5 - cy;
-      if (dx * dx + dy * dy <= limite) point(ctx, x, y, couleur);
+      if (dx * dx + dy * dy <= limit) dot(ctx, x, y, colour);
     }
   }
 }
 
-/** Le sol : deux nuances en damier, pour que le deplacement se voie. */
-function peindreSol(pair) {
-  const { canvas, ctx } = toile();
-  bloc(ctx, 0, 0, COTE, COTE, pair ? SOL_CLAIR : SOL_SOMBRE);
-  for (let y = 1; y < COTE; y += 4) {
-    for (let x = pair ? 1 : 3; x < COTE; x += 4) point(ctx, x, y, SOL_MOTIF);
+/** The ground: two shades in a checkerboard, so that movement shows. */
+function paintGround(even) {
+  const { canvas, ctx } = surface();
+  block(ctx, 0, 0, SIDE, SIDE, even ? GROUND_LIGHT : GROUND_DARK);
+  for (let y = 1; y < SIDE; y += 4) {
+    for (let x = even ? 1 : 3; x < SIDE; x += 4) dot(ctx, x, y, GROUND_PATTERN);
   }
   return canvas;
 }
 
-/** Mur indestructible : un bloc biseaute, franchement plus clair que la brique. */
-function peindreMurDur() {
-  const { canvas, ctx } = toile();
-  bloc(ctx, 0, 0, COTE, COTE, MUR_FACE);
-  bloc(ctx, 0, 0, COTE, 2, MUR_HAUT);
-  bloc(ctx, 0, 0, 2, COTE, MUR_HAUT);
-  bloc(ctx, 0, COTE - 3, COTE, 3, MUR_BAS);
-  bloc(ctx, COTE - 3, 0, 3, COTE, MUR_BAS);
-  bloc(ctx, 0, 0, COTE, 1, MUR_TRAIT);
-  bloc(ctx, 0, 0, 1, COTE, MUR_TRAIT);
-  bloc(ctx, 0, COTE - 1, COTE, 1, MUR_TRAIT);
-  bloc(ctx, COTE - 1, 0, 1, COTE, MUR_TRAIT);
-  // Un reflet en haut a gauche : il donne le volume et distingue le mur de la
-  // brique sans dependre de la teinte, donc meme pour un oeil daltonien.
-  bloc(ctx, 2, 2, 4, 2, '#d7deec');
+/** Indestructible wall: a bevelled block, clearly lighter than the brick. */
+function paintHardWall() {
+  const { canvas, ctx } = surface();
+  block(ctx, 0, 0, SIDE, SIDE, WALL_FACE);
+  block(ctx, 0, 0, SIDE, 2, WALL_TOP);
+  block(ctx, 0, 0, 2, SIDE, WALL_TOP);
+  block(ctx, 0, SIDE - 3, SIDE, 3, WALL_BOTTOM);
+  block(ctx, SIDE - 3, 0, 3, SIDE, WALL_BOTTOM);
+  block(ctx, 0, 0, SIDE, 1, WALL_LINE);
+  block(ctx, 0, 0, 1, SIDE, WALL_LINE);
+  block(ctx, 0, SIDE - 1, SIDE, 1, WALL_LINE);
+  block(ctx, SIDE - 1, 0, 1, SIDE, WALL_LINE);
+  // A highlight at the top left: it gives volume and tells the wall from the
+  // brick without depending on hue, hence even for a colour-blind eye.
+  block(ctx, 2, 2, 4, 2, '#d7deec');
   return canvas;
 }
 
-/** Brique destructible : appareillage visible, joints sombres. */
-function peindreBrique() {
-  const { canvas, ctx } = toile();
-  bloc(ctx, 0, 0, COTE, COTE, BRIQUE_JOINT);
-  for (let rang = 0; rang < 4; rang += 1) {
-    const y = rang * 4;
-    const decalage = rang % 2 === 0 ? 0 : 4;
-    for (let x = -4; x < COTE; x += 8) {
-      bloc(ctx, x + decalage, y, 7, 3, BRIQUE_FACE);
-      bloc(ctx, x + decalage, y, 7, 1, BRIQUE_HAUT);
+/** Destructible brick: visible bond, dark joints. */
+function paintBrick() {
+  const { canvas, ctx } = surface();
+  block(ctx, 0, 0, SIDE, SIDE, BRICK_JOINT);
+  for (let row = 0; row < 4; row += 1) {
+    const y = row * 4;
+    const offset = row % 2 === 0 ? 0 : 4;
+    for (let x = -4; x < SIDE; x += 8) {
+      block(ctx, x + offset, y, 7, 3, BRICK_FACE);
+      block(ctx, x + offset, y, 7, 1, BRICK_TOP);
     }
   }
-  bloc(ctx, 0, 0, COTE, 1, CONTOUR);
-  bloc(ctx, 0, COTE - 1, COTE, 1, CONTOUR);
-  bloc(ctx, 0, 0, 1, COTE, CONTOUR);
-  bloc(ctx, COTE - 1, 0, 1, COTE, CONTOUR);
+  block(ctx, 0, 0, SIDE, 1, OUTLINE);
+  block(ctx, 0, SIDE - 1, SIDE, 1, OUTLINE);
+  block(ctx, 0, 0, 1, SIDE, OUTLINE);
+  block(ctx, SIDE - 1, 0, 1, SIDE, OUTLINE);
   return canvas;
 }
 
 /**
- * Bombe : trois images de pulsation.
+ * Bomb: three pulsing frames.
  *
- * La pulsation n'est pas une coquetterie — c'est le seul signal qui dit qu'une
- * bombe est vivante, et le joueur l'utilise pour juger du temps qui reste.
+ * The pulse is not an affectation — it is the only signal that says a bomb is
+ * alive, and the player uses it to judge the time left.
  */
-function peindreBombe(image) {
-  const { canvas, ctx } = toile();
-  const rayon = 5 + image * 0.6;
+function paintBomb(frame) {
+  const { canvas, ctx } = surface();
+  const radius = 5 + frame * 0.6;
   const cy = 9;
-  bloc(ctx, 4, COTE - 2, 8, 1, OMBRE);
-  disque(ctx, 8, cy, rayon + 0.9, CONTOUR);
-  disque(ctx, 8, cy, rayon, BOMBE_CORPS);
-  point(ctx, 6, cy - 2, BOMBE_REFLET);
-  point(ctx, 5, cy - 1, BOMBE_REFLET);
-  // Meche, puis etincelle : elle change de couleur a chaque image, ce qui rend
-  // la pulsation lisible meme quand la bombe est cachee derriere un bomber.
-  bloc(ctx, 9, 3, 1, 2, MECHE);
-  bloc(ctx, 10, 2, 1, 2, MECHE);
-  point(ctx, 11, 1, ETINCELLE[image % ETINCELLE.length]);
-  point(ctx, 12, 0, ETINCELLE[(image + 1) % ETINCELLE.length]);
+  block(ctx, 4, SIDE - 2, 8, 1, SHADOW);
+  disc(ctx, 8, cy, radius + 0.9, OUTLINE);
+  disc(ctx, 8, cy, radius, BOMB_BODY);
+  dot(ctx, 6, cy - 2, BOMB_SHINE);
+  dot(ctx, 5, cy - 1, BOMB_SHINE);
+  // Fuse, then spark: it changes colour on every frame, which makes the pulse
+  // legible even when the bomb is hidden behind a bomber.
+  block(ctx, 9, 3, 1, 2, FUSE);
+  block(ctx, 10, 2, 1, 2, FUSE);
+  dot(ctx, 11, 1, SPARK[frame % SPARK.length]);
+  dot(ctx, 12, 0, SPARK[(frame + 1) % SPARK.length]);
   return canvas;
 }
 
 /**
- * Flamme : quatre images, du blanc au rouge.
+ * Flame: four frames, from white to red.
  *
- * Chaque couche est une CROIX pleine bord a bord, plus un disque au centre. La
- * croix n'est pas decorative : les flammes voisines doivent se rejoindre d'une
- * case a l'autre pour former un bras continu. Avec des disques seuls, une
- * explosion de portee trois ressemblait a un chapelet de bulles separees, et on
- * ne voyait plus ou s'arretait le souffle — ce qui est precisement ce qu'il faut
- * lire pour survivre.
+ * Each layer is a full cross edge to edge, plus a disc in the middle. The cross
+ * is not decorative: neighbouring flames have to meet from one cell to the next
+ * to form a continuous arm. With discs alone, an explosion of range three looked
+ * like a string of separate bubbles, and you could no longer see where the blast
+ * stopped — which is precisely what has to be read to survive.
  */
-function peindreFlamme(image) {
-  const { canvas, ctx } = toile();
-  const epaisseurs = [
+function paintFlame(frame) {
+  const { canvas, ctx } = surface();
+  const thicknesses = [
     [6, 5, 3.5, 2],
     [7, 5.5, 4, 2.5],
     [5.5, 4, 3, 1.5],
     [3.5, 2.5, 1.5, 1],
-  ][image];
+  ][frame];
 
-  for (let couche = 0; couche < 4; couche += 1) {
-    const demi = epaisseurs[couche];
-    if (demi <= 0) continue;
-    const couleur = FLAMME[3 - couche];
-    const bande = Math.max(1, Math.round(demi * 2));
-    const debut = Math.round(8 - demi);
-    bloc(ctx, 0, debut, COTE, bande, couleur);
-    bloc(ctx, debut, 0, bande, COTE, couleur);
-    disque(ctx, 8, 8, demi + 1, couleur);
+  for (let layer = 0; layer < 4; layer += 1) {
+    const half = thicknesses[layer];
+    if (half <= 0) continue;
+    const colour = FLAME[3 - layer];
+    const band = Math.max(1, Math.round(half * 2));
+    const from = Math.round(8 - half);
+    block(ctx, 0, from, SIDE, band, colour);
+    block(ctx, from, 0, band, SIDE, colour);
+    disc(ctx, 8, 8, half + 1, colour);
   }
   return canvas;
 }
 
-/** Glyphes des bonus, dessines dans une plaquette. */
-function peindreBonus(nom) {
-  const { canvas, ctx } = toile();
-  const couleurs = BONUS_COULEURS[nom] ?? BONUS_COULEURS.bomb;
-  bloc(ctx, 1, 1, 14, 14, CONTOUR);
-  bloc(ctx, 2, 2, 12, 12, couleurs.fond);
-  bloc(ctx, 2, 2, 12, 2, couleurs.eclat);
-  bloc(ctx, 2, 12, 12, 2, couleurs.glyphe);
+/** Bonus glyphs, drawn inside a pack. */
+function paintBonus(name) {
+  const { canvas, ctx } = surface();
+  const colours = BONUS_COLOURS[name] ?? BONUS_COLOURS.bomb;
+  block(ctx, 1, 1, 14, 14, OUTLINE);
+  block(ctx, 2, 2, 12, 12, colours.background);
+  block(ctx, 2, 2, 12, 2, colours.glow);
+  block(ctx, 2, 12, 12, 2, colours.glyph);
 
-  if (nom === 'bomb') {
-    disque(ctx, 8, 9, 3.2, couleurs.glyphe);
-    bloc(ctx, 9, 5, 1, 2, MECHE);
-    point(ctx, 10, 4, couleurs.eclat);
-  } else if (nom === 'flame') {
-    for (let y = 0; y < 6; y += 1) bloc(ctx, 6 - Math.floor(y / 2), 5 + y, 4 + y, 1, couleurs.glyphe);
-    bloc(ctx, 7, 8, 2, 3, couleurs.eclat);
-  } else if (nom === 'speed') {
-    // Un eclair : trois segments decales, lisibles meme a 16 pixels.
-    bloc(ctx, 9, 4, 3, 1, couleurs.glyphe);
-    bloc(ctx, 7, 5, 4, 1, couleurs.glyphe);
-    bloc(ctx, 6, 6, 4, 1, couleurs.glyphe);
-    bloc(ctx, 5, 7, 6, 1, couleurs.eclat);
-    bloc(ctx, 7, 8, 4, 1, couleurs.glyphe);
-    bloc(ctx, 6, 9, 4, 1, couleurs.glyphe);
-    bloc(ctx, 5, 10, 3, 1, couleurs.glyphe);
-  } else if (nom === 'jelly') {
-    // Une goutte : large du bas, pointue du haut, avec son reflet. C'est la
-    // seule silhouette ronde et pointue du lot, donc elle se distingue sans
-    // qu'on ait a lire la couleur.
-    bloc(ctx, 7, 4, 2, 2, couleurs.glyphe);
-    bloc(ctx, 6, 6, 4, 2, couleurs.glyphe);
-    disque(ctx, 8, 10, 3.4, couleurs.glyphe);
-    point(ctx, 7, 9, couleurs.eclat);
-  } else if (nom === 'kick') {
-    // Une semelle de botte, de profil.
-    bloc(ctx, 5, 5, 3, 5, couleurs.glyphe);
-    bloc(ctx, 5, 9, 7, 2, couleurs.glyphe);
-    bloc(ctx, 5, 5, 3, 1, couleurs.eclat);
+  if (name === 'bomb') {
+    disc(ctx, 8, 9, 3.2, colours.glyph);
+    block(ctx, 9, 5, 1, 2, FUSE);
+    dot(ctx, 10, 4, colours.glow);
+  } else if (name === 'flame') {
+    for (let y = 0; y < 6; y += 1) block(ctx, 6 - Math.floor(y / 2), 5 + y, 4 + y, 1, colours.glyph);
+    block(ctx, 7, 8, 2, 3, colours.glow);
+  } else if (name === 'speed') {
+    // A lightning bolt: three offset segments, legible even at 16 pixels.
+    block(ctx, 9, 4, 3, 1, colours.glyph);
+    block(ctx, 7, 5, 4, 1, colours.glyph);
+    block(ctx, 6, 6, 4, 1, colours.glyph);
+    block(ctx, 5, 7, 6, 1, colours.glow);
+    block(ctx, 7, 8, 4, 1, colours.glyph);
+    block(ctx, 6, 9, 4, 1, colours.glyph);
+    block(ctx, 5, 10, 3, 1, colours.glyph);
+  } else if (name === 'jelly') {
+    // A drop: wide at the bottom, pointed at the top, with its highlight. It is
+    // the only round and pointed silhouette of the lot, so it stands out
+    // without the colour having to be read.
+    block(ctx, 7, 4, 2, 2, colours.glyph);
+    block(ctx, 6, 6, 4, 2, colours.glyph);
+    disc(ctx, 8, 10, 3.4, colours.glyph);
+    dot(ctx, 7, 9, colours.glow);
+  } else if (name === 'kick') {
+    // The sole of a boot, from the side.
+    block(ctx, 5, 5, 3, 5, colours.glyph);
+    block(ctx, 5, 9, 7, 2, colours.glyph);
+    block(ctx, 5, 5, 3, 1, colours.glow);
   } else {
-    // Detonateur : un boitier et son antenne.
-    bloc(ctx, 6, 7, 5, 4, couleurs.glyphe);
-    bloc(ctx, 10, 4, 1, 3, couleurs.glyphe);
-    point(ctx, 11, 3, couleurs.eclat);
-    bloc(ctx, 7, 8, 2, 1, couleurs.eclat);
+    // Trigger: a box and its aerial.
+    block(ctx, 6, 7, 5, 4, colours.glyph);
+    block(ctx, 10, 4, 1, 3, colours.glyph);
+    dot(ctx, 11, 3, colours.glow);
+    block(ctx, 7, 8, 2, 1, colours.glow);
   }
   return canvas;
 }
 
 /**
- * Un bomber : place, direction, image de marche.
+ * A bomber: place, direction, walk frame.
  *
- * Dessine en 16 x 16 avec les pieds en bas. La silhouette est la meme dans les
- * quatre directions — un ovale casque — et seuls la visiere et le balancement
- * des pieds changent. C'est ce qui permet de reconnaitre son personnage de loin
- * tout en voyant ou il regarde.
+ * Drawn 16 x 16 with the feet at the bottom. The silhouette is the same in all
+ * four directions — a helmeted oval — and only the visor and the swing of the
+ * feet change. That is what lets you recognise your character from afar while
+ * seeing where it is looking.
  */
-function peindreBomber(place, dir, image) {
-  const { canvas, ctx } = toile();
-  const couleur = couleurDePlace(place);
-  const pied = [0, 1, 0, -1][image % IMAGES_MARCHE];
+function paintBomber(place, dir, frame) {
+  const { canvas, ctx } = surface();
+  const colour = placeColour(place);
+  const foot = [0, 1, 0, -1][frame % WALK_FRAMES];
 
-  bloc(ctx, 4, 15, 8, 1, OMBRE);
+  block(ctx, 4, 15, 8, 1, SHADOW);
 
-  // Jambes, decalees en opposition pour donner le pas.
-  bloc(ctx, 5, 12 + Math.max(0, pied), 3, 3, CONTOUR);
-  bloc(ctx, 8, 12 + Math.max(0, -pied), 3, 3, CONTOUR);
-  bloc(ctx, 5, 13 + Math.max(0, pied), 3, 2, couleur.sombre);
-  bloc(ctx, 8, 13 + Math.max(0, -pied), 3, 2, couleur.sombre);
+  // Legs, offset in opposition to give the stride.
+  block(ctx, 5, 12 + Math.max(0, foot), 3, 3, OUTLINE);
+  block(ctx, 8, 12 + Math.max(0, -foot), 3, 3, OUTLINE);
+  block(ctx, 5, 13 + Math.max(0, foot), 3, 2, colour.dark);
+  block(ctx, 8, 13 + Math.max(0, -foot), 3, 2, colour.dark);
 
-  // Corps.
-  disque(ctx, 8, 8, 6.4, CONTOUR);
-  disque(ctx, 8, 8, 5.6, couleur.vive);
-  // Lumiere en haut a gauche, ombre en bas a droite : le volume, en deux traits.
-  disque(ctx, 6.6, 6.4, 3.2, couleur.clair);
-  for (let y = 10; y < 13; y += 1) bloc(ctx, 9, y, 3, 1, couleur.sombre);
+  // Body.
+  disc(ctx, 8, 8, 6.4, OUTLINE);
+  disc(ctx, 8, 8, 5.6, colour.vivid);
+  // Light at the top left, shadow at the bottom right: volume, in two strokes.
+  disc(ctx, 6.6, 6.4, 3.2, colour.light);
+  for (let y = 10; y < 13; y += 1) block(ctx, 9, y, 3, 1, colour.dark);
 
-  // Casque : une calotte plus claire, qui separe la tete du corps.
-  for (let y = 2; y < 5; y += 1) bloc(ctx, 5 + (y === 2 ? 1 : 0), y, y === 2 ? 6 : 8, 1, couleur.clair);
-  bloc(ctx, 4, 5, 8, 1, CONTOUR);
+  // Helmet: a lighter cap, which separates the head from the body.
+  for (let y = 2; y < 5; y += 1) block(ctx, 5 + (y === 2 ? 1 : 0), y, y === 2 ? 6 : 8, 1, colour.light);
+  block(ctx, 4, 5, 8, 1, OUTLINE);
 
-  // Visiere, orientee.
+  // Visor, facing the right way.
   if (dir === 2) {
-    bloc(ctx, 5, 6, 6, 3, '#eaf2ff');
-    bloc(ctx, 6, 7, 1, 1, CONTOUR);
-    bloc(ctx, 9, 7, 1, 1, CONTOUR);
+    block(ctx, 5, 6, 6, 3, '#eaf2ff');
+    block(ctx, 6, 7, 1, 1, OUTLINE);
+    block(ctx, 9, 7, 1, 1, OUTLINE);
   } else if (dir === 0) {
-    bloc(ctx, 5, 6, 6, 2, couleur.sombre);
-    bloc(ctx, 6, 6, 4, 1, CONTOUR);
+    block(ctx, 5, 6, 6, 2, colour.dark);
+    block(ctx, 6, 6, 4, 1, OUTLINE);
   } else if (dir === 1) {
-    bloc(ctx, 7, 6, 5, 3, '#eaf2ff');
-    bloc(ctx, 10, 7, 1, 1, CONTOUR);
-    bloc(ctx, 5, 6, 2, 3, couleur.sombre);
+    block(ctx, 7, 6, 5, 3, '#eaf2ff');
+    block(ctx, 10, 7, 1, 1, OUTLINE);
+    block(ctx, 5, 6, 2, 3, colour.dark);
   } else {
-    bloc(ctx, 4, 6, 5, 3, '#eaf2ff');
-    bloc(ctx, 5, 7, 1, 1, CONTOUR);
-    bloc(ctx, 9, 6, 2, 3, couleur.sombre);
+    block(ctx, 4, 6, 5, 3, '#eaf2ff');
+    block(ctx, 5, 7, 1, 1, OUTLINE);
+    block(ctx, 9, 6, 2, 3, colour.dark);
   }
 
   return canvas;
 }
 
-/** Un bomber mort : la silhouette s'affaisse et perd ses couleurs. */
-function peindreMort(place, image) {
-  const { canvas, ctx } = toile();
-  const couleur = couleurDePlace(place);
-  const aplat = image;
-  bloc(ctx, 3, 15, 10, 1, OMBRE);
-  disque(ctx, 8, 12 + aplat, 5.2 - aplat, CONTOUR);
-  disque(ctx, 8, 12 + aplat, 4.4 - aplat, couleur.sombre);
-  if (aplat < 2) {
-    bloc(ctx, 6, 10, 1, 1, '#eaf2ff');
-    bloc(ctx, 9, 10, 1, 1, '#eaf2ff');
+/** A dead bomber: the silhouette sags and loses its colours. */
+function paintDead(place, frame) {
+  const { canvas, ctx } = surface();
+  const colour = placeColour(place);
+  const flat = frame;
+  block(ctx, 3, 15, 10, 1, SHADOW);
+  disc(ctx, 8, 12 + flat, 5.2 - flat, OUTLINE);
+  disc(ctx, 8, 12 + flat, 4.4 - flat, colour.dark);
+  if (flat < 2) {
+    block(ctx, 6, 10, 1, 1, '#eaf2ff');
+    block(ctx, 9, 10, 1, 1, '#eaf2ff');
   }
   return canvas;
 }
 
 /**
- * Construit tous les sprites. A appeler une fois, apres le chargement du
- * document.
+ * Builds every sprite. To call once, after the document has loaded.
  */
-export function construireSprites(places = 4) {
+export function buildSprites(places = 4) {
   const bombers = [];
-  const morts = [];
+  const dead = [];
   for (let place = 0; place < places; place += 1) {
     bombers.push(
       [0, 1, 2, 3].map((dir) =>
-        Array.from({ length: IMAGES_MARCHE }, (_, image) => peindreBomber(place, dir, image)),
+        Array.from({ length: WALK_FRAMES }, (_, frame) => paintBomber(place, dir, frame)),
       ),
     );
-    morts.push(Array.from({ length: 3 }, (_, image) => peindreMort(place, image)));
+    dead.push(Array.from({ length: 3 }, (_, frame) => paintDead(place, frame)));
   }
 
   return {
-    sol: [peindreSol(true), peindreSol(false)],
-    murDur: peindreMurDur(),
-    brique: peindreBrique(),
-    bombe: Array.from({ length: 3 }, (_, image) => peindreBombe(image)),
-    flamme: Array.from({ length: 4 }, (_, image) => peindreFlamme(image)),
+    ground: [paintGround(true), paintGround(false)],
+    hardWall: paintHardWall(),
+    brick: paintBrick(),
+    bomb: Array.from({ length: 3 }, (_, frame) => paintBomb(frame)),
+    flame: Array.from({ length: 4 }, (_, frame) => paintFlame(frame)),
     bonus: {
-      bomb: peindreBonus('bomb'),
-      flame: peindreBonus('flame'),
-      speed: peindreBonus('speed'),
-      kick: peindreBonus('kick'),
-      trigger: peindreBonus('trigger'),
-      // Le gant a son propre peintre : `peindreBonus` retombe sur le detonateur
-      // pour tout nom qu'il ne connait pas, et l'on aurait eu deux plaquettes
-      // identiques pour deux bonus qui ne font pas du tout la meme chose.
-      punch: peindreGant(),
-      jelly: peindreBonus('jelly'),
+      bomb: paintBonus('bomb'),
+      flame: paintBonus('flame'),
+      speed: paintBonus('speed'),
+      kick: paintBonus('kick'),
+      trigger: paintBonus('trigger'),
+      // The glove has its own painter: `paintBonus` falls back on the trigger
+      // for any name it does not know, and we would have had two identical packs
+      // for two bonuses that do nothing like the same thing.
+      punch: paintGlove(),
+      jelly: paintBonus('jelly'),
     },
     bombers,
-    morts,
+    dead,
   };
 }
 
 /**
- * La plaquette du gant de boxe, a la taille qu'on lui demande.
+ * The boxing glove's pack, at whatever size is asked for.
  *
- * Elle existe parce que `power punch` n'est pas dans toutes les extractions :
- * celles faites avant l'ajout du bonus n'ont pas ce sprite, et il faut bien
- * montrer quelque chose. Toutes ses mesures sont donc des FRACTIONS du cote, et
- * non des pixels : elle se dessine aussi bien sur les 16 pixels des sprites au
- * code que sur les 40 d'une tuile d'Atomic Bomberman, sans agrandissement et
- * donc sans flou.
+ * It exists because `power punch` is not in every extraction: those made before
+ * the bonus was added do not have that sprite, and something has to be shown.
+ * All of its measurements are therefore FRACTIONS of the side, and not pixels:
+ * it draws just as well on the 16 pixels of the code-drawn sprites as on the 40
+ * of an Atomic Bomberman tile, with no scaling and hence no blur.
  *
- * Le dessin est un gant vu de profil, poing vers la droite : une manchette, un
- * poing arrondi, et un reflet. A cette taille on ne reconnait pas un gant, on
- * reconnait une forme ramassee et rouge — c'est tout ce qu'il faut pour la
- * distinguer des cinq autres plaquettes.
+ * The drawing is a glove seen from the side, fist to the right: a cuff, a
+ * rounded fist, and a highlight. At that size you do not recognise a glove, you
+ * recognise a compact red shape — which is all it takes to tell it from the five
+ * other packs.
  */
-export function peindreGant(largeur = COTE, hauteur = largeur) {
-  const { canvas, ctx } = toile(largeur, hauteur);
-  const couleurs = BONUS_COULEURS.punch;
-  const u = (f) => Math.round(f * largeur);
-  const v = (f) => Math.round(f * hauteur);
+export function paintGlove(width = SIDE, height = width) {
+  const { canvas, ctx } = surface(width, height);
+  const colours = BONUS_COLOURS.punch;
+  const u = (f) => Math.round(f * width);
+  const v = (f) => Math.round(f * height);
 
-  bloc(ctx, u(0.06), v(0.06), largeur - u(0.12), hauteur - v(0.12), CONTOUR);
-  bloc(ctx, u(0.12), v(0.12), largeur - u(0.24), hauteur - v(0.24), couleurs.fond);
-  bloc(ctx, u(0.12), v(0.12), largeur - u(0.24), v(0.14), couleurs.eclat);
-  bloc(ctx, u(0.12), hauteur - v(0.26), largeur - u(0.24), v(0.14), couleurs.glyphe);
+  block(ctx, u(0.06), v(0.06), width - u(0.12), height - v(0.12), OUTLINE);
+  block(ctx, u(0.12), v(0.12), width - u(0.24), height - v(0.24), colours.background);
+  block(ctx, u(0.12), v(0.12), width - u(0.24), v(0.14), colours.glow);
+  block(ctx, u(0.12), height - v(0.26), width - u(0.24), v(0.14), colours.glyph);
 
-  // La silhouette est une sucette : un poing rond au bout d une manchette
-  // courte. Tenue tres petite, c est la seule forme qui se lit encore comme
-  // un gant — le pouce, les lacets et le croissant de lumiere essayes avant
-  // se perdaient dans la masse ou la trouaient.
+  // The silhouette is a lollipop: a round fist at the end of a short cuff. Kept
+  // very small, it is the only shape that still reads as a glove — the thumb,
+  // the laces and the crescent of light tried before got lost in the mass or
+  // punched holes in it.
   const r = Math.max(2, u(0.18));
-  const px = largeur - u(0.24) - r;
+  const px = width - u(0.24) - r;
   const py = v(0.44);
-  const manche = Math.max(2, u(0.16));
-  bloc(ctx, px - r - manche + 1, py - v(0.13), manche, v(0.26), couleurs.glyphe);
-  disque(ctx, px, py, r, couleurs.glyphe);
-  // Le reflet part du cote ou le gant frappe : vers la droite, comme le coup.
-  disque(ctx, px + Math.round(r * 0.45), py - Math.round(r * 0.45), r * 0.3, couleurs.eclat);
+  const cuff = Math.max(2, u(0.16));
+  block(ctx, px - r - cuff + 1, py - v(0.13), cuff, v(0.26), colours.glyph);
+  disc(ctx, px, py, r, colours.glyph);
+  // The highlight starts on the side the glove strikes from: to the right, like
+  // the punch.
+  disc(ctx, px + Math.round(r * 0.45), py - Math.round(r * 0.45), r * 0.3, colours.glow);
 
   return canvas;
 }
 
 /**
- * La plaquette de la goutte, a la taille qu'on lui demande.
+ * The jelly's pack, at whatever size is asked for.
  *
- * Meme raison d'etre que `peindreGant` : `power jelly` manque aux extractions
- * faites avant ce bonus, et il faut bien montrer quelque chose. Toutes ses
- * mesures sont donc des fractions du cote, pour qu'elle se dessine aussi bien
- * sur 16 pixels que sur les 40 d'une tuile d'Atomic Bomberman.
+ * Same reason to exist as `paintGlove`: `power jelly` is missing from
+ * extractions made before that bonus, and something has to be shown. All of its
+ * measurements are therefore fractions of the side, so that it draws just as
+ * well on 16 pixels as on the 40 of an Atomic Bomberman tile.
  *
- * Une goutte : pointue en haut, large et ronde en bas. C'est la seule
- * silhouette de ce genre parmi les plaquettes, donc elle se reconnait sans
- * qu'on ait a lire sa couleur.
+ * A drop: pointed at the top, wide and round at the bottom. It is the only
+ * silhouette of its kind among the packs, so it is recognised without its colour
+ * having to be read.
  */
-export function peindreGoutte(largeur = COTE, hauteur = largeur) {
-  const { canvas, ctx } = toile(largeur, hauteur);
-  const couleurs = BONUS_COULEURS.jelly;
-  const u = (f) => Math.round(f * largeur);
-  const v = (f) => Math.round(f * hauteur);
+export function paintJelly(width = SIDE, height = width) {
+  const { canvas, ctx } = surface(width, height);
+  const colours = BONUS_COLOURS.jelly;
+  const u = (f) => Math.round(f * width);
+  const v = (f) => Math.round(f * height);
 
-  bloc(ctx, u(0.06), v(0.06), largeur - u(0.12), hauteur - v(0.12), CONTOUR);
-  bloc(ctx, u(0.12), v(0.12), largeur - u(0.24), hauteur - v(0.24), couleurs.fond);
-  bloc(ctx, u(0.12), v(0.12), largeur - u(0.24), v(0.14), couleurs.eclat);
-  bloc(ctx, u(0.12), hauteur - v(0.26), largeur - u(0.24), v(0.14), couleurs.glyphe);
+  block(ctx, u(0.06), v(0.06), width - u(0.12), height - v(0.12), OUTLINE);
+  block(ctx, u(0.12), v(0.12), width - u(0.24), height - v(0.24), colours.background);
+  block(ctx, u(0.12), v(0.12), width - u(0.24), v(0.14), colours.glow);
+  block(ctx, u(0.12), height - v(0.26), width - u(0.24), v(0.14), colours.glyph);
 
-  const cx = largeur / 2;
+  const cx = width / 2;
   const r = Math.max(2, u(0.2));
-  const cy = hauteur - v(0.38);
-  // La pointe, en deux marches qui s'elargissent vers le ventre.
-  bloc(ctx, Math.round(cx - u(0.05)), v(0.26), u(0.1), v(0.12), couleurs.glyphe);
-  bloc(ctx, Math.round(cx - u(0.1)), v(0.36), u(0.2), v(0.12), couleurs.glyphe);
-  disque(ctx, cx, cy, r, couleurs.glyphe);
-  disque(ctx, cx - Math.round(r * 0.4), cy - Math.round(r * 0.35), r * 0.28, couleurs.eclat);
+  const cy = height - v(0.38);
+  // The point, in two steps widening towards the belly.
+  block(ctx, Math.round(cx - u(0.05)), v(0.26), u(0.1), v(0.12), colours.glyph);
+  block(ctx, Math.round(cx - u(0.1)), v(0.36), u(0.2), v(0.12), colours.glyph);
+  disc(ctx, cx, cy, r, colours.glyph);
+  disc(ctx, cx - Math.round(r * 0.4), cy - Math.round(r * 0.35), r * 0.28, colours.glow);
 
   return canvas;
 }

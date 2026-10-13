@@ -1,118 +1,126 @@
 /**
- * Tableau de bord : qui joue, avec quoi, et ou en est le match.
+ * Dashboard: who is playing, with what, and where the match stands.
  *
- * En DOM et non dans le canvas. Le canvas est agrandi d'un facteur entier pour
- * garder des pixels nets ; du texte agrandi de la meme facon serait illisible.
- * Et le DOM donne gratuitement ce qu'il aurait fallu reecrire : le texte
- * selectionnable, les lecteurs d'ecran, et un reflow qui marche sur telephone.
+ * In the DOM and not in the canvas. The canvas is scaled up by an integer factor
+ * to keep pixels crisp; text scaled the same way would be illegible. And the DOM
+ * gives for free what would have had to be rewritten: selectable text, screen
+ * readers, and a reflow that works on a phone.
  *
- * Le HUD ne lit jamais les regles : on lui passe l'etat et le match, il affiche.
+ * The HUD never reads the rules: it is handed the state and the match, and it
+ * displays them.
  */
 
-import { couleurDePlace } from '../render/palette.js';
-import { BOMBES_MAX, FLAMME_MAX, VITESSE_BASE, VITESSE_PALIER } from '../engine/constantes.js';
+import { placeColour } from '../render/palette.js';
+import { MAX_BOMBS, MAX_RANGE, BASE_SPEED, SPEED_STEP } from '../engine/constants.js';
 
 /**
- * @param {HTMLElement} racine
+ * @param {HTMLElement} root
  */
-export function creerHud(racine) {
-  /** @type {Map<number, { bloc: HTMLElement, manches: HTMLElement, pouvoirs: HTMLElement }>} */
-  const lignes = new Map();
+export function createHud(root) {
+  /** @type {Map<number, { block: HTMLElement, rounds: HTMLElement, powers: HTMLElement }>} */
+  const rows = new Map();
 
-  function construire(places, noms) {
-    racine.textContent = '';
-    lignes.clear();
+  /**
+   * @param {number} places
+   * @param {string[]} names
+   * @param {number[] | null} colours colour index per place, when the players
+   *   have chosen one. Without it, the place gives the colour, as online where
+   *   everyone is handed theirs on arrival.
+   */
+  function build(places, names, colours = null) {
+    root.textContent = '';
+    rows.clear();
     for (let place = 0; place < places; place += 1) {
-      const couleur = couleurDePlace(place);
-      const bloc = document.createElement('div');
-      bloc.className = 'joueur';
-      bloc.style.setProperty('--couleur', couleur.vive);
+      const colour = placeColour(colours?.[place] ?? place);
+      const block = document.createElement('div');
+      block.className = 'player';
+      block.style.setProperty('--colour', colour.vivid);
 
-      const ligneNom = document.createElement('div');
-      ligneNom.className = 'nom';
-      const nom = document.createElement('span');
-      nom.textContent = noms?.[place] ?? `Joueur ${place + 1}`;
-      const manches = document.createElement('span');
-      manches.className = 'manches';
-      ligneNom.append(nom, manches);
+      const nameRow = document.createElement('div');
+      nameRow.className = 'name';
+      const name = document.createElement('span');
+      name.textContent = names?.[place] ?? `Joueur ${place + 1}`;
+      const rounds = document.createElement('span');
+      rounds.className = 'rounds';
+      nameRow.append(name, rounds);
 
-      const pouvoirs = document.createElement('div');
-      pouvoirs.className = 'pouvoirs';
+      const powers = document.createElement('div');
+      powers.className = 'powers';
 
-      bloc.append(ligneNom, pouvoirs);
-      racine.append(bloc);
-      lignes.set(place, { bloc, manches, pouvoirs });
+      block.append(nameRow, powers);
+      root.append(block);
+      rows.set(place, { block, rounds, powers });
     }
   }
 
-  /** Les pouvoirs d'un bomber, en une ligne lisible d'un coup d'oeil. */
-  function pouvoirsDe(joueur) {
-    const vitesse = 1 + Math.round((joueur.vitesse - VITESSE_BASE) / VITESSE_PALIER);
-    const morceaux = [
-      `<span>Bombes <b>${joueur.bombes}${joueur.bombes >= BOMBES_MAX ? ' max' : ''}</b></span>`,
-      `<span>Flamme <b>${joueur.portee}${joueur.portee >= FLAMME_MAX ? ' max' : ''}</b></span>`,
-      `<span>Vitesse <b>${vitesse}</b></span>`,
+  /** A bomber's powers, on one line legible at a glance. */
+  function powersOf(player) {
+    const speed = 1 + Math.round((player.speed - BASE_SPEED) / SPEED_STEP);
+    const parts = [
+      `<span>Bombes <b>${player.bombs}${player.bombs >= MAX_BOMBS ? ' max' : ''}</b></span>`,
+      `<span>Flamme <b>${player.range}${player.range >= MAX_RANGE ? ' max' : ''}</b></span>`,
+      `<span>Vitesse <b>${speed}</b></span>`,
     ];
-    if (joueur.kick) morceaux.push('<span class="actif">Kick</span>');
-    if (joueur.gant) morceaux.push('<span class="actif">Gant</span>');
-    if (joueur.goutte) morceaux.push('<span class="actif">Goutte</span>');
-    // Le detonateur est une reserve, pas un etat : on affiche ce qu'il en
-    // reste. Le compte est celui des BOMBES A RETARDEMENT qu'il reste a poser,
-    // puisque la charge se prend a la pose — sans lui, on en pose une de plus
-    // que prevu et l'on decouvre au pire moment qu'elle a une meche.
-    if (joueur.detonateur) {
-      morceaux.push(`<span class="actif">Detonateur <b>${joueur.detonateur}</b></span>`);
+    if (player.kick) parts.push('<span class="on">Kick</span>');
+    if (player.glove) parts.push('<span class="on">Gant</span>');
+    if (player.jelly) parts.push('<span class="on">Goutte</span>');
+    // The trigger is a reserve, not a state: we show what is left of it. The
+    // count is that of the DELAYED BOMBS left to drop, since the charge is taken
+    // on the drop — without it, you drop one more than expected and discover at
+    // the worst moment that it has a fuse.
+    if (player.triggers) {
+      parts.push(`<span class="on">Détonateur <b>${player.triggers}</b></span>`);
     }
-    return morceaux.join('');
+    return parts.join('');
   }
 
   return {
-    construire,
+    build,
 
     /**
-     * @param {import('../engine/etat.js').Etat} etat
-     * @param {import('../engine/manche.js').Match} match
+     * @param {import('../engine/state.js').State} state
+     * @param {import('../engine/round.js').Match} match
      */
-    rafraichir(etat, match) {
-      for (const joueur of etat.joueurs) {
-        const ligne = lignes.get(joueur.place);
-        if (!ligne) continue;
-        ligne.bloc.classList.toggle('mort', !joueur.vivant);
-        const gagnees = match?.scores?.[joueur.place] ?? 0;
-        const aGagner = match?.aGagner ?? 0;
-        ligne.manches.textContent =
-          aGagner > 0 ? '★'.repeat(gagnees) + '·'.repeat(Math.max(0, aGagner - gagnees)) : '';
-        ligne.pouvoirs.innerHTML = pouvoirsDe(joueur);
+    refresh(state, match) {
+      for (const player of state.players) {
+        const row = rows.get(player.place);
+        if (!row) continue;
+        row.block.classList.toggle('dead', !player.alive);
+        const won = match?.scores?.[player.place] ?? 0;
+        const toWin = match?.toWin ?? 0;
+        row.rounds.textContent =
+          toWin > 0 ? '★'.repeat(won) + '·'.repeat(Math.max(0, toWin - won)) : '';
+        row.powers.innerHTML = powersOf(player);
       }
     },
   };
 }
 
 /**
- * Banniere plein cadre : manche, score, fin de match.
+ * Full-frame banner: round, score, end of match.
  *
  * @param {HTMLElement} element
  */
-export function creerBanniere(element) {
-  let minuteur = null;
+export function createBanner(element) {
+  let timer = null;
 
-  function cacher() {
+  function hide() {
     element.hidden = true;
     element.textContent = '';
   }
 
   return {
-    cacher,
+    hide,
 
     /**
-     * @param {{ titre: string, detail?: string, duree?: number, boutons?: { texte: string, action: () => void }[] }} contenu
+     * @param {{ title: string, detail?: string, duration?: number, buttons?: { text: string, action: () => void }[] }} content
      */
-    montrer({ titre, detail = '', duree = 0, boutons = [] }) {
-      if (minuteur) clearTimeout(minuteur);
+    show({ title, detail = '', duration = 0, buttons = [] }) {
+      if (timer) clearTimeout(timer);
       element.textContent = '';
       const t = document.createElement('div');
-      t.className = 'titre';
-      t.textContent = titre;
+      t.className = 'title';
+      t.textContent = title;
       element.append(t);
       if (detail) {
         const d = document.createElement('div');
@@ -120,23 +128,23 @@ export function creerBanniere(element) {
         d.textContent = detail;
         element.append(d);
       }
-      if (boutons.length > 0) {
-        // Les boutons vont dans une rangee a eux : empiles, « Demarrer » et
-        // « Quitter » poussaient le texte hors de la banniere sur un ecran bas.
-        const rangee = document.createElement('div');
-        rangee.className = 'boutons';
-        for (const bouton of boutons) {
+      if (buttons.length > 0) {
+        // The buttons go in a row of their own: stacked, "Démarrer" and
+        // "Quitter" pushed the text out of the banner on a short screen.
+        const row = document.createElement('div');
+        row.className = 'buttons';
+        for (const button of buttons) {
           const b = document.createElement('button');
           b.type = 'button';
-          b.className = 'primaire';
-          b.textContent = bouton.texte;
-          b.addEventListener('click', bouton.action);
-          rangee.append(b);
+          b.className = 'primary';
+          b.textContent = button.text;
+          b.addEventListener('click', button.action);
+          row.append(b);
         }
-        element.append(rangee);
+        element.append(row);
       }
       element.hidden = false;
-      if (duree > 0) minuteur = setTimeout(cacher, duree);
+      if (duration > 0) timer = setTimeout(hide, duration);
     },
   };
 }

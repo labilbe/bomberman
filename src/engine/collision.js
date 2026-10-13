@@ -1,137 +1,139 @@
 /**
- * Deplacement des bombers, et c'est le module le plus delicat du moteur.
+ * Moving the bombers, and this is the trickiest module in the engine.
  *
- * Le bomber est une boite de 0,74 tuile dans un couloir d'une tuile : il reste
- * 0,26 tuile de jeu. Sans recentrage, on se coince a chaque intersection des
- * qu'on amorce un virage une sous-unite trop tot — et c'est precisement la
- * raison pour laquelle la plupart des clones de Bomberman sont injouables.
+ * The bomber is a 0.74-tile box in a one-tile corridor: 0.26 tile of play is
+ * left. Without recentring you get stuck at every intersection as soon as you
+ * start a turn one sub-unit too early — and that is precisely why most
+ * Bomberman clones are unplayable.
  *
- * Le traitement tient en deux regles, appliquees a chaque pas :
+ * The handling comes down to two rules, applied on every step:
  *
- * 1. On ne bouge que sur UN axe. Pas de diagonale : ce jeu se joue en grille.
- * 2. Pendant qu'on avance sur un axe, on se RECENTRE sur l'autre. Le virage
- *    demande trop tot n'est donc pas refuse, il est differe de quelques pas
- *    pendant lesquels le bomber se range tout seul dans le couloir. C'est ce qui
- *    donne l'impression qu'il « cherche » le passage, et cela remplace a lui
- *    seul un glissement d'angle explicite.
+ * 1. You only move on ONE axis. No diagonals: this game is played on a grid.
+ * 2. While moving along one axis, you RECENTRE on the other. A turn asked for
+ *    too early is therefore not refused, it is deferred by a few steps during
+ *    which the bomber lines itself up in the corridor. That is what gives the
+ *    impression it "looks for" the gap, and on its own it replaces an explicit
+ *    corner slide.
  *
- * Les bombers ne se bloquent pas entre eux, comme dans Atomic Bomberman : a
- * quatre dans un couloir, se gener serait la premiere cause de mort, et la plus
- * injuste.
+ * Bombers do not block each other, as in Atomic Bomberman: four in a corridor,
+ * getting in each other's way would be the first cause of death, and the most
+ * unfair.
  */
 
-import { VECTEURS, DEMI_BOMBER, UNITES } from './constantes.js';
-import { caseDe, estLibre, casesTouchees, caseAxe, centreAxe, boiteSurCase } from './grille.js';
-import { bombePoseeSur, bombeDe, pousser } from './bombes.js';
+import { VECTORS, HALF_BOMBER, UNITS } from './constants.js';
+import { cellAt, isFree, touchedCells, cellOnAxis, centreOnAxis, boxOnCell } from './grid.js';
+import { bombDroppedAt, bombById, pushBomb } from './bombs.js';
 
 /**
- * Le bomber peut-il occuper cette case ?
+ * Can the bomber occupy this cell?
  *
- * Sa propre bombe ne le bloque pas tant qu'il est dessus : c'est `surBombe` qui
- * porte cette permission, accordee a la pose et retiree des qu'il en sort.
+ * Its own bomb does not block it as long as it stands on it: `onBomb` carries
+ * that permission, granted on the drop and withdrawn as soon as it steps off.
  *
- * @param {import('./etat.js').Etat} etat
- * @param {import('./etat.js').Joueur} joueur
+ * @param {import('./state.js').State} state
+ * @param {import('./state.js').Player} player
  */
-export function franchissable(etat, joueur, cx, cy) {
-  if (!estLibre(caseDe(etat, cx, cy))) return false;
-  // Une bombe EN VOL ne bloque pas : elle est au-dessus de la case, et l'on
-  // passe dessous. Sans quoi le gant fermerait un couloir avant meme que la
-  // bombe n'y soit tombee.
-  const bombe = bombePoseeSur(etat, cx, cy);
-  if (bombe === null) return true;
-  return bombe.id === joueur.surBombe;
+export function passable(state, player, cx, cy) {
+  if (!isFree(cellAt(state, cx, cy))) return false;
+  // A bomb IN FLIGHT does not block: it is above the cell, and you walk under
+  // it. Otherwise the glove would close a corridor before the bomb had even
+  // landed in it.
+  const bomb = bombDroppedAt(state, cx, cy);
+  if (bomb === null) return true;
+  return bomb.id === player.onBomb;
 }
 
-/** Toutes les cases touchees par la boite a cette position sont-elles libres ? */
-function boiteLibre(etat, joueur, x, y) {
-  for (const { cx, cy } of casesTouchees(x, y)) {
-    if (!franchissable(etat, joueur, cx, cy)) return false;
+/** Are all the cells touched by the box at this position free? */
+function freeBox(state, player, x, y) {
+  for (const { cx, cy } of touchedCells(x, y)) {
+    if (!passable(state, player, cx, cy)) return false;
   }
   return true;
 }
 
 /**
- * Ramene une coordonnee vers le centre de sa case, d'au plus `vitesse`.
+ * Brings a coordinate back towards the centre of its cell, by at most `speed`.
  *
- * Le centre de la case courante est toujours atteignable : le bomber y est deja
- * par definition, puisque c'est sa propre case. Le recentrage ne peut donc
- * jamais le pousser dans un mur.
+ * The centre of the current cell is always reachable: the bomber is already
+ * there by definition, since it is its own cell. Recentring can therefore never
+ * push it into a wall.
  *
- * @param {number} valeur
- * @param {number} vitesse
+ * @param {number} value
+ * @param {number} speed
  */
-export function recentrer(valeur, vitesse) {
-  const cible = centreAxe(caseAxe(valeur));
-  const ecart = cible - valeur;
-  if (ecart === 0) return valeur;
-  if (Math.abs(ecart) <= vitesse) return cible;
-  return valeur + Math.sign(ecart) * vitesse;
+export function recentre(value, speed) {
+  const target = centreOnAxis(cellOnAxis(value));
+  const gap = target - value;
+  if (gap === 0) return value;
+  if (Math.abs(gap) <= speed) return target;
+  return value + Math.sign(gap) * speed;
 }
 
 /**
- * Glissement d'angle : contourner l'obstacle en se rangeant dans le couloir
- * voisin, quand on le mord deja.
+ * Corner slide: going round the obstacle by lining up with the neighbouring
+ * corridor, when you are already biting into it.
  *
- * Le recentrage de la regle 2 ne suffit pas, et c'est le defaut que ceci corrige.
- * Il ramene le bomber au centre de SA case — celle dont le passage est bloque.
- * Colle au bord haut d'un rocher avec un couloir libre juste au-dessus, le
- * joueur etait donc tire vers le bas, dans le rocher, exactement a l'inverse de
- * ce qu'il demandait. Il fallait lacher la touche, remonter, puis repartir.
+ * The recentring of rule 2 is not enough, and this is the flaw it fixes. It
+ * brings the bomber back to the centre of ITS cell — the one whose way is
+ * blocked. Stuck against the top edge of a rock with a free corridor just
+ * above, the player was therefore pulled downwards, into the rock, the exact
+ * opposite of what they asked for. You had to release the key, go back up, then
+ * set off again.
  *
- * La regle d'engagement n'invente aucune tolerance : le bomber glisse si sa
- * BOITE MORD DEJA la case voisine, et si le passage y est libre. La boite fait
- * 0,74 tuile, donc elle ne peut en mordre qu'une a la fois — il n'y a jamais
- * d'ambiguite sur le cote, et jamais de glissement depuis une position centree,
- * ou le blocage est franc et doit le rester.
+ * The rule of engagement invents no tolerance: the bomber slides if its BOX IS
+ * ALREADY BITING into the neighbouring cell, and if the way is free there. The
+ * box is 0.74 tile, so it can only bite into one at a time — there is never any
+ * ambiguity about the side, and never a slide from a centred position, where
+ * being blocked is clear-cut and must stay so.
  *
- * @param {import('./etat.js').Etat} etat
- * @param {import('./etat.js').Joueur} joueur
+ * @param {import('./state.js').State} state
+ * @param {import('./state.js').Player} player
  * @param {{ dx: number, dy: number }} v
- * @param {number} vitesse
- * @returns {boolean} vrai si le bomber s'est range
+ * @param {number} speed
+ * @returns {boolean} true when the bomber has lined up
  */
-function contourner(etat, joueur, v, vitesse) {
-  const cx = caseAxe(joueur.x);
-  const cy = caseAxe(joueur.y);
+function slideRound(state, player, v, speed) {
+  const cx = cellOnAxis(player.x);
+  const cy = cellOnAxis(player.y);
 
-  // Le regard porte sur la CASE suivante, pas sur le pixel suivant, et c'est le
-  // point qui fait tout marcher. Teste au pixel, l'obstacle n'est vu qu'une fois
-  // colle dessus — or le recentrage avance a la meme vitesse que le bomber et a
-  // deja eu le temps de le ramener au centre du couloir bloque. Le glissement
-  // n'avait alors plus rien a mordre, et ne s'engageait qu'a partir d'un
-  // decalage enorme. A l'echelle de la case, le passage bouche se voit assez tot
-  // pour que le recentrage ne soit jamais lance dans le mauvais sens.
-  if (franchissable(etat, joueur, cx + v.dx, cy + v.dy)) return false;
+  // The look ahead is at the next CELL, not the next pixel, and that is the
+  // point that makes it all work. Tested pixel-wise, the obstacle is only seen
+  // once you are flush against it — but recentring moves at the same speed as
+  // the bomber and has already had time to bring it to the centre of the
+  // blocked corridor. The slide then had nothing left to bite into, and only
+  // engaged from a huge offset. At cell scale, the blocked way is seen early
+  // enough for recentring never to have run the wrong way.
+  if (passable(state, player, cx + v.dx, cy + v.dy)) return false;
 
   const horizontal = v.dx !== 0;
-  // L'axe du glissement est PERPENDICULAIRE a celui du deplacement demande.
-  const valeur = horizontal ? joueur.y : joueur.x;
-  const fixe = horizontal ? joueur.x : joueur.y;
+  // The slide axis is PERPENDICULAR to the requested movement.
+  const value = horizontal ? player.y : player.x;
+  const fixed = horizontal ? player.x : player.y;
 
-  for (const cote of [-1, 1]) {
-    const voisine = (horizontal ? cy : cx) + cote;
-    // Mord-on deja le couloir voisin ? Sinon, on ne glisse pas : un bomber
-    // centre sur son couloir doit buter franchement.
-    if (caseAxe(valeur + cote * DEMI_BOMBER) !== voisine) continue;
+  for (const side of [-1, 1]) {
+    const neighbour = (horizontal ? cy : cx) + side;
+    // Are we already biting into the neighbouring corridor? If not, no slide: a
+    // bomber centred in its corridor must stop dead.
+    if (cellOnAxis(value + side * HALF_BOMBER) !== neighbour) continue;
 
-    // Il faut pouvoir s'y ranger ET en sortir par la direction demandee.
-    const dedans = horizontal ? [cx, voisine] : [voisine, cy];
-    const apres = horizontal ? [cx + v.dx, voisine] : [voisine, cy + v.dy];
-    if (!franchissable(etat, joueur, dedans[0], dedans[1])) continue;
-    if (!franchissable(etat, joueur, apres[0], apres[1])) continue;
+    // It must be possible to line up there AND to leave in the requested
+    // direction.
+    const inside = horizontal ? [cx, neighbour] : [neighbour, cy];
+    const beyond = horizontal ? [cx + v.dx, neighbour] : [neighbour, cy + v.dy];
+    if (!passable(state, player, inside[0], inside[1])) continue;
+    if (!passable(state, player, beyond[0], beyond[1])) continue;
 
-    // On s'y range d'un pas au plus, en verifiant la position intermediaire :
-    // le couloir est libre a l'arrivee, pas forcement sur tout le trajet.
-    const centre = centreAxe(voisine);
-    const ecart = centre - valeur;
-    const avance = Math.abs(ecart) <= vitesse ? centre : valeur + Math.sign(ecart) * vitesse;
-    if (!(horizontal ? boiteLibre(etat, joueur, fixe, avance) : boiteLibre(etat, joueur, avance, fixe))) {
+    // We line up by at most one step, checking the intermediate position: the
+    // corridor is free on arrival, not necessarily all the way there.
+    const centre = centreOnAxis(neighbour);
+    const gap = centre - value;
+    const moved = Math.abs(gap) <= speed ? centre : value + Math.sign(gap) * speed;
+    if (!(horizontal ? freeBox(state, player, fixed, moved) : freeBox(state, player, moved, fixed))) {
       continue;
     }
 
-    if (horizontal) joueur.y = avance;
-    else joueur.x = avance;
+    if (horizontal) player.y = moved;
+    else player.x = moved;
     return true;
   }
 
@@ -139,129 +141,129 @@ function contourner(etat, joueur, v, vitesse) {
 }
 
 /**
- * Relache la permission de traverser sa propre bombe.
+ * Releases the permission to walk through one's own bomb.
  *
- * Le moment du relachement est le piege : trop tot — au franchissement du
- * centre — et le bomber se retrouve a cheval sur sa bombe, donc bloque dans le
- * vide ; trop tard, et il pourrait y revenir. On relache donc exactement quand
- * la boite ne touche PLUS DU TOUT la case de la bombe.
+ * The moment of release is the trap: too early — when crossing the centre — and
+ * the bomber ends up astride its bomb, hence stuck in mid-air; too late, and it
+ * could come back onto it. So we release exactly when the box NO LONGER touches
+ * the bomb's cell at all.
  *
- * On relache aussi quand la bombe a disparu : son identifiant serait sinon
- * recycle, et le bomber heriterait d'une permission sur une bombe etrangere.
+ * We also release when the bomb is gone: its id would otherwise be recycled, and
+ * the bomber would inherit a permission on somebody else's bomb.
  *
- * @param {import('./etat.js').Etat} etat
- * @param {import('./etat.js').Joueur} joueur
+ * @param {import('./state.js').State} state
+ * @param {import('./state.js').Player} player
  */
-export function sortirDeSaBombe(etat, joueur) {
-  if (joueur.surBombe === null) return;
-  const bombe = bombeDe(etat, joueur.surBombe);
-  if (bombe === null) {
-    joueur.surBombe = null;
+export function leaveOwnBomb(state, player) {
+  if (player.onBomb === null) return;
+  const bomb = bombById(state, player.onBomb);
+  if (bomb === null) {
+    player.onBomb = null;
     return;
   }
-  if (!boiteSurCase(joueur.x, joueur.y, bombe.cx, bombe.cy)) joueur.surBombe = null;
+  if (!boxOnCell(player.x, player.y, bomb.cx, bomb.cy)) player.onBomb = null;
 }
 
 /**
- * Cale le bomber contre l'obstacle qu'il vient de heurter, pour qu'il le touche
- * au lieu de s'arreter a une sous-unite pres. La position calee est verifiee :
- * si elle n'est pas libre — cas d'un blocage en biais — on ne cale pas.
+ * Wedges the bomber against the obstacle it has just hit, so that it touches it
+ * instead of stopping one sub-unit short. The wedged position is checked: if it
+ * is not free — the case of a diagonal block — we do not wedge.
  */
-function caler(etat, joueur, v) {
+function wedge(state, player, v) {
   if (v.dx !== 0) {
-    const colonne = caseAxe(joueur.x + v.dx * DEMI_BOMBER) + v.dx;
-    const cible =
-      v.dx > 0 ? colonne * UNITES - DEMI_BOMBER - 1 : (colonne + 1) * UNITES + DEMI_BOMBER + 1;
-    if (Math.sign(cible - joueur.x) === v.dx && boiteLibre(etat, joueur, cible, joueur.y)) {
-      joueur.x = cible;
+    const column = cellOnAxis(player.x + v.dx * HALF_BOMBER) + v.dx;
+    const target =
+      v.dx > 0 ? column * UNITS - HALF_BOMBER - 1 : (column + 1) * UNITS + HALF_BOMBER + 1;
+    if (Math.sign(target - player.x) === v.dx && freeBox(state, player, target, player.y)) {
+      player.x = target;
     }
     return;
   }
-  const ligne = caseAxe(joueur.y + v.dy * DEMI_BOMBER) + v.dy;
-  const cible =
-    v.dy > 0 ? ligne * UNITES - DEMI_BOMBER - 1 : (ligne + 1) * UNITES + DEMI_BOMBER + 1;
-  if (Math.sign(cible - joueur.y) === v.dy && boiteLibre(etat, joueur, joueur.x, cible)) {
-    joueur.y = cible;
+  const row = cellOnAxis(player.y + v.dy * HALF_BOMBER) + v.dy;
+  const target =
+    v.dy > 0 ? row * UNITS - HALF_BOMBER - 1 : (row + 1) * UNITS + HALF_BOMBER + 1;
+  if (Math.sign(target - player.y) === v.dy && freeBox(state, player, player.x, target)) {
+    player.y = target;
   }
 }
 
 /**
- * Le bomber bute sur une bombe : s'il a le kick, il la pousse.
+ * The bomber runs into a bomb: if it has the kick, it pushes it.
  *
- * Declenche par la collision et non par une touche : c'est ainsi dans Atomic
- * Bomberman, et cela evite une sixieme commande a expliquer.
+ * Triggered by the collision and not by a key: that is how it works in Atomic
+ * Bomberman, and it saves explaining a sixth control.
  */
-function tenterKick(etat, joueur, dir) {
-  if (!joueur.kick) return;
-  const v = VECTEURS[dir];
-  const cx = caseAxe(joueur.x) + v.dx;
-  const cy = caseAxe(joueur.y) + v.dy;
-  // On ne shoote pas dans une bombe qui vole : elle n'est pas au sol.
-  const bombe = bombePoseeSur(etat, cx, cy);
-  if (bombe !== null && bombe.id !== joueur.surBombe) pousser(etat, bombe, dir);
+function tryKick(state, player, dir) {
+  if (!player.kick) return;
+  const v = VECTORS[dir];
+  const cx = cellOnAxis(player.x) + v.dx;
+  const cy = cellOnAxis(player.y) + v.dy;
+  // We do not kick a bomb in flight: it is not on the ground.
+  const bomb = bombDroppedAt(state, cx, cy);
+  if (bomb !== null && bomb.id !== player.onBomb) pushBomb(state, bomb, dir);
 }
 
 /**
- * Deplace un bomber d'un pas selon son intention.
+ * Moves one bomber by a step, according to its intent.
  *
- * @param {import('./etat.js').Etat} etat
- * @param {import('./etat.js').Joueur} joueur
- * @param {import('./entrees.js').Entree} entree
+ * @param {import('./state.js').State} state
+ * @param {import('./state.js').Player} player
+ * @param {import('./inputs.js').Input} input
  */
-export function deplacerJoueur(etat, joueur, entree) {
-  if (!joueur.vivant) return;
-  sortirDeSaBombe(etat, joueur);
+export function movePlayer(state, player, input) {
+  if (!player.alive) return;
+  leaveOwnBomb(state, player);
 
-  if (entree.dir < 0) {
-    joueur.marche = false;
+  if (input.dir < 0) {
+    player.walking = false;
     return;
   }
 
-  joueur.dir = entree.dir;
-  const v = VECTEURS[entree.dir];
-  const vitesse = joueur.vitesse;
+  player.dir = input.dir;
+  const v = VECTORS[input.dir];
+  const speed = player.speed;
 
   if (v.dx !== 0) {
-    const vise = joueur.x + v.dx * vitesse;
-    if (boiteLibre(etat, joueur, vise, joueur.y)) {
-      joueur.x = vise;
-      joueur.marche = true;
+    const aimed = player.x + v.dx * speed;
+    if (freeBox(state, player, aimed, player.y)) {
+      player.x = aimed;
+      player.walking = true;
     } else {
-      joueur.marche = false;
-      caler(etat, joueur, v);
-      tenterKick(etat, joueur, entree.dir);
+      player.walking = false;
+      wedge(state, player, v);
+      tryKick(state, player, input.dir);
     }
-    // Le glissement passe AVANT le recentrage, et l'exclut : les deux tirent sur
-    // le meme axe, en sens contraires. Il est tente meme quand on avance encore,
-    // parce qu'il regarde une case plus loin — s'y prendre une fois bloque
-    // serait trop tard, le recentrage aurait deja efface le decalage.
-    if (contourner(etat, joueur, v, vitesse)) joueur.marche = true;
-    else joueur.y = recentrer(joueur.y, vitesse);
+    // The slide comes BEFORE recentring, and rules it out: both pull on the same
+    // axis, in opposite directions. It is attempted even while still moving,
+    // because it looks one cell ahead — waiting until blocked would be too late,
+    // recentring would already have erased the offset.
+    if (slideRound(state, player, v, speed)) player.walking = true;
+    else player.y = recentre(player.y, speed);
   } else {
-    const vise = joueur.y + v.dy * vitesse;
-    if (boiteLibre(etat, joueur, joueur.x, vise)) {
-      joueur.y = vise;
-      joueur.marche = true;
+    const aimed = player.y + v.dy * speed;
+    if (freeBox(state, player, player.x, aimed)) {
+      player.y = aimed;
+      player.walking = true;
     } else {
-      joueur.marche = false;
-      caler(etat, joueur, v);
-      tenterKick(etat, joueur, entree.dir);
+      player.walking = false;
+      wedge(state, player, v);
+      tryKick(state, player, input.dir);
     }
-    if (contourner(etat, joueur, v, vitesse)) joueur.marche = true;
-    else joueur.x = recentrer(joueur.x, vitesse);
+    if (slideRound(state, player, v, speed)) player.walking = true;
+    else player.x = recentre(player.x, speed);
   }
 
-  sortirDeSaBombe(etat, joueur);
+  leaveOwnBomb(state, player);
 }
 
 /**
- * Deplace tous les bombers.
+ * Moves every bomber.
  *
- * @param {import('./etat.js').Etat} etat
- * @param {import('./entrees.js').Entree[]} entrees indexees par place
+ * @param {import('./state.js').State} state
+ * @param {import('./inputs.js').Input[]} inputs indexed by place
  */
-export function deplacerJoueurs(etat, entrees) {
-  for (const joueur of etat.joueurs) {
-    deplacerJoueur(etat, joueur, entrees[joueur.place] ?? { dir: -1, poser: false, declencher: false });
+export function movePlayers(state, inputs) {
+  for (const player of state.players) {
+    movePlayer(state, player, inputs[player.place] ?? { dir: -1, drop: false, detonate: false });
   }
 }

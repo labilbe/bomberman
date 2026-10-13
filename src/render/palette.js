@@ -1,76 +1,93 @@
 /**
- * Palette du jeu.
+ * The game's palette.
  *
- * Elle est saturee et contrastee, a la facon d'Atomic Bomberman, parce que la
- * lisibilite est ici une regle du jeu : on doit distinguer d'un coup d'oeil une
- * brique d'un mur dur — l'une s'ouvre, l'autre jamais — et reconnaitre son
- * bomber parmi quatre dans une melee. Les quatre couleurs de joueur sont donc
- * choisies pour rester distinctes a la fois en teinte et en luminosite, ce qui
- * les separe aussi pour un oeil daltonien.
+ * It is saturated and contrasted, in the manner of Atomic Bomberman, because
+ * legibility is a rule of the game here: a brick must be told from a hard wall
+ * at a glance — one opens, the other never — and you must recognise your bomber
+ * among four in a scrum. The player colours are therefore chosen to stay
+ * distinct both in hue and in lightness, which also separates them for a
+ * colour-blind eye.
  *
- * Les couleurs sont attachees au NUMERO DE PLACE, jamais au joueur : on se
- * repere a la couleur pendant tout le match, et elle ne doit pas changer parce
- * qu'un adversaire est parti.
+ * Colours are attached to the PLACE NUMBER, never to the player: you find your
+ * bearings by colour for the whole match, and it must not change because an
+ * opponent has left.
  */
 
-export const FOND = '#120f1c';
-export const SOL_CLAIR = '#2f7d4f';
-export const SOL_SOMBRE = '#276942';
-export const SOL_MOTIF = '#286a44';
+export const BACKGROUND = '#120f1c';
+export const GROUND_LIGHT = '#2f7d4f';
+export const GROUND_DARK = '#276942';
+export const GROUND_PATTERN = '#286a44';
 
-export const MUR_FACE = '#8b94a8';
-export const MUR_HAUT = '#b9c2d4';
-export const MUR_BAS = '#5b6377';
-export const MUR_TRAIT = '#3b4150';
+export const WALL_FACE = '#8b94a8';
+export const WALL_TOP = '#b9c2d4';
+export const WALL_BOTTOM = '#5b6377';
+export const WALL_LINE = '#3b4150';
 
-export const BRIQUE_FACE = '#b5563c';
-export const BRIQUE_HAUT = '#d4714f';
-export const BRIQUE_JOINT = '#7a3526';
+export const BRICK_FACE = '#b5563c';
+export const BRICK_TOP = '#d4714f';
+export const BRICK_JOINT = '#7a3526';
 
-export const BOMBE_CORPS = '#1b1b2a';
-export const BOMBE_REFLET = '#9aa4bd';
-export const MECHE = '#c9a227';
-export const ETINCELLE = ['#fff4c2', '#ffd45e', '#ff9f1c'];
+export const BOMB_BODY = '#1b1b2a';
+export const BOMB_SHINE = '#9aa4bd';
+export const FUSE = '#c9a227';
+export const SPARK = ['#fff4c2', '#ffd45e', '#ff9f1c'];
 
-export const FLAMME = ['#fffbe8', '#ffe066', '#ff9f1c', '#f4511e'];
+export const FLAME = ['#fffbe8', '#ffe066', '#ff9f1c', '#f4511e'];
 
-export const CONTOUR = '#14121f';
-export const OMBRE = 'rgba(0, 0, 0, 0.28)';
+export const OUTLINE = '#14121f';
+export const SHADOW = 'rgba(0, 0, 0, 0.28)';
 
 /**
- * Couleurs des quatre places : blanc, noir, rouge, bleu — les quatre bombers
- * historiques. Chacune porte son ombre, pour que le volume ne depende pas d'un
- * calcul de teinte a l'execution.
+ * The ten bomber colours, IN THE GAME'S OWN ORDER.
+ *
+ * They are not chosen here: they are COMPUTED from the game's tables —
+ * `COLOR.PAL` and the ten `.RMP` files — read by `src/extraction/colours.js`,
+ * which derives each player's hue, saturation and lightness correction. The
+ * three tones below are those values applied at three lightnesses, by the same
+ * formula as the sprite recolouring: the dashboard's dot therefore carries
+ * exactly the bomber's colour on screen, and not an approximation made by eye.
+ *
+ * They are HARD-CODED rather than read back on load, because a checkout without
+ * the game's assets must show the same colours: the engine, the menu and the
+ * dashboard use them before even knowing whether the sprites exist. To
+ * recompute them after an extraction, see `playerColours` in the manifest —
+ * these are those numbers, at three lightnesses.
  */
 export const PLACES = [
-  { nom: 'Blanc', clair: '#f2f2f7', vive: '#d8d8e4', sombre: '#9b9bb0' },
-  { nom: 'Noir', clair: '#4a4a5e', vive: '#33333f', sombre: '#1f1f28' },
-  { nom: 'Rouge', clair: '#ff6b5e', vive: '#e63946', sombre: '#9d2235' },
-  { nom: 'Bleu', clair: '#66c7ff', vive: '#2f80ed', sombre: '#1b4f9c' },
+  { name: 'Blanc', light: '#c6c6ba', vivid: '#acac9c', dark: '#92927d' },
+  { name: 'Noir', light: '#a8a896', vivid: '#7f7f6a', dark: '#505043' },
+  { name: 'Rouge', light: '#f08374', vivid: '#ea4b36', dark: '#c72a15' },
+  { name: 'Bleu', light: '#5f5ffc', vivid: '#1818fa', dark: '#0404c6' },
+  { name: 'Vert', light: '#5cff5c', vivid: '#13ff13', dark: '#00ca00' },
+  { name: 'Jaune', light: '#f5f56c', vivid: '#f0f02b', dark: '#c7c70e' },
+  { name: 'Cyan', light: '#76e8f1', vivid: '#39deea', dark: '#15beca' },
+  { name: 'Magenta', light: '#ff5eff', vivid: '#ff16ff', dark: '#cd00cd' },
+  { name: 'Orange', light: '#f99f5e', vivid: '#f77416', dark: '#bb5207' },
+  { name: 'Violet', light: '#b766f9', vivid: '#9721f7', dark: '#7207ca' },
 ];
 
-/** Couleur d'une place, bornee pour ne jamais rendre undefined. */
-export function couleurDePlace(place) {
+/** The colour of a place, wrapped so it never returns undefined. */
+export function placeColour(place) {
   return PLACES[((place % PLACES.length) + PLACES.length) % PLACES.length];
 }
 
 /**
- * Couleurs des bonus.
+ * Bonus colours.
  *
- * La plaquette est VIVE et le glyphe sombre, et non l'inverse. Un bonus pose au
- * sol doit sauter aux yeux au milieu d'un damier vert et brun, parfois sous une
- * flamme : avec une plaquette sombre, il se confondait avec le decor et on
- * marchait dessus sans le voir.
+ * The pack is VIVID and the glyph dark, and not the other way round. A bonus
+ * lying on the ground has to leap to the eye in the middle of a green and brown
+ * checkerboard, sometimes under a flame: with a dark pack it blended into the
+ * scenery and you walked over it without seeing it.
  */
-export const BONUS_COULEURS = {
-  bomb: { fond: '#8d99ae', glyphe: '#14121f', eclat: '#e2e8f0' },
-  flame: { fond: '#ff9f1c', glyphe: '#7a2e00', eclat: '#ffe066' },
-  speed: { fond: '#48cae4', glyphe: '#073b4c', eclat: '#caf0f8' },
-  kick: { fond: '#c77dff', glyphe: '#3c096c', eclat: '#e9d5ff' },
-  trigger: { fond: '#70e000', glyphe: '#14331f', eclat: '#ccff33' },
-  // Le gant : rouge cuir, la couleur qu'on attend d'un gant de boxe.
-  punch: { fond: '#e5383b', glyphe: '#4a0d10', eclat: '#ff9a94' },
-  // La goutte : le violet du 'jelly' d'Interplay, qui ne ressemble a aucun
-  // autre bonus — c'est tout ce qu'on demande a seize pixels.
-  jelly: { fond: '#9d4edd', glyphe: '#2d0a45', eclat: '#e0aaff' },
+export const BONUS_COLOURS = {
+  bomb: { background: '#8d99ae', glyph: '#14121f', glow: '#e2e8f0' },
+  flame: { background: '#ff9f1c', glyph: '#7a2e00', glow: '#ffe066' },
+  speed: { background: '#48cae4', glyph: '#073b4c', glow: '#caf0f8' },
+  kick: { background: '#c77dff', glyph: '#3c096c', glow: '#e9d5ff' },
+  trigger: { background: '#70e000', glyph: '#14331f', glow: '#ccff33' },
+  // The glove: leather red, the colour you expect of a boxing glove.
+  punch: { background: '#e5383b', glyph: '#4a0d10', glow: '#ff9a94' },
+  // The jelly: the purple of Interplay's own 'jelly', which looks like no other
+  // bonus — that is all you ask of sixteen pixels.
+  jelly: { background: '#9d4edd', glyph: '#2d0a45', glow: '#e0aaff' },
 };

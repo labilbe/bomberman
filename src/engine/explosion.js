@@ -1,421 +1,421 @@
 /**
- * Explosions, chaines, briques, bonus brules, morts.
+ * Explosions, chains, bricks, burnt bonuses, deaths.
  *
- * Deux decisions commandent ce module.
+ * Two decisions drive this module.
  *
- * 1. Une chaine se resout ENTIEREMENT dans le meme pas, par une file. C'est le
- *    comportement d'Atomic Bomberman, et c'est surtout le seul qui ne depende
- *    pas de l'ordre du tableau des bombes : l'etaler sur plusieurs pas ferait
- *    dependre le resultat de l'ordre de pose, donc de la latence de chacun.
+ * 1. A chain resolves ENTIRELY within the same step, through a queue. That is
+ *    Atomic Bomberman's behaviour, and above all it is the only one that does
+ *    not depend on the order of the bomb array: spreading it over several steps
+ *    would make the result depend on drop order, hence on everyone's latency.
  *
- * 2. Un bonus n'est detruit que par une flamme NEUVE, jamais par une flamme
- *    deja la. Sans cette nuance, un bonus revele par une explosion serait
- *    aussitot brule par la flamme qui vient de le decouvrir, et casser une
- *    brique ne rapporterait jamais rien.
+ * 2. A bonus is only destroyed by a FRESH flame, never by a flame that was
+ *    already there. Without that nuance, a bonus revealed by an explosion would
+ *    at once be burnt by the flame that just uncovered it, and breaking a brick
+ *    would never pay off.
  */
 
 import {
-  FLAMME_PAS,
-  CHUTE_PAS,
-  DEMI_MORTEL,
-  VECTEURS,
-  VIDE,
-  BRIQUE,
+  FLAME_STEPS,
+  FALL_STEPS,
+  HALF_DEADLY,
+  VECTORS,
+  EMPTY,
+  BRICK,
   COLS,
   ROWS,
-  BOMBES_DEPART,
-  FLAMME_DEPART,
-  VITESSE_BASE,
-  VITESSE_PALIER,
-  DETONATEURS_PAR_BONUS,
-} from './constantes.js';
-import { caseDe, poserCase, index, estLibre, boiteSurCase, caseAxe } from './grille.js';
-import { noter } from './etat.js';
-import { tirer } from './rng.js';
-import { bombeSur, rendreLesMeches } from './bombes.js';
-import { estCache, estVisible, codeDe, appliquer, NOMS_BONUS, CODES_BONUS } from './bonus.js';
+  BOMBS_AT_START,
+  RANGE_AT_START,
+  BASE_SPEED,
+  SPEED_STEP,
+  TRIGGERS_PER_BONUS,
+} from './constants.js';
+import { cellAt, setCell, index, isFree, boxOnCell, cellOnAxis } from './grid.js';
+import { record } from './state.js';
+import { draw } from './rng.js';
+import { bombAt, restoreFuses } from './bombs.js';
+import { isHidden, isVisible, codeOf, apply, BONUS_NAMES, BONUS_CODES } from './bonus.js';
 
-/** Causes de mort, telles qu'elles partent sur le reseau. */
-export const PAR_FLAMME = 0;
-export const PAR_ABSENCE = 1;
-export const PAR_DEPART = 2;
+/** Causes of death, as they go out on the network. */
+export const BY_FLAME = 0;
+export const BY_LEAVING = 1;
+export const BY_START = 2;
 
 /**
- * Portee reelle d'une branche de l'explosion.
+ * Actual reach of one branch of the explosion.
  *
- * S'arrete au premier mur dur, detruit UNE brique et s'arrete la. Une flamme
- * qui traverserait deux briques rendrait tout abri illusoire.
+ * Stops at the first hard wall, destroys ONE brick and stops there. A flame
+ * going through two bricks would make every shelter illusory.
  *
- * Un bonus pose au sol arrete la branche de la meme facon : il est detruit, et
- * rien ne passe au-dela. La difference avec la brique est que SA case brule,
- * elle : le bonus ne bouche pas le passage, on peut s'y tenir, donc on peut y
- * mourir.
+ * A bonus lying on the ground stops the branch the same way: it is destroyed,
+ * and nothing goes past it. The difference from a brick is that ITS cell does
+ * burn: the bonus does not block the way, you can stand on it, so you can die
+ * on it.
  *
- * LA CASE DE LA BRIQUE N'EST PAS ENFLAMMEE, et c'est une regle de jeu, pas un
- * detail. La brique ABSORBE le souffle : elle tombe, et le feu ne prend pas sa
- * place. En l'enflammant, on obtenait une case a la fois VIDE et mortelle
- * pendant une demi-seconde — un joueur abrite derriere la brique qui avancait
- * vers l'explosion entrait dans le trou tout juste ouvert et mourait, alors
- * qu'il etait precisement du bon cote de l'abri. Atomic Bomberman ne punit pas
- * ca, et il a raison : c'est l'abri qui a joue son role.
+ * THE BRICK'S CELL IS NOT SET ALIGHT, and that is a rule of the game, not a
+ * detail. The brick ABSORBS the blast: it falls, and the fire does not take its
+ * place. Setting it alight gave a cell that was both EMPTY and deadly for half
+ * a second — a player sheltered behind the brick who walked towards the
+ * explosion stepped into the hole just opened and died, although they were
+ * precisely on the right side of the shelter. Atomic Bomberman does not punish
+ * that, and it is right: the shelter did its job.
  *
- * Ce que l'on voit sur cette case pendant qu'elle brule n'est donc pas une
- * flamme du moteur mais l'animation de la brique qui tombe, declenchee par
- * l'evenement `brick` — et chez Atomic Bomberman cette animation s'appelle
- * justement « flame brick ». Le feu y est dessine, il n'y est pas mortel.
+ * What you see on that cell while it burns is therefore not an engine flame but
+ * the animation of the falling brick, fired by the `brick` event — and in Atomic
+ * Bomberman that animation is called, aptly, "flame brick". The fire is drawn
+ * there, it is not deadly there.
  *
- * @param {import('./etat.js').Etat} etat
- * @returns {{ cases: number[][], brique: number[] | null, bombes: number[] }}
+ * @param {import('./state.js').State} state
+ * @returns {{ cells: number[][], brick: number[] | null, bombs: number[] }}
  */
-export function rayon(etat, cx, cy, dir, portee) {
-  const v = VECTEURS[dir];
-  const cases = [];
-  const bombes = [];
-  let brique = null;
+export function ray(state, cx, cy, dir, range) {
+  const v = VECTORS[dir];
+  const cells = [];
+  const bombs = [];
+  let brick = null;
 
-  for (let i = 1; i <= portee; i += 1) {
+  for (let i = 1; i <= range; i += 1) {
     const x = cx + v.dx * i;
     const y = cy + v.dy * i;
-    const tuile = caseDe(etat, x, y);
-    if (tuile === BRIQUE) {
-      brique = [x, y];
+    const tile = cellAt(state, x, y);
+    if (tile === BRICK) {
+      brick = [x, y];
       break;
     }
-    if (!estLibre(tuile)) break;
-    cases.push([x, y]);
-    const bombe = bombeSur(etat, x, y);
-    if (bombe !== null) bombes.push(bombe.id);
-    // UN BONUS AU SOL ARRETE LE SOUFFLE, comme une brique. Il brule — sa case
-    // est enflammee, elle, puisqu'elle reste praticable — mais la branche ne va
-    // pas plus loin. Sans cela, un bonus au sol se faisait detruire sans rien
-    // couvrir, et deux joueurs separes par un bonus etaient a decouvert l'un de
-    // l'autre alors qu'un simple mur de briques les aurait abrites.
-    if (estVisible(etat.objets[index(x, y)])) break;
+    if (!isFree(tile)) break;
+    cells.push([x, y]);
+    const bomb = bombAt(state, x, y);
+    if (bomb !== null) bombs.push(bomb.id);
+    // A BONUS ON THE GROUND STOPS THE BLAST, like a brick. It burns — its cell
+    // is set alight, since it stays walkable — but the branch goes no further.
+    // Without that, a bonus on the ground was destroyed while covering nothing,
+    // and two players separated by a bonus were exposed to each other although a
+    // plain wall of bricks would have sheltered them.
+    if (isVisible(state.items[index(x, y)])) break;
   }
 
-  return { cases, brique, bombes };
+  return { cells, brick, bombs };
 }
 
 /**
- * Pose ou rallume une flamme sur une case.
+ * Lights, or relights, a flame on a cell.
  *
- * La flamme retient la PLACE du poseur. Elle ne sert a aucune regle — rien ne
- * depend de qui a allume quoi — mais Atomic Bomberman colorie l'explosion aux
- * couleurs du joueur, et c'est ainsi qu'on voit qui vient de vous tuer. Le rendu
- * ne pouvait pas le deviner : il ne voit que des cases qui brulent.
+ * The flame remembers the PLACE of whoever dropped the bomb. It serves no rule —
+ * nothing depends on who lit what — but Atomic Bomberman colours the explosion
+ * in the player's colours, and that is how you see who has just killed you. The
+ * renderer could not guess it: all it sees is burning cells.
  *
- * Une case deja en feu garde son premier proprietaire. A l'instant ou deux
- * souffles se rejoignent, le choix est arbitraire ; le prendre stable evite au
- * moins que la case clignote entre deux couleurs.
+ * A cell already on fire keeps its first owner. At the instant two blasts meet,
+ * the choice is arbitrary; making it stable at least keeps the cell from
+ * flickering between two colours.
  */
-function allumer(etat, cx, cy, place, neuves) {
-  const existante = etat.flammes.find((flamme) => flamme.cx === cx && flamme.cy === cy);
-  if (existante) {
-    existante.reste = FLAMME_PAS;
+function light(state, cx, cy, place, fresh) {
+  const existing = state.flames.find((flame) => flame.cx === cx && flame.cy === cy);
+  if (existing) {
+    existing.left = FLAME_STEPS;
   } else {
-    etat.flammes.push({ cx, cy, reste: FLAMME_PAS, place });
+    state.flames.push({ cx, cy, left: FLAME_STEPS, place });
   }
-  neuves.push([cx, cy]);
+  fresh.push([cx, cy]);
 }
 
 /**
- * Fait exploser une bombe : flammes, briques, et bombes a enchainer.
+ * Makes a bomb explode: flames, bricks, and bombs to chain.
  *
- * @param {import('./etat.js').Etat} etat
- * @param {import('./etat.js').Bombe} bombe
- * @param {number[]} file identifiants de bombes a traiter ensuite
- * @param {number[][]} neuves cases nouvellement enflammees, pour les bonus
- * @param {number[][]} briques briques detruites, pour les reveler ensuite
+ * @param {import('./state.js').State} state
+ * @param {import('./state.js').Bomb} bomb
+ * @param {number[]} queue ids of the bombs to handle next
+ * @param {number[][]} fresh newly lit cells, for the bonuses
+ * @param {number[][]} bricks destroyed bricks, to reveal afterwards
  */
-export function exploser(etat, bombe, file, neuves, briques) {
-  const rang = etat.bombes.indexOf(bombe);
-  if (rang >= 0) etat.bombes.splice(rang, 1);
+export function explode(state, bomb, queue, fresh, bricks) {
+  const rank = state.bombs.indexOf(bomb);
+  if (rank >= 0) state.bombs.splice(rank, 1);
 
-  const proprietaire = etat.joueurs.find((joueur) => joueur.place === bombe.place);
-  if (proprietaire) proprietaire.posees = Math.max(0, proprietaire.posees - 1);
+  const owner = state.players.find((player) => player.place === bomb.place);
+  if (owner) owner.dropped = Math.max(0, owner.dropped - 1);
 
-  // La permission de traverser cette bombe meurt avec elle : son identifiant
-  // sera reattribue, et elle vaudrait alors pour une bombe etrangere.
-  for (const joueur of etat.joueurs) {
-    if (joueur.surBombe === bombe.id) joueur.surBombe = null;
+  // The permission to walk through this bomb dies with it: its id will be
+  // handed out again, and would then apply to somebody else's bomb.
+  for (const player of state.players) {
+    if (player.onBomb === bomb.id) player.onBomb = null;
   }
 
-  allumer(etat, bombe.cx, bombe.cy, bombe.place, neuves);
+  light(state, bomb.cx, bomb.cy, bomb.place, fresh);
 
-  const longueurs = [0, 0, 0, 0];
+  const lengths = [0, 0, 0, 0];
   for (let dir = 0; dir < 4; dir += 1) {
-    const branche = rayon(etat, bombe.cx, bombe.cy, dir, bombe.portee);
-    longueurs[dir] = branche.cases.length;
-    for (const [x, y] of branche.cases) allumer(etat, x, y, bombe.place, neuves);
-    if (branche.brique) abattre(etat, branche.brique[0], branche.brique[1]);
-    for (const id of branche.bombes) file.push(id);
+    const branch = ray(state, bomb.cx, bomb.cy, dir, bomb.range);
+    lengths[dir] = branch.cells.length;
+    for (const [x, y] of branch.cells) light(state, x, y, bomb.place, fresh);
+    if (branch.brick) fell(state, branch.brick[0], branch.brick[1]);
+    for (const id of branch.bombs) queue.push(id);
   }
 
-  noter(etat, [
+  record(state, [
     'boom',
-    bombe.id,
-    bombe.cx,
-    bombe.cy,
-    longueurs[0],
-    longueurs[1],
-    longueurs[2],
-    longueurs[3],
+    bomb.id,
+    bomb.cx,
+    bomb.cy,
+    lengths[0],
+    lengths[1],
+    lengths[2],
+    lengths[3],
   ]);
 }
 
 /**
- * Met une brique a terre : elle tombe, mais bloque encore.
+ * Brings a brick down: it falls, but it still blocks.
  *
- * LA CASE NE SE VIDE PAS MAINTENANT. Elle reste BRIQUE pendant toute la chute,
- * donc infranchissable, et c'est la correction d'une inexactitude : la brique
- * disparaissait a l'instant de l'explosion et l'animation n'etait qu'un decor
- * peint par-dessus du vide. On traversait une brique qu'on voyait encore
- * tomber, ce qu'Atomic Bomberman ne permet pas.
+ * THE CELL IS NOT EMPTIED NOW. It stays BRICK for the whole fall, hence
+ * impassable, and that fixes an inaccuracy: the brick used to disappear at the
+ * instant of the explosion and the animation was only scenery painted over
+ * nothing. You walked through a brick you could still see falling, which Atomic
+ * Bomberman does not allow.
  *
- * Une brique deja a terre n'est pas abattue deux fois : un second souffle qui
- * l'atteint pendant sa chute s'y arrete — elle est toujours la — mais ne
- * relance ni son animation ni son decompte.
+ * A brick already coming down is not felled twice: a second blast reaching it
+ * during its fall stops there — it is still present — but restarts neither its
+ * animation nor its countdown.
  */
-function abattre(etat, cx, cy) {
-  if (etat.ruines.some((ruine) => ruine.cx === cx && ruine.cy === cy)) return;
-  etat.ruines.push({ cx, cy, reste: CHUTE_PAS });
-  noter(etat, ['brick', cx, cy]);
+function fell(state, cx, cy) {
+  if (state.rubble.some((debris) => debris.cx === cx && debris.cy === cy)) return;
+  state.rubble.push({ cx, cy, left: FALL_STEPS });
+  record(state, ['brick', cx, cy]);
 }
 
 /**
- * Fait tomber les briques d'un pas, et vide celles qui ont fini.
+ * Brings the bricks down by one step, and empties those that have finished.
  *
- * C'est ICI que la case s'ouvre, et que le bonus cache dessous se montre. Le
- * reveler plus tot l'aurait fait apparaitre sous une brique encore debout.
+ * It is HERE that the cell opens, and that the bonus hidden underneath shows
+ * itself. Revealing it earlier would have made it appear under a brick still
+ * standing.
  *
- * L'ecriture de la case est la SEULE du cycle de vie d'une brique, donc le
- * compteur de version n'avance que d'un cran par brique — ce que le client sait
- * reproduire sans demander la grille entiere.
+ * Writing the cell is the ONLY write in a brick's life cycle, so the version
+ * counter only moves by one per brick — which the client can reproduce without
+ * asking for the whole grid.
  *
- * @param {import('./etat.js').Etat} etat
+ * @param {import('./state.js').State} state
  */
-export function vieillirRuines(etat) {
-  for (let i = etat.ruines.length - 1; i >= 0; i -= 1) {
-    const ruine = etat.ruines[i];
-    ruine.reste -= 1;
-    if (ruine.reste > 0) continue;
-    etat.ruines.splice(i, 1);
-    poserCase(etat, ruine.cx, ruine.cy, VIDE);
-    noter(etat, ['brickgone', ruine.cx, ruine.cy]);
-    revelerBonus(etat, [[ruine.cx, ruine.cy]]);
+export function ageRubble(state) {
+  for (let i = state.rubble.length - 1; i >= 0; i -= 1) {
+    const debris = state.rubble[i];
+    debris.left -= 1;
+    if (debris.left > 0) continue;
+    state.rubble.splice(i, 1);
+    setCell(state, debris.cx, debris.cy, EMPTY);
+    record(state, ['brickgone', debris.cx, debris.cy]);
+    revealBonuses(state, [[debris.cx, debris.cy]]);
   }
 }
 
 /**
- * Resout une chaine d'explosions jusqu'a epuisement.
+ * Resolves a chain of explosions until it runs out.
  *
- * Le jeu de bombes deja traitees est indispensable : deux bombes qui se touchent
- * se mettent mutuellement dans la file, et sans lui la boucle ne s'arreterait
- * jamais.
+ * The set of bombs already handled is essential: two touching bombs put each
+ * other in the queue, and without it the loop would never stop.
  *
- * @param {import('./etat.js').Etat} etat
- * @param {import('./etat.js').Bombe[]} initiales
- * @returns {{ neuves: number[][], briques: number[][] }}
+ * @param {import('./state.js').State} state
+ * @param {import('./state.js').Bomb[]} initial
+ * @returns {{ fresh: number[][], bricks: number[][] }}
  */
-export function resoudreChaine(etat, initiales) {
-  const neuves = [];
-  const briques = [];
-  const vues = new Set();
-  const file = initiales.map((bombe) => bombe.id);
+export function resolveChain(state, initial) {
+  const fresh = [];
+  const bricks = [];
+  const seen = new Set();
+  const queue = initial.map((bomb) => bomb.id);
 
-  while (file.length > 0) {
-    const id = file.shift();
-    if (vues.has(id)) continue;
-    vues.add(id);
-    const bombe = etat.bombes.find((candidate) => candidate.id === id);
-    if (!bombe) continue;
-    exploser(etat, bombe, file, neuves, briques);
+  while (queue.length > 0) {
+    const id = queue.shift();
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const bomb = state.bombs.find((candidate) => candidate.id === id);
+    if (!bomb) continue;
+    explode(state, bomb, queue, fresh, bricks);
   }
 
-  return { neuves, briques };
+  return { fresh, bricks };
 }
 
 /**
- * Detruit les bonus visibles atteints par une flamme neuve.
+ * Destroys the visible bonuses reached by a fresh flame.
  *
- * @param {import('./etat.js').Etat} etat
- * @param {number[][]} neuves
+ * @param {import('./state.js').State} state
+ * @param {number[][]} fresh
  */
-export function brulerObjets(etat, neuves) {
-  for (const [cx, cy] of neuves) {
+export function burnItems(state, fresh) {
+  for (const [cx, cy] of fresh) {
     const i = index(cx, cy);
-    if (!estVisible(etat.objets[i])) continue;
-    etat.objets[i] = 0;
-    noter(etat, ['itemgone', cx, cy]);
+    if (!isVisible(state.items[i])) continue;
+    state.items[i] = 0;
+    record(state, ['itemgone', cx, cy]);
   }
 }
 
 /**
- * Revele les bonus caches sous les briques qui viennent de tomber.
+ * Reveals the bonuses hidden under the bricks that have just fallen.
  *
- * Appele APRES `brulerObjets` : c'est cet ordre, et lui seul, qui fait qu'un
- * bonus survit a l'explosion qui le decouvre.
+ * Called AFTER `burnItems`: that order, and that order alone, is what makes a
+ * bonus survive the explosion that uncovers it.
  *
- * @param {import('./etat.js').Etat} etat
- * @param {number[][]} briques
+ * @param {import('./state.js').State} state
+ * @param {number[][]} bricks
  */
-export function revelerBonus(etat, briques) {
-  for (const [cx, cy] of briques) {
+export function revealBonuses(state, bricks) {
+  for (const [cx, cy] of bricks) {
     const i = index(cx, cy);
-    if (!estCache(etat.objets[i])) continue;
-    const code = codeDe(etat.objets[i]);
-    etat.objets[i] = code;
-    noter(etat, ['item', cx, cy, NOMS_BONUS[code]]);
+    if (!isHidden(state.items[i])) continue;
+    const code = codeOf(state.items[i]);
+    state.items[i] = code;
+    record(state, ['item', cx, cy, BONUS_NAMES[code]]);
   }
 }
 
 /**
- * Tue tous les bombers que touche une flamme.
+ * Kills every bomber a flame touches.
  *
- * Balayage complet, et non « le premier trouve » : on marque tous les morts du
- * pas avant d'en tirer la moindre conclusion. Sans cela, « le dernier mort
- * gagne » dependrait de l'ordre du tableau des joueurs — bug classique et
- * invisible des clones de Bomberman.
+ * A full sweep, not "the first one found": every death of the step is marked
+ * before any conclusion is drawn from it. Without that, "the last one to die
+ * wins" would depend on the order of the player array — the classic, invisible
+ * bug of Bomberman clones.
  *
- * @param {import('./etat.js').Etat} etat
+ * @param {import('./state.js').State} state
  */
-export function brulerJoueurs(etat) {
-  for (const joueur of etat.joueurs) {
-    if (!joueur.vivant) continue;
-    for (const flamme of etat.flammes) {
-      // La boite MORTELLE, plus petite que celle de collision : on meurt en
-      // entrant dans le feu, pas en s en approchant.
-      if (!boiteSurCase(joueur.x, joueur.y, flamme.cx, flamme.cy, DEMI_MORTEL)) continue;
-      tuer(etat, joueur, PAR_FLAMME);
+export function burnPlayers(state) {
+  for (const player of state.players) {
+    if (!player.alive) continue;
+    for (const flame of state.flames) {
+      // The DEADLY box, smaller than the collision one: you die on entering the
+      // fire, not on coming near it.
+      if (!boxOnCell(player.x, player.y, flame.cx, flame.cy, HALF_DEADLY)) continue;
+      kill(state, player, BY_FLAME);
       break;
     }
   }
 }
 
 /**
- * Tout ce qu'un bomber a ramasse, en codes de bonus, un par exemplaire.
+ * Everything a bomber picked up, as bonus codes, one per item.
  *
- * On compte l'ECART a la dotation de depart, et non les ramassages : le moteur
- * ne les retient pas, et l'ecart dit exactement la meme chose — trois bombes
- * quand on en avait une, ce sont deux bonus bombe.
+ * We count the GAP from the starting kit, not the pickups: the engine does not
+ * remember those, and the gap says exactly the same thing — three bombs when you
+ * started with one means two bomb bonuses.
  */
-function butin(joueur) {
+function loot(player) {
   const codes = [];
-  const ajouter = (code, nombre) => {
-    for (let i = 0; i < nombre; i += 1) codes.push(code);
+  const add = (code, count) => {
+    for (let i = 0; i < count; i += 1) codes.push(code);
   };
-  ajouter(CODES_BONUS.BOMBE, joueur.bombes - BOMBES_DEPART);
-  ajouter(CODES_BONUS.FLAMME, joueur.portee - FLAMME_DEPART);
-  ajouter(CODES_BONUS.VITESSE, Math.round((joueur.vitesse - VITESSE_BASE) / VITESSE_PALIER));
-  if (joueur.kick) ajouter(CODES_BONUS.KICK, 1);
-  if (joueur.gant) ajouter(CODES_BONUS.GANT, 1);
-  if (joueur.goutte) ajouter(CODES_BONUS.GOUTTE, 1);
-  // Une plaquette par paquet entame : il reste trois charges sur cinq, c'est
-  // encore un detonateur, et le rendre entier vaut mieux que de le perdre.
-  ajouter(CODES_BONUS.DETONATEUR, Math.ceil(joueur.detonateur / DETONATEURS_PAR_BONUS));
+  add(BONUS_CODES.BOMB, player.bombs - BOMBS_AT_START);
+  add(BONUS_CODES.FLAME, player.range - RANGE_AT_START);
+  add(BONUS_CODES.SPEED, Math.round((player.speed - BASE_SPEED) / SPEED_STEP));
+  if (player.kick) add(BONUS_CODES.KICK, 1);
+  if (player.glove) add(BONUS_CODES.GLOVE, 1);
+  if (player.jelly) add(BONUS_CODES.JELLY, 1);
+  // One pack per part-used pack: three charges out of five left is still a
+  // trigger, and giving it back whole is better than losing it.
+  add(BONUS_CODES.TRIGGER, Math.ceil(player.triggers / TRIGGERS_PER_BONUS));
   return codes;
 }
 
 /**
- * Seme le butin d'un mort AU HASARD DANS TOUTE L'ARENE.
+ * Scatters a dead bomber's loot AT RANDOM ACROSS THE WHOLE ARENA.
  *
- * Pas autour du corps : les bonus tomberaient dans le souffle qui vient de le
- * tuer, donc au milieu d'un endroit ou personne ne peut aller, et le tueur —
- * seul present — les ramasserait tous en traversant. Repandus au hasard, ils
- * obligent a traverser le plateau pour les reprendre, et celui qui est distance
- * a autant de chances d'en trouver un que celui qui vient de tuer.
+ * Not around the body: the bonuses would fall into the blast that has just
+ * killed it, hence in the middle of a place nobody can reach, and the killer —
+ * the only one present — would pick them all up on the way through. Spread at
+ * random, they force a trip across the board to collect them, and whoever is
+ * behind has as good a chance of finding one as whoever has just killed.
  *
- * Le tirage passe par le GENERATEUR A GRAINE de l'etat, comme celui des briques
- * et des bonus caches. Le hasard du navigateur aurait donne deux arenes
- * differentes au relais et au rejeu — c'est ce que le moteur s'interdit depuis
- * le premier jour, et un test le verifie en relisant ses sources.
+ * The draw goes through the state's SEEDED GENERATOR, like the one for bricks
+ * and hidden bonuses. The browser's randomness would have given the relay and
+ * the replay two different arenas — which the engine has forbidden itself since
+ * day one, and a test checks it by re-reading its sources.
  *
- * On evite les cases EN FEU : un bonus y survivrait, puisque seule une flamme
- * NEUVE brule, et l'on verrait une plaquette intacte au milieu des flammes. Ce
- * qui ne trouve pas de place — arene pleine — est perdu.
+ * Cells ON FIRE are avoided: a bonus would survive there, since only a FRESH
+ * flame burns, and you would see an untouched pack in the middle of the flames.
+ * Whatever finds no room — a full arena — is lost.
  */
-function semer(etat, joueur) {
-  const codes = butin(joueur);
+function scatter(state, player) {
+  const codes = loot(player);
   if (codes.length === 0) return;
 
-  const libres = [];
+  const free = [];
   for (let cy = 0; cy < ROWS; cy += 1) {
     for (let cx = 0; cx < COLS; cx += 1) {
-      if (caseDe(etat, cx, cy) !== VIDE) continue;
-      if (etat.objets[index(cx, cy)] !== 0) continue;
-      if (bombeSur(etat, cx, cy)) continue;
-      if (etat.flammes.some((flamme) => flamme.cx === cx && flamme.cy === cy)) continue;
-      libres.push([cx, cy]);
+      if (cellAt(state, cx, cy) !== EMPTY) continue;
+      if (state.items[index(cx, cy)] !== 0) continue;
+      if (bombAt(state, cx, cy)) continue;
+      if (state.flames.some((flame) => flame.cx === cx && flame.cy === cy)) continue;
+      free.push([cx, cy]);
     }
   }
 
   for (const code of codes) {
-    if (libres.length === 0) return;
-    // On retire la case tiree de la liste : deux bonus ne se posent jamais l'un
-    // sur l'autre, ce qui en perdrait un sans que personne ne le voie.
-    const [cx, cy] = libres.splice(Math.floor(tirer(etat) * libres.length), 1)[0];
-    etat.objets[index(cx, cy)] = code;
-    noter(etat, ['item', cx, cy, NOMS_BONUS[code]]);
+    if (free.length === 0) return;
+    // The drawn cell is removed from the list: two bonuses never land on top of
+    // each other, which would lose one without anybody seeing it.
+    const [cx, cy] = free.splice(Math.floor(draw(state) * free.length), 1)[0];
+    state.items[index(cx, cy)] = code;
+    record(state, ['item', cx, cy, BONUS_NAMES[code]]);
   }
 }
 
 /**
- * Tue un bomber, quelle qu'en soit la cause.
+ * Kills a bomber, whatever the cause.
  *
- * IL LACHE TOUT CE QU'IL AVAIT RAMASSE. Sans cela, tuer le joueur le mieux
- * equipe retirait definitivement ses bonus de la manche, et celui qui restait
- * n'avait plus rien a convoiter ; les derniers duels se jouaient entre deux
- * bombers nus sur une arene sans briques. Les rendre fait de chaque mort un
- * butin, et donne a celui qui est distance une derniere raison de s'avancer.
+ * IT DROPS EVERYTHING IT HAD PICKED UP. Without that, killing the best-equipped
+ * player removed their bonuses from the round for good, and whoever was left had
+ * nothing to covet any more; the last duels were played between two naked
+ * bombers in an arena without bricks. Giving them back makes every death a
+ * prize, and gives whoever is behind one last reason to step forward.
  *
- * @param {import('./etat.js').Etat} etat
- * @param {import('./etat.js').Joueur} joueur
+ * @param {import('./state.js').State} state
+ * @param {import('./state.js').Player} player
  * @param {number} cause
  */
-export function tuer(etat, joueur, cause) {
-  if (!joueur.vivant) return;
-  joueur.vivant = false;
-  joueur.marche = false;
-  joueur.mortAu = etat.pas;
-  joueur.surBombe = null;
+export function kill(state, player, cause) {
+  if (!player.alive) return;
+  player.alive = false;
+  player.walking = false;
+  player.diedAt = state.step;
+  player.onBomb = null;
 
-  // Ses bombes a detonateur n'attendent plus personne : on leur rend une meche.
-  rendreLesMeches(etat, joueur.place);
-  semer(etat, joueur);
+  // Its trigger bombs are waiting for nobody any more: we give them a fuse back.
+  restoreFuses(state, player.place);
+  scatter(state, player);
 
-  noter(etat, ['death', joueur.place, cause]);
+  record(state, ['death', player.place, cause]);
 }
 
 /**
- * Ramassage des bonus.
+ * Picking bonuses up.
  *
- * Appele APRES les morts : on ne ramasse pas en mourant. Un dernier survivant
- * qui prend un bonus posthume est visible a l'ecran, et absurde.
+ * Called AFTER the deaths: you do not pick up while dying. A last survivor
+ * taking a posthumous bonus is visible on screen, and absurd.
  *
- * @param {import('./etat.js').Etat} etat
+ * @param {import('./state.js').State} state
  */
-export function ramasserBonus(etat) {
-  for (const joueur of etat.joueurs) {
-    if (!joueur.vivant) continue;
-    const cx = caseAxe(joueur.x);
-    const cy = caseAxe(joueur.y);
+export function pickBonuses(state) {
+  for (const player of state.players) {
+    if (!player.alive) continue;
+    const cx = cellOnAxis(player.x);
+    const cy = cellOnAxis(player.y);
     const i = index(cx, cy);
-    const valeur = etat.objets[i];
-    if (!estVisible(valeur)) continue;
-    etat.objets[i] = 0;
-    noter(etat, ['pick', cx, cy, joueur.place, NOMS_BONUS[valeur]]);
-    appliquer(joueur, valeur);
+    const value = state.items[i];
+    if (!isVisible(value)) continue;
+    state.items[i] = 0;
+    record(state, ['pick', cx, cy, player.place, BONUS_NAMES[value]]);
+    apply(player, value);
   }
 }
 
 /**
- * Fait vieillir les flammes d'un pas et retire celles qui s'eteignent.
+ * Ages the flames by one step and removes those going out.
  *
- * @param {import('./etat.js').Etat} etat
+ * @param {import('./state.js').State} state
  */
-export function vieillirFlammes(etat) {
-  for (let i = etat.flammes.length - 1; i >= 0; i -= 1) {
-    etat.flammes[i].reste -= 1;
-    if (etat.flammes[i].reste <= 0) etat.flammes.splice(i, 1);
+export function ageFlames(state) {
+  for (let i = state.flames.length - 1; i >= 0; i -= 1) {
+    state.flames[i].left -= 1;
+    if (state.flames[i].left <= 0) state.flames.splice(i, 1);
   }
 }

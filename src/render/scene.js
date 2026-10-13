@@ -1,513 +1,530 @@
 /**
- * Dessin d'un etat d'arene.
+ * Drawing a state of the arena.
  *
- * Le rendu ne decide RIEN : il recoit une vue — grille, objets, bombers,
- * bombes, flammes — et la peint. En solo cette vue est l'etat du moteur ; en
- * ligne, c'est un instantane recu du relais, remis dans la meme forme. Un seul
- * chemin de rendu pour les deux, donc une seule chose a regarder quand l'ecran
- * ne montre pas ce qu'on attend.
+ * The renderer decides NOTHING: it receives a view — grid, items, bombers,
+ * bombs, flames — and paints it. In solo play that view is the engine's state;
+ * online, it is a snapshot received from the relay, put back into the same
+ * shape. One rendering path for both, hence one single thing to look at when the
+ * screen does not show what was expected.
  *
- * Il ne sait pas non plus d'ou viennent ses images : il recoit un jeu de sprites
- * (voir jeuDeSprites.js), peint au code ou extrait d'Atomic Bomberman. Les deux
- * n'ont ni la meme taille de case ni la meme taille de sprite, et c'est pour ca
- * que tout passe par `poser()` et par le point d'accroche : aucune mesure n'est
- * ecrite en dur ici.
+ * Nor does it know where its images come from: it receives a sprite set (see
+ * spriteSet.js), painted in code or extracted from Atomic Bomberman. The two
+ * have neither the same cell size nor the same sprite size, and that is why
+ * everything goes through `put()` and through the anchor point: no measurement
+ * is hard-coded here.
  */
 
 import {
   COLS,
   ROWS,
-  UNITES,
-  DUR,
-  BRIQUE,
-  FLAMME_PAS,
-  MECHE_PAS,
-  CHUTE_PAS,
-  PAS_MS,
-  VITESSE_BASE,
-  VECTEURS,
-  FRAPPE_PAS,
-  VOL_PAS_PAR_CASE,
-  LARGEUR_U,
-  HAUTEUR_U,
-} from '../engine/constantes.js';
-import { index, estLibre } from '../engine/grille.js';
-import { estVisible, NOMS_BONUS } from '../engine/bonus.js';
-import { depuisDessins } from './jeuDeSprites.js';
-import { FOND, BONUS_COULEURS } from './palette.js';
+  UNITS,
+  SOLID,
+  BRICK,
+  FLAME_STEPS,
+  FUSE_STEPS,
+  FALL_STEPS,
+  STEP_MS,
+  BASE_SPEED,
+  VECTORS,
+  PUNCH_STEPS,
+  FLIGHT_STEPS_PER_CELL,
+  WIDTH_U,
+  HEIGHT_U,
+} from '../engine/constants.js';
+import { index, isFree } from '../engine/grid.js';
+import { isVisible, BONUS_NAMES } from '../engine/bonus.js';
+import { fromDrawings } from './spriteSet.js';
+import { BACKGROUND, BONUS_COLOURS } from './palette.js';
 
 /**
- * De combien le premier battement d'une bombe est plus lent que le dernier.
+ * How much slower a bomb's first beat is than its last.
  *
- * La bombe finit sa meche AU RYTHME DU JEU D'ORIGINE — la duree vient des
- * sequences elles-memes, pas d'un reglage ici — et commence une fois et demie
- * plus lentement. La pulsation reste donc un compte a rebours lisible sans
- * jamais aller plus vite que ce qu'Interplay avait prevu.
+ * The bomb finishes its fuse AT THE ORIGINAL GAME'S PACE — the duration comes
+ * from the sequences themselves, not from a setting here — and starts one and a
+ * half times slower. The pulse therefore stays a legible countdown without ever
+ * going faster than Interplay intended.
  *
- * C'est la correction du reglage precedent, invente de toutes pieces : il
- * finissait a soixante-sept images par seconde, au-dessus du rafraichissement de
- * l'ecran, si bien que les images sautaient et que la bombe clignotait au lieu
- * de battre.
+ * It fixes the previous setting, invented out of nothing: it ended at
+ * sixty-seven frames a second, above the screen's refresh rate, so frames were
+ * skipped and the bomb flickered instead of beating.
  */
-const LENTEUR_DEPART = 1.5;
+const START_SLOWNESS = 1.5;
 
 /**
- * Duree de la chute d'une brique, en millisecondes.
+ * How long a brick takes to fall, in milliseconds.
  *
- * Elle vient du MOTEUR, qui tient ce decompte parce qu'il commande aussi le
- * blocage : la case reste infranchissable tant que la brique tombe. Un reglage
- * a part ici, et le passage se serait ouvert avant ou apres ce que montre
- * l'ecran.
+ * It comes from the ENGINE, which holds that countdown because it also drives
+ * the blocking: the cell stays impassable while the brick falls. A separate
+ * setting here, and the way would have opened before or after what the screen
+ * shows.
  */
-const CHUTE_MS = CHUTE_PAS * PAS_MS;
+const FALL_MS = FALL_STEPS * STEP_MS;
 
 /**
- * Hauteur du sommet d'un vol de gant, en cases, et celle d'un rebond.
+ * Height of the top of a glove flight, in cells, and that of a bounce.
  *
- * DEUX ALLURES, et c'est ce qu'on survole qui tranche. Au-dessus du sol libre,
- * la bombe PLANE : un seul arc, du depart a la chute, qui dit qu'elle a ete
- * envoyee loin d'un coup. Des qu'un mur ou une brique passe sous elle, elle
- * REBONDIT dessus, une fois par case, jusqu'a trouver le trou ou tomber.
+ * TWO GAITS, and what is flown over decides between them. Above free ground the
+ * bomb GLIDES: a single arc, from the start to the fall, which says it was sent
+ * far in one go. As soon as a wall or a brick passes beneath it, it BOUNCES on
+ * them, once per cell, until it finds the hole to drop into.
  *
- * Le rebond n'est pas un ornement : c'est lui qui rend lisible une frappe qui
- * cherche son trou. Tendue sur huit cases, la parabole unique devenait une
- * cloche molle dont le sommet planait deux rangees plus haut, loin de la colonne
- * suivie — on ne savait plus dire ou la bombe allait retomber. Un rebond monte
- * donc moins haut : une demi-case suffit a montrer qu'elle quitte le sol, et ne
- * cache pas la case voisine.
+ * The bounce is not an ornament: it is what makes a punch looking for its hole
+ * legible. Stretched over eight cells, the single parabola became a soft bell
+ * whose top glided two rows higher, far from the column being followed — you
+ * could no longer tell where the bomb was going to land. A bounce therefore
+ * rises less high: half a cell is enough to show it leaves the ground, and does
+ * not hide the neighbouring cell.
  */
-const HAUTEUR_VOL = 1.1;
-const HAUTEUR_REBOND = 0.55;
+const FLIGHT_HEIGHT = 1.1;
+const BOUNCE_HEIGHT = 0.55;
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {ReturnType<typeof depuisDessins>} [jeu]
+ * @param {ReturnType<typeof fromDrawings>} [set]
  */
-export function creerScene(canvas, jeu = depuisDessins()) {
-  // Le pas de la grille vient du jeu de sprites, et non d'une constante : les
-  // tuiles d'Atomic Bomberman font 40 x 36, celles dessinees au code 16 x 16, et
-  // une case qui ne colle pas a son dessin laisse des coutures entre les tuiles.
-  const TUILE_L = jeu.tuile.largeur;
-  const TUILE_H = jeu.tuile.hauteur;
-  const LARGEUR_PX = COLS * TUILE_L;
-  const HAUTEUR_PX = ROWS * TUILE_H;
+export function createScene(canvas, set = fromDrawings()) {
+  // The grid's step comes from the sprite set, and not from a constant: Atomic
+  // Bomberman's tiles are 40 x 36, those drawn in code 16 x 16, and a cell that
+  // does not match its drawing leaves seams between the tiles.
+  const TILE_W = set.tile.width;
+  const TILE_H = set.tile.height;
+  const WIDTH_PX = COLS * TILE_W;
+  const HEIGHT_PX = ROWS * TILE_H;
 
-  canvas.width = LARGEUR_PX;
-  canvas.height = HAUTEUR_PX;
+  canvas.width = WIDTH_PX;
+  canvas.height = HEIGHT_PX;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
-  /** Gravats : purement decoratifs, nourris par l'evenement `brick`. */
-  let gravats = [];
+  /** Rubble: purely decorative, fed by the `brick` event. */
+  let rubble = [];
 
   /**
-   * Pose un sprite par son point d'accroche.
+   * The colour of each place, when the players have chosen one.
    *
-   * Les coordonnees donnees sont celles du POINT du monde ou le sprite s'accroche
-   * — les pieds d'un bomber, le bas d'une tuile — et non le coin de l'image. Tout
-   * le calage tient donc ici, une seule fois, au lieu d'un decalage ad hoc a
-   * chaque appel.
+   * Sprites are recoloured IN ADVANCE, one series per colour: asking for place 2
+   * amounts to asking for the third colour. This table breaks that link — place 2
+   * can carry colour 0 — without recolouring anything more, simply by picking
+   * from another series that is already prepared.
    */
-  function poser(sprite, x, y) {
+  let tints = null;
+  const tint = (place) => tints?.[place] ?? place;
+
+  /**
+   * Puts a sprite down by its anchor point.
+   *
+   * The coordinates given are those of the POINT in the world where the sprite
+   * hangs — a bomber's feet, the bottom of a tile — and not the corner of the
+   * image. All the alignment is therefore here, once, instead of an ad hoc
+   * offset on every call.
+   */
+  function put(sprite, x, y) {
     if (!sprite) return;
-    ctx.drawImage(sprite.toile, Math.round(x - sprite.accrocheX), Math.round(y - sprite.accrocheY));
+    ctx.drawImage(sprite.canvas, Math.round(x - sprite.anchorX), Math.round(y - sprite.anchorY));
   }
 
-  /** Le point d'accroche d'une case : son bord bas, au centre. */
-  const accrocheCase = (cx, cy) => [cx * TUILE_L + TUILE_L / 2, (cy + 1) * TUILE_H];
+  /** A cell's anchor point: its bottom edge, in the middle. */
+  const cellAnchor = (cx, cy) => [cx * TILE_W + TILE_W / 2, (cy + 1) * TILE_H];
 
-  /** Une position du moteur, en pixels. */
-  const enPixels = (x, y) => [(x / UNITES) * TUILE_L, (y / UNITES) * TUILE_H];
+  /** A position from the engine, in pixels. */
+  const inPixels = (x, y) => [(x / UNITS) * TILE_W, (y / UNITS) * TILE_H];
 
-  /** Image d'une sequence d'apres ce qu'il reste a bruler. */
-  function imageDe(suite, reste, total) {
-    const avance = 1 - reste / total;
-    return suite[Math.min(suite.length - 1, Math.max(0, Math.floor(avance * suite.length)))];
+  /** Frame of a sequence, from how much is left to burn. */
+  function frameOf(run, left, total) {
+    const progress = 1 - left / total;
+    return run[Math.min(run.length - 1, Math.max(0, Math.floor(progress * run.length)))];
   }
 
   /**
-   * Le sol, en une passe.
+   * The ground, in one pass.
    *
-   * Quand le jeu de sprites apporte le fond peint du terrain, on le repete
-   * verticalement et c'est tout : il fait toute la largeur de l'arene, donc rien
-   * ne se repete horizontalement, et ses rangees claires et sombres alternent
-   * d'elles-memes puisque la bande en contient deux. C'est ce qui manquait pour
-   * retrouver le terrain d'origine — une tuile unique recopiee 195 fois donnait
-   * un damier regulier que le jeu n'a jamais eu.
+   * When the sprite set brings the field's painted background, we repeat it
+   * vertically and that is all: it is as wide as the whole arena, so nothing
+   * repeats horizontally, and its light and dark rows alternate by themselves
+   * since the band contains two of them. That is what was missing to get the
+   * original field back — a single tile copied 195 times gave a regular
+   * checkerboard the game never had.
    */
-  function dessinerSol() {
-    if (jeu.fond) {
-      for (let y = 0; y < HAUTEUR_PX; y += jeu.fond.hauteur) {
-        ctx.drawImage(jeu.fond.toile, 0, y);
+  function drawGround() {
+    if (set.background) {
+      for (let y = 0; y < HEIGHT_PX; y += set.background.height) {
+        ctx.drawImage(set.background.canvas, 0, y);
       }
       return;
     }
     for (let y = 0; y < ROWS; y += 1) {
       for (let x = 0; x < COLS; x += 1) {
-        const [ax, ay] = accrocheCase(x, y);
-        poser(jeu.sol[(x + y) % jeu.sol.length], ax, ay);
+        const [ax, ay] = cellAnchor(x, y);
+        put(set.ground[(x + y) % set.ground.length], ax, ay);
       }
     }
   }
 
-  function dessinerTuiles(vue, temps) {
-    dessinerSol();
+  function drawTiles(view, time) {
+    drawGround();
     for (let y = 0; y < ROWS; y += 1) {
       for (let x = 0; x < COLS; x += 1) {
-        const [ax, ay] = accrocheCase(x, y);
-        const tuile = vue.tuiles[index(x, y)];
-        if (tuile === DUR) poser(jeu.mur, ax, ay);
-        else if (tuile === BRIQUE) poser(jeu.brique, ax, ay);
+        const [ax, ay] = cellAnchor(x, y);
+        const tile = view.tiles[index(x, y)];
+        if (tile === SOLID) put(set.wall, ax, ay);
+        else if (tile === BRICK) put(set.brick, ax, ay);
       }
     }
 
-    // Bonus au sol, par-dessus le sol et sous tout le reste.
+    // Bonuses on the ground, over the ground and under everything else.
     for (let y = 0; y < ROWS; y += 1) {
       for (let x = 0; x < COLS; x += 1) {
-        const valeur = vue.objets[index(x, y)];
-        if (!estVisible(valeur)) continue;
-        const sprite = jeu.bonus[NOMS_BONUS[valeur]];
+        const value = view.items[index(x, y)];
+        if (!isVisible(value)) continue;
+        const sprite = set.bonus[BONUS_NAMES[value]];
         if (!sprite) continue;
-        // Un leger flottement : un bonus immobile se confond avec le decor.
-        const flotte = Math.round(Math.sin(temps / 220 + x + y) * 1.5);
-        const [ax, ay] = accrocheCase(x, y);
-        poser(sprite, ax, ay + flotte);
+        // A slight float: a motionless bonus blends into the scenery.
+        const float = Math.round(Math.sin(time / 220 + x + y) * 1.5);
+        const [ax, ay] = cellAnchor(x, y);
+        put(sprite, ax, ay + float);
       }
     }
   }
 
   /**
-   * Position d'une bombe frappee, quelque part entre son depart et sa chute.
+   * Position of a punched bomb, somewhere between its start and its fall.
    *
-   * La bombe appartient DEJA a sa case d'arrivee cote moteur — c'est ce qui
-   * fait que les flammes la trouvent au bon endroit — donc c'est le rendu, et
-   * lui seul, qui la montre encore en chemin. Il remonte de l'arrivee vers le
-   * depart avec ce qu'il reste de vol.
+   * The bomb ALREADY belongs to the cell it is heading for as far as the engine
+   * is concerned — that is what makes flames find it in the right place — so it
+   * is the renderer, and it alone, that still shows it on its way. It works back
+   * from the arrival towards the start with what is left of the flight.
    *
-   * Elle plane d'un seul arc au-dessus du sol libre, et rebondit de case en
-   * case des qu'elle survole un obstacle — voir HAUTEUR_VOL. Sans hauteur du
-   * tout, elle glisserait en ligne droite et l'on ne verrait pas qu'elle passe
-   * PAR-DESSUS les murs, ce qui est toute la difference avec le coup de pied.
+   * It glides in a single arc above free ground, and bounces from cell to cell
+   * as soon as it flies over an obstacle — see FLIGHT_HEIGHT. With no height at
+   * all it would slide in a straight line and you would not see that it passes
+   * OVER the walls, which is the whole difference from the kick.
    *
-   * @param {boolean} rebond vrai si quelque chose passe sous la trajectoire
+   * @param {boolean} bounce true when something passes under the trajectory
    */
-  function enVol(bombe, rebond) {
-    const avance = 1 - bombe.vol.reste / bombe.vol.duree;
-    const departX = bombe.vol.depuisX * UNITES + UNITES / 2;
-    const departY = bombe.vol.depuisY * UNITES + UNITES / 2;
-    // On suit la DIRECTION et le nombre de cases, et non le segment du depart a
-    // l'arrivee : une bombe qui sort de l'ecran revient par le bord d'en face,
-    // et son arrivee est alors a l'oppose du plateau. Le segment lui aurait fait
-    // traverser toute l'arene a rebours, en passant sous les murs.
-    const cases = bombe.vol.duree / VOL_PAS_PAR_CASE;
-    const v = VECTEURS[bombe.vol.dir];
-    const parcouru = avance * cases * UNITES;
-    // En rebond, la hauteur ne regarde que la fraction de case en cours : elle
-    // revient donc a zero a chaque case franchie — la bombe touche la brique, et
-    // repart. La derniere case tombe pile sur zero, et la bombe se pose sans
-    // ressauter. En vol plane, c'est l'avance totale qui compte, et l'arc est
-    // unique.
-    const bond = rebond ? (avance * cases) % 1 : avance;
-    const cime = rebond ? HAUTEUR_REBOND : HAUTEUR_VOL;
-    const hauteur = 4 * bond * (1 - bond) * cime * UNITES;
+  function inFlight(bomb, bounce) {
+    const progress = 1 - bomb.flight.left / bomb.flight.duration;
+    const fromX = bomb.flight.fromX * UNITS + UNITS / 2;
+    const fromY = bomb.flight.fromY * UNITS + UNITS / 2;
+    // We follow the DIRECTION and the number of cells, and not the segment from
+    // the start to the arrival: a bomb that leaves the screen comes back from
+    // the opposite edge, and its arrival is then across the board. The segment
+    // would have made it cross the whole arena backwards, passing under the
+    // walls.
+    const cells = bomb.flight.duration / FLIGHT_STEPS_PER_CELL;
+    const v = VECTORS[bomb.flight.dir];
+    const travelled = progress * cells * UNITS;
+    // When bouncing, the height only looks at the fraction of the current cell:
+    // it therefore comes back to zero on every cell crossed — the bomb touches
+    // the brick, and sets off again. The last cell lands exactly on zero, and
+    // the bomb settles without bouncing once more. In a glide it is the total
+    // progress that counts, and the arc is single.
+    const hop = bounce ? (progress * cells) % 1 : progress;
+    const top = bounce ? BOUNCE_HEIGHT : FLIGHT_HEIGHT;
+    const height = 4 * hop * (1 - hop) * top * UNITS;
     return [
-      ((((departX + v.dx * parcouru) % LARGEUR_U) + LARGEUR_U) % LARGEUR_U),
-      // La hauteur est retiree APRES l'enroulement : c'est la position au sol
-      // qui fait le tour du plateau, pas l'arc.
-      ((((departY + v.dy * parcouru) % HAUTEUR_U) + HAUTEUR_U) % HAUTEUR_U) - hauteur,
+      ((((fromX + v.dx * travelled) % WIDTH_U) + WIDTH_U) % WIDTH_U),
+      // The height is taken off AFTER the wrapping: it is the position on the
+      // ground that goes round the board, not the arc.
+      ((((fromY + v.dy * travelled) % HEIGHT_U) + HEIGHT_U) % HEIGHT_U) - height,
     ];
   }
 
   /**
-   * Y a-t-il un mur ou une brique SOUS la trajectoire d'une bombe frappee ?
+   * Is there a wall or a brick UNDER a punched bomb's trajectory?
    *
-   * C'est ce qui decide de son allure : elle plane au-dessus du sol libre, et
-   * rebondit sur ce qu'elle survole. La question se pose au rendu et nulle part
-   * ailleurs — le moteur, lui, a deja choisi ou elle tombe — et la grille du
-   * client suffit a y repondre, en solo comme en ligne.
+   * That is what decides its gait: it glides above free ground, and bounces on
+   * what it flies over. The question is asked at render time and nowhere else —
+   * the engine has already chosen where it falls — and the client's grid is
+   * enough to answer it, in solo as well as online play.
    *
-   * La case d'arrivee n'est pas examinee : elle est libre par construction,
-   * c'est le trou que la bombe cherchait.
+   * The arrival cell is not examined: it is free by construction, it is the hole
+   * the bomb was looking for.
    */
-  function survoleUnObstacle(vue, bombe) {
-    const cases = bombe.vol.duree / VOL_PAS_PAR_CASE;
-    const v = VECTEURS[bombe.vol.dir];
-    for (let i = 1; i < cases; i += 1) {
-      const cx = (((bombe.vol.depuisX + v.dx * i) % COLS) + COLS) % COLS;
-      const cy = (((bombe.vol.depuisY + v.dy * i) % ROWS) + ROWS) % ROWS;
-      if (!estLibre(vue.tuiles[index(cx, cy)])) return true;
+  function fliesOverObstacle(view, bomb) {
+    const cells = bomb.flight.duration / FLIGHT_STEPS_PER_CELL;
+    const v = VECTORS[bomb.flight.dir];
+    for (let i = 1; i < cells; i += 1) {
+      const cx = (((bomb.flight.fromX + v.dx * i) % COLS) + COLS) % COLS;
+      const cy = (((bomb.flight.fromY + v.dy * i) % ROWS) + ROWS) % ROWS;
+      if (!isFree(view.tiles[index(cx, cy)])) return true;
     }
     return false;
   }
 
-  function dessinerBombes(vue, temps) {
-    for (const bombe of vue.bombes) {
-      const enLAir = bombe.vol ? enVol(bombe, survoleUnObstacle(vue, bombe)) : null;
-      const x = enLAir ? enLAir[0] : (bombe.glisse ? bombe.glisse.x : bombe.cx * UNITES + UNITES / 2);
-      const y = enLAir ? enLAir[1] : (bombe.glisse ? bombe.glisse.y : bombe.cy * UNITES + UNITES / 2);
-      // La pulsation accelere a mesure que la meche brule : c'est le compte a
-      // rebours, et il doit se lire sans chiffre.
+  function drawBombs(view, time) {
+    for (const bomb of view.bombs) {
+      const airborne = bomb.flight ? inFlight(bomb, fliesOverObstacle(view, bomb)) : null;
+      const x = airborne ? airborne[0] : (bomb.slide ? bomb.slide.x : bomb.cx * UNITS + UNITS / 2);
+      const y = airborne ? airborne[1] : (bomb.slide ? bomb.slide.y : bomb.cy * UNITS + UNITS / 2);
+      // The pulse speeds up as the fuse burns: it is the countdown, and it has to
+      // read without a figure.
       //
-      // Elle est tiree de la MECHE, pas de l'horloge. Une cadence qui varie
-      // divisant un horodatage absolu — `temps / cadence` — ne donne pas une
-      // animation qui accelere : `temps` valant des dizaines de milliers de
-      // millisecondes, raccourcir la cadence d'un cheveu deplace le quotient de
-      // plusieurs images d'un coup. L'animation suivait la DERIVEE de la
-      // cadence et partait en vrille. Partir de la meche supprime le probleme,
-      // et rend la pulsation identique sur tous les ecrans d'une partie en
-      // ligne, puisqu'elle ne depend plus que de l'etat du moteur.
+      // It is derived from the FUSE, not from the clock. A varying rate dividing
+      // an absolute timestamp — `time / rate` — does not give an animation that
+      // speeds up: `time` being tens of thousands of milliseconds, shortening
+      // the rate by a hair moves the quotient by several frames at once. The
+      // animation followed the DERIVATIVE of the rate and span out of control.
+      // Starting from the fuse removes the problem, and makes the pulse
+      // identical on every screen of an online game, since it then depends only
+      // on the engine's state.
       //
-      // Une bombe a detonateur, elle, n'a pas de meche : `meche` vaut null. Il
-      // n'y a donc aucun compte a rebours a lire sur elle, et son sprite porte
-      // deja le bandeau qui la distingue.
-      const enAttente = bombe.meche === null;
-      if (enAttente) {
-        const banque = jeu.bombeDetonateur ?? jeu.bombe;
-        const suiteAttente = banque[bombe.place] ?? banque[0];
-        const [ax, ay] = enPixels(x, y);
-        // Elle pulse comme une bombe qu'on vient de poser, et a cette cadence
-        // seulement : rien ne s'accelere, puisqu'il n'y a pas de compte a
-        // rebours a raconter. Une cadence inventee, elle, se voyait tout de
-        // suite — la bombe a detonateur battait a un autre rythme que ses
-        // voisines, et l'oeil le relevait avant de lire le bandeau.
-        const duree = jeu.bombeCycle * LENTEUR_DEPART;
-        const image = Math.floor((temps / duree) * suiteAttente.length) % suiteAttente.length;
-        poser(suiteAttente[image], ax, ay + TUILE_H / 2);
+      // A trigger bomb, on the other hand, has no fuse: `fuse` is null. There is
+      // therefore no countdown to read on it, and its sprite already carries the
+      // band that sets it apart.
+      const waiting = bomb.fuse === null;
+      if (waiting) {
+        const bank = set.bombTrigger ?? set.bomb;
+        const waitingRun = bank[tint(bomb.place)] ?? bank[0];
+        const [ax, ay] = inPixels(x, y);
+        // It pulses like a bomb just dropped, and at that rate only: nothing
+        // speeds up, since there is no countdown to tell. An invented rate, on
+        // the other hand, showed at once — the trigger bomb beat to a different
+        // rhythm from its neighbours, and the eye caught that before reading the
+        // band.
+        const duration = set.bombCycle * START_SLOWNESS;
+        const frame = Math.floor((time / duration) * waitingRun.length) % waitingRun.length;
+        put(waitingRun[frame], ax, ay + TILE_H / 2);
         continue;
       }
-      const brule = MECHE_PAS - bombe.meche;
-      // Cycles par pas, au depart puis a l'arrivee ; la phase est leur integrale,
-      // ce qui donne une acceleration continue au lieu d'un saut de cadence.
-      const fin = PAS_MS / jeu.bombeCycle;
-      const debut = fin / LENTEUR_DEPART;
-      const cycles = debut * brule + ((fin - debut) * brule * brule) / (2 * MECHE_PAS);
-      const suite = jeu.bombe[bombe.place] ?? jeu.bombe[0];
-      const [px, py] = enPixels(x, y);
-      poser(suite[Math.floor(cycles * suite.length) % suite.length], px, py + TUILE_H / 2);
+      const burnt = FUSE_STEPS - bomb.fuse;
+      // Cycles per step, at the start then at the arrival; the phase is their
+      // integral, which gives a continuous acceleration instead of a jump in
+      // rate.
+      const end = STEP_MS / set.bombCycle;
+      const start = end / START_SLOWNESS;
+      const cycles = start * burnt + ((end - start) * burnt * burnt) / (2 * FUSE_STEPS);
+      const run = set.bomb[tint(bomb.place)] ?? set.bomb[0];
+      const [px, py] = inPixels(x, y);
+      put(run[Math.floor(cycles * run.length) % run.length], px, py + TILE_H / 2);
     }
   }
 
   /**
-   * Choisit la piece de flamme d'une case : centre, milieu ou bout.
+   * Picks a cell's flame piece: centre, middle or end.
    *
-   * Le moteur ne dit pas de quelle branche vient une flamme — il ne connait que
-   * des cases qui brulent. On le deduit du voisinage, ici et pas dans le moteur :
-   * c'est une question d'image, pas de regle, et les sprites dessines au code
-   * n'en ont aucun besoin. Un bout pointe a l'OPPOSE de son voisin, sinon le
-   * souffle a l'air de rentrer dans le mur au lieu d'en sortir.
+   * The engine does not say which branch a flame comes from — all it knows is
+   * burning cells. We deduce it from the neighbourhood, here and not in the
+   * engine: it is a matter of images, not of rules, and the sprites drawn in code
+   * have no need of it at all. An end points AWAY from its neighbour, otherwise
+   * the blast looks as if it were going into the wall instead of coming out of
+   * it.
    */
-  function pieceFlamme(occupees, flamme) {
-    // Les pieces sont declinees par place : l'explosion porte la couleur de
-    // celui qui a pose la bombe, comme dans Atomic Bomberman.
-    const jeuDeFlammes = jeu.flamme[flamme.place] ?? jeu.flamme[0];
-    const cx = flamme.cx;
-    const cy = flamme.cy;
-    const la = (x, y) => occupees.has(`${x},${y}`);
-    const haut = la(cx, cy - 1);
-    const bas = la(cx, cy + 1);
-    const gauche = la(cx - 1, cy);
-    const droite = la(cx + 1, cy);
+  function flamePiece(taken, flame) {
+    // The pieces are declined per place: the explosion carries the colour of
+    // whoever dropped the bomb, as in Atomic Bomberman.
+    const flames = set.flame[tint(flame.place)] ?? set.flame[0];
+    const cx = flame.cx;
+    const cy = flame.cy;
+    const there = (x, y) => taken.has(`${x},${y}`);
+    const up = there(cx, cy - 1);
+    const down = there(cx, cy + 1);
+    const left = there(cx - 1, cy);
+    const right = there(cx + 1, cy);
 
-    if ((haut || bas) && (gauche || droite)) return jeuDeFlammes.centre;
-    if (gauche && droite) return jeuDeFlammes.milieu[1];
-    if (haut && bas) return jeuDeFlammes.milieu[0];
-    if (droite) return jeuDeFlammes.bout[3];
-    if (gauche) return jeuDeFlammes.bout[1];
-    if (bas) return jeuDeFlammes.bout[0];
-    if (haut) return jeuDeFlammes.bout[2];
-    return jeuDeFlammes.centre;
+    if ((up || down) && (left || right)) return flames.centre;
+    if (left && right) return flames.mid[1];
+    if (up && down) return flames.mid[0];
+    if (right) return flames.end[3];
+    if (left) return flames.end[1];
+    if (down) return flames.end[0];
+    if (up) return flames.end[2];
+    return flames.centre;
   }
 
-  function dessinerFlammes(vue) {
-    const occupees = new Set(vue.flammes.map((f) => `${f.cx},${f.cy}`));
-    for (const flamme of vue.flammes) {
-      const suite = pieceFlamme(occupees, flamme);
-      const [ax, ay] = accrocheCase(flamme.cx, flamme.cy);
-      poser(imageDe(suite, flamme.reste, FLAMME_PAS), ax, ay);
+  function drawFlames(view) {
+    const taken = new Set(view.flames.map((f) => `${f.cx},${f.cy}`));
+    for (const flame of view.flames) {
+      const run = flamePiece(taken, flame);
+      const [ax, ay] = cellAnchor(flame.cx, flame.cy);
+      put(frameOf(run, flame.left, FLAME_STEPS), ax, ay);
     }
   }
 
   /**
-   * Image du cycle de marche, choisie d'apres la DISTANCE PARCOURUE.
+   * Frame of the walk cycle, chosen from the DISTANCE TRAVELLED.
    *
-   * C'est ce qui empeche les pieds de glisser sur l'herbe. Reglee sur l'horloge
-   * — une image toutes les 100 ms — la foulee ne savait rien de la vitesse : le
-   * bomber traversait une case en 180 ms sans avoir fait deux pas, et avec le
-   * bonus de vitesse l'ecart doublait. En comptant les sous-unites parcourues,
-   * la jambe avance exactement avec le sol, a n'importe quelle vitesse.
+   * That is what keeps the feet from sliding on the grass. Set on the clock —
+   * one frame every 100 ms — the stride knew nothing of the speed: the bomber
+   * crossed a cell in 180 ms without having taken two steps, and with the speed
+   * bonus the gap doubled. By counting the sub-units travelled, the leg moves
+   * exactly with the ground, at any speed.
    *
-   * Le calibrage part de la cadence du jeu d'origine : a la vitesse de base, on
-   * retrouve exactement ses 30 ms par image.
+   * The calibration starts from the original game's rate: at base speed, we get
+   * exactly its 30 ms per frame back.
    */
-  const parcours = new Map();
-  const dernierePosition = new Map();
+  const travelled = new Map();
+  const lastPosition = new Map();
 
-  function imageDeMarche(joueur, images) {
-    const avant = dernierePosition.get(joueur.place);
-    const fait = parcours.get(joueur.place) ?? 0;
-    let total = fait;
-    if (avant) {
-      // Un instantane reseau peut faire sauter un bomber de plusieurs cases. On
-      // plafonne le pas pour que la jambe ne parte pas en toupie.
-      const bond = Math.abs(joueur.x - avant.x) + Math.abs(joueur.y - avant.y);
-      total += Math.min(bond, UNITES);
+  function walkFrame(player, frames) {
+    const before = lastPosition.get(player.place);
+    const done = travelled.get(player.place) ?? 0;
+    let total = done;
+    if (before) {
+      // A network snapshot can make a bomber jump several cells. We cap the step
+      // so that the leg does not spin like a top.
+      const hop = Math.abs(player.x - before.x) + Math.abs(player.y - before.y);
+      total += Math.min(hop, UNITS);
     }
-    parcours.set(joueur.place, total);
-    dernierePosition.set(joueur.place, { x: joueur.x, y: joueur.y });
+    travelled.set(player.place, total);
+    lastPosition.set(player.place, { x: player.x, y: player.y });
 
-    const parImage = (VITESSE_BASE * jeu.marcheCycle) / (images * PAS_MS);
-    return Math.floor(total / parImage) % images;
+    const perFrame = (BASE_SPEED * set.walkCycle) / (frames * STEP_MS);
+    return Math.floor(total / perFrame) % frames;
   }
 
   /**
-   * Ou en est le coup de poing d'un bomber : de 0 a 1, ou null.
+   * Where a bomber's punch stands: from 0 to 1, or null.
    *
-   * C'est le moteur qui date le geste (`frappeAu`), et non le rendu : en ligne,
-   * la frappe est decidee par le relais, et un compte a rebours tenu dans la
-   * page ne serait pas le meme chez les deux joueurs.
+   * It is the engine that dates the gesture (`punchedAt`), and not the renderer:
+   * online, the punch is decided by the relay, and a countdown held in the page
+   * would not be the same for both players.
    */
-  function avanceFrappe(joueur, vue) {
-    if (!joueur.gant || joueur.frappeAu === null || !joueur.vivant) return null;
-    const depuis = vue.pas - joueur.frappeAu;
-    // Une manche qui recommence remet le compteur de pas a zero : la date d'une
-    // frappe de la manche passee est alors dans le futur.
-    if (depuis < 0 || depuis >= FRAPPE_PAS) return null;
-    return depuis / FRAPPE_PAS;
+  function punchProgress(player, view) {
+    if (!player.glove || player.punchedAt === null || !player.alive) return null;
+    const since = view.step - player.punchedAt;
+    // A round starting again resets the step counter: the date of a punch from
+    // the previous round is then in the future.
+    if (since < 0 || since >= PUNCH_STEPS) return null;
+    return since / PUNCH_STEPS;
   }
 
   /**
-   * Le coup de poing, FAUTE DE LA SEQUENCE DU JEU.
+   * The punch, FAILING THE GAME'S OWN SEQUENCE.
    *
-   * Atomic Bomberman a sa propre animation de frappe, et c'est elle qu'on joue
-   * quand le jeu de sprites l'apporte (`jeu.frappes`, extrait de PUNCH.ANI). Ce
-   * dessin-ci ne sert qu'aux extractions qui ne l'ont pas et aux sprites peints
-   * au code : sans lui, le bonus resterait muet a l'ecran chez qui n'a pas
-   * re-extrait ses sprites.
+   * Atomic Bomberman has its own punch animation, and that is the one we play
+   * when the sprite set brings it (`set.punches`, extracted from PUNCH.ANI).
+   * This drawing only serves extractions that do not have it, and the sprites
+   * painted in code: without it the bonus would stay silent on screen for
+   * anybody who has not re-extracted their sprites.
    *
-   * Il imite le geste plutot que le gant : le bomber S'ELANCE — son sprite part
-   * en avant de quelques pixels puis revient — et c'est son bras qui se detend,
-   * depuis l'epaule, et non un gant qui vole tout seul devant lui. La detente
-   * suit un sinus : le poing est le plus loin au MILIEU du geste, pas a la fin,
-   * sans quoi le bras reste tendu et disparait d'un coup.
+   * It imitates the gesture rather than the glove: the bomber LUNGES — its
+   * sprite moves forward a few pixels then comes back — and it is its arm that
+   * extends, from the shoulder, and not a glove flying off on its own in front
+   * of it. The extension follows a sine: the fist is furthest away in the MIDDLE
+   * of the gesture, not at the end, failing which the arm stays extended and
+   * vanishes all at once.
    */
-  function dessinerBrasFrappe(joueur, px, py, avance) {
-    const detente = Math.sin(Math.PI * avance);
-    const v = VECTEURS[joueur.dir];
-    // L'epaule : au tiers haut du corps, decalee du cote du bras qui frappe. De
-    // face ou de dos, un bras pile au milieu se lirait comme un nez.
-    const lateral = v.dy === 0 ? 0 : TUILE_L * 0.22;
-    const epauleX = px + lateral;
-    const epauleY = py - TUILE_H * 0.62;
-    const portee = (0.1 + 0.42 * detente) * TUILE_L;
-    const poingX = epauleX + v.dx * portee;
-    const poingY = epauleY + v.dy * portee * 0.7;
-    const rayon = TUILE_L * 0.13;
+  function drawPunchArm(player, px, py, progress) {
+    const reach = Math.sin(Math.PI * progress);
+    const v = VECTORS[player.dir];
+    // The shoulder: at the upper third of the body, offset to the side of the
+    // punching arm. Head-on or from behind, an arm right in the middle would
+    // read as a nose.
+    const sideways = v.dy === 0 ? 0 : TILE_W * 0.22;
+    const shoulderX = px + sideways;
+    const shoulderY = py - TILE_H * 0.62;
+    const range = (0.1 + 0.42 * reach) * TILE_W;
+    const fistX = shoulderX + v.dx * range;
+    const fistY = shoulderY + v.dy * range * 0.7;
+    const radius = TILE_W * 0.13;
 
-    const couleurs = BONUS_COULEURS.punch;
-    // Le bras d'abord, de l'epaule au poing : sans lui, le gant flotte.
-    ctx.strokeStyle = couleurs.glyphe;
-    ctx.lineWidth = Math.max(2, rayon * 0.8);
+    const colours = BONUS_COLOURS.punch;
+    // The arm first, from the shoulder to the fist: without it, the glove
+    // floats.
+    ctx.strokeStyle = colours.glyph;
+    ctx.lineWidth = Math.max(2, radius * 0.8);
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(epauleX, epauleY);
-    ctx.lineTo(poingX, poingY);
+    ctx.moveTo(shoulderX, shoulderY);
+    ctx.lineTo(fistX, fistY);
     ctx.stroke();
 
-    ctx.fillStyle = couleurs.fond;
+    ctx.fillStyle = colours.background;
     ctx.beginPath();
-    ctx.arc(poingX, poingY, rayon, 0, Math.PI * 2);
+    ctx.arc(fistX, fistY, radius, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = couleurs.glyphe;
-    ctx.lineWidth = Math.max(1, rayon * 0.3);
+    ctx.strokeStyle = colours.glyph;
+    ctx.lineWidth = Math.max(1, radius * 0.3);
     ctx.stroke();
   }
 
-  function dessinerBombers(vue, temps) {
-    // Du haut vers le bas : un bomber plus bas passe devant celui du dessus,
-    // sans quoi les silhouettes se chevauchent a l'envers.
-    const ordre = vue.joueurs.slice().sort((a, b) => a.y - b.y);
-    for (const joueur of ordre) {
-      const [px, milieu] = enPixels(joueur.x, joueur.y);
-      // Les sprites d'Atomic Bomberman s'accrochent par les PIEDS, et le moteur
-      // donne le centre du bomber dans sa case : il faut donc descendre d'une
-      // demi-case pour poser le personnage sur le sol de la sienne. Sans ce
-      // decalage il flottait une demi-case trop haut et mordait la rangee du
-      // dessus — les tuiles, elles, s'accrochent deja a leur bord bas.
-      const py = milieu + TUILE_H / 2;
+  function drawBombers(view) {
+    // Top to bottom: a bomber further down passes in front of the one above,
+    // failing which the silhouettes overlap the wrong way round.
+    const order = view.players.slice().sort((a, b) => a.y - b.y);
+    for (const player of order) {
+      const [px, middle] = inPixels(player.x, player.y);
+      // Atomic Bomberman's sprites hang by their FEET, and the engine gives the
+      // bomber's centre within its cell: so we have to go down half a cell to
+      // stand the character on the ground of its own. Without that offset it
+      // floated half a cell too high and bit into the row above — the tiles, for
+      // their part, already hang from their bottom edge.
+      const py = middle + TILE_H / 2;
 
-      if (!joueur.vivant) {
-        const depuis = vue.pas - (joueur.mortAu ?? vue.pas);
-        const suite = jeu.morts[joueur.place];
-        ctx.globalAlpha = depuis > 90 ? 0.45 : 1;
-        // Une image par pas : l'animation d'origine compte 83 images, et le
-        // corps s'efface a 90 pas. Les deux tombent juste ensemble — ralentie,
-        // la mort se figeait sur ses dernieres images avant d'avoir fini.
-        poser(suite[Math.min(suite.length - 1, depuis)], px, py);
+      if (!player.alive) {
+        const since = view.step - (player.diedAt ?? view.step);
+        const run = set.dead[tint(player.place)];
+        ctx.globalAlpha = since > 90 ? 0.45 : 1;
+        // One frame per step: the original animation counts 83 frames, and the
+        // body fades at 90 steps. The two fall right together — slowed down,
+        // the death froze on its last frames before being over.
+        put(run[Math.min(run.length - 1, since)], px, py);
         ctx.globalAlpha = 1;
         continue;
       }
 
-      const frappe = avanceFrappe(joueur, vue);
+      const punch = punchProgress(player, view);
 
-      if (frappe !== null && jeu.frappes) {
-        // La sequence du jeu d'origine : elle REMPLACE la pose, comme dans
-        // Atomic Bomberman — le bomber arme, frappe et se remet en garde, et
-        // marcher pendant ce temps ne se voit pas.
+      if (punch !== null && set.punches) {
+        // The original game's sequence: it REPLACES the stance, as in Atomic
+        // Bomberman — the bomber draws back, strikes and returns to guard, and
+        // walking during that time does not show.
         //
-        // Elle est etiree sur la duree que le MOTEUR donne au geste, et non sur
-        // la sienne : c'est le moteur qui dit quand la frappe commence et
-        // finit, et une animation a son propre rythme se figerait sur sa
-        // derniere image ou serait coupee avant la fin.
-        const suite = jeu.frappes[joueur.place][joueur.dir];
-        poser(suite[Math.min(suite.length - 1, Math.floor(frappe * suite.length))], px, py);
+        // It is stretched over the duration the ENGINE gives the gesture, and
+        // not over its own: it is the engine that says when the punch starts and
+        // ends, and an animation at its own pace would freeze on its last frame
+        // or be cut before the end.
+        const run = set.punches[tint(player.place)][player.dir];
+        put(run[Math.min(run.length - 1, Math.floor(punch * run.length))], px, py);
       } else {
-        // L'elan accompagne le coup au lieu de le regarder partir, et il reste
-        // petit : un bomber qui sortirait de sa case mordrait la voisine et ne
-        // serait plus la ou le moteur le dit.
-        const elan = frappe === null ? 0 : TUILE_L * 0.1 * Math.sin(Math.PI * frappe);
-        const v = VECTEURS[joueur.dir];
-        const ex = px + v.dx * elan;
-        const ey = py + v.dy * elan * 0.7;
-        if (joueur.marche) {
-          const suite = jeu.bombers[joueur.place][joueur.dir];
-          poser(suite[imageDeMarche(joueur, suite.length)], ex, ey);
+        // The lunge goes with the blow instead of watching it leave, and it
+        // stays small: a bomber stepping out of its cell would bite into the
+        // next one and would no longer be where the engine says it is.
+        const lunge = punch === null ? 0 : TILE_W * 0.1 * Math.sin(Math.PI * punch);
+        const v = VECTORS[player.dir];
+        const ex = px + v.dx * lunge;
+        const ey = py + v.dy * lunge * 0.7;
+        if (player.walking) {
+          const run = set.bombers[tint(player.place)][player.dir];
+          put(run[walkFrame(player, run.length)], ex, ey);
         } else {
-          poser(jeu.immobiles[joueur.place][joueur.dir], ex, ey);
+          put(set.idle[tint(player.place)][player.dir], ex, ey);
         }
-        if (frappe !== null) dessinerBrasFrappe(joueur, ex, ey, frappe);
+        if (punch !== null) drawPunchArm(player, ex, ey, punch);
       }
 
-      if (joueur.absent) {
-        // Un joueur coupe reste en jeu, immobile : il faut le dire a l'ecran,
-        // sinon les autres croient a un bomber qui les guette.
+      if (player.absent) {
+        // A disconnected player stays in the game, motionless: that has to be
+        // said on screen, otherwise the others take it for a bomber lying in
+        // wait for them.
         ctx.fillStyle = 'rgba(18, 15, 28, 0.55)';
-        ctx.fillRect(px - TUILE_L / 2, py - TUILE_H, TUILE_L, TUILE_H);
+        ctx.fillRect(px - TILE_W / 2, py - TILE_H, TILE_W, TILE_H);
       }
     }
   }
 
   /**
-   * Une brique qui tombe.
+   * A falling brick.
    *
-   * Avec les sprites du jeu d'origine on joue la vraie animation ; sans eux, on
-   * retombe sur une poignee d'eclats. Les deux durent le temps de la chute,
-   * du rendu n'ait pas a savoir lequel tourne.
+   * With the original game's sprites we play the real animation; without them we
+   * fall back on a handful of shards. Both last as long as the fall, so that the
+   * renderer does not have to know which one is running.
    */
-  function dessinerGravats(temps) {
-    gravats = gravats.filter((gravat) => temps - gravat.ne < CHUTE_MS);
-    for (const gravat of gravats) {
-      const avance = (temps - gravat.ne) / CHUTE_MS;
-      if (jeu.briqueCasse) {
-        const suite = jeu.briqueCasse;
-        const [ax, ay] = accrocheCase(gravat.cx, gravat.cy);
-        poser(suite[Math.min(suite.length - 1, Math.floor(avance * suite.length))], ax, ay);
+  function drawRubble(time) {
+    rubble = rubble.filter((piece) => time - piece.born < FALL_MS);
+    for (const piece of rubble) {
+      const progress = (time - piece.born) / FALL_MS;
+      if (set.brickBroken) {
+        const run = set.brickBroken;
+        const [ax, ay] = cellAnchor(piece.cx, piece.cy);
+        put(run[Math.min(run.length - 1, Math.floor(progress * run.length))], ax, ay);
         continue;
       }
-      ctx.globalAlpha = 1 - avance;
+      ctx.globalAlpha = 1 - progress;
       ctx.fillStyle = '#7a3526';
-      for (const eclat of gravat.eclats) {
-        const ex = gravat.cx * TUILE_L + TUILE_L / 2 + eclat.vx * avance * 26;
-        const ey = gravat.cy * TUILE_H + TUILE_H / 2 + eclat.vy * avance * 26 + avance * avance * 34;
+      for (const shard of piece.shards) {
+        const ex = piece.cx * TILE_W + TILE_W / 2 + shard.vx * progress * 26;
+        const ey = piece.cy * TILE_H + TILE_H / 2 + shard.vy * progress * 26 + progress * progress * 34;
         ctx.fillRect(Math.round(ex), Math.round(ey), 3, 3);
       }
       ctx.globalAlpha = 1;
@@ -515,21 +532,32 @@ export function creerScene(canvas, jeu = depuisDessins()) {
   }
 
   return {
-    largeur: LARGEUR_PX,
-    hauteur: HAUTEUR_PX,
+    width: WIDTH_PX,
+    height: HEIGHT_PX,
 
     /**
-     * Prend acte des evenements d'un pas, pour les effets purement visuels.
-     * Le rendu ne lit jamais les regles : il se contente de ce qu'on lui raconte.
+     * Sets the colour of each place for the game about to start.
+     *
+     * @param {number[] | null} table colour index per place, or null to go back
+     *   to "the place gives the colour", which is what the online game does: the
+     *   relay does not know everyone's choices.
      */
-    evenements(liste, temps) {
-      for (const evenement of liste) {
-        if (evenement[0] === 'brick') {
-          gravats.push({
-            cx: evenement[1],
-            cy: evenement[2],
-            ne: temps,
-            eclats: Array.from({ length: 6 }, (_, i) => ({
+    colours(table) {
+      tints = table ?? null;
+    },
+
+    /**
+     * Takes note of a step's events, for the purely visual effects.
+     * The renderer never reads the rules: it makes do with what it is told.
+     */
+    events(list, time) {
+      for (const event of list) {
+        if (event[0] === 'brick') {
+          rubble.push({
+            cx: event[1],
+            cy: event[2],
+            born: time,
+            shards: Array.from({ length: 6 }, (_, i) => ({
               vx: Math.cos((i / 6) * Math.PI * 2),
               vy: Math.sin((i / 6) * Math.PI * 2) - 0.4,
             })),
@@ -539,21 +567,21 @@ export function creerScene(canvas, jeu = depuisDessins()) {
     },
 
     /**
-     * @param {{ tuiles: Uint8Array, objets: Uint8Array, joueurs: unknown[], bombes: unknown[], flammes: unknown[], pas: number }} vue
-     * @param {number} temps horodatage d'animation, en ms
+     * @param {{ tiles: Uint8Array, items: Uint8Array, players: unknown[], bombs: unknown[], flames: unknown[], step: number }} view
+     * @param {number} time animation timestamp, in ms
      */
-    dessiner(vue, temps) {
-      // L'arene ne bouge pas. Une secousse a l'explosion donnait du poids au
-      // souffle, mais elle deplace aussi les murs sous les yeux du joueur au
-      // moment precis ou il cherche par ou sortir — dans un jeu ou l'on meurt
-      // pour une case, le decor doit rester le seul point fixe.
-      ctx.fillStyle = FOND;
-      ctx.fillRect(0, 0, LARGEUR_PX, HAUTEUR_PX);
-      dessinerTuiles(vue, temps);
-      dessinerGravats(temps);
-      dessinerBombes(vue, temps);
-      dessinerBombers(vue, temps);
-      dessinerFlammes(vue);
+    draw(view, time) {
+      // The arena does not move. A shake on the explosion gave the blast some
+      // weight, but it also moves the walls before the player's eyes at the
+      // precise moment they are looking for a way out — in a game where you die
+      // over one cell, the scenery has to remain the one fixed point.
+      ctx.fillStyle = BACKGROUND;
+      ctx.fillRect(0, 0, WIDTH_PX, HEIGHT_PX);
+      drawTiles(view, time);
+      drawRubble(time);
+      drawBombs(view, time);
+      drawBombers(view);
+      drawFlames(view);
     },
   };
 }

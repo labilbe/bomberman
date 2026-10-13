@@ -1,99 +1,99 @@
 /**
- * Lecteur de conteneur CHFILE, le format des .ANI d'Atomic Bomberman.
+ * Reader for the CHFILE container, the format of Atomic Bomberman's .ANI files.
  *
- * Ce n'est pas du RIFF, malgre la ressemblance. L'en-tete de fichier fait seize
- * octets — « CHFILE » puis un sous-type de quatre caracteres (« ANI  »), puis la
- * taille utile — et chaque morceau porte dix octets d'en-tete : identifiant sur
- * quatre, taille sur quatre, et deux octets de drapeaux. C'est ce « dix » qui
- * fait trebucher : lu comme du RIFF (huit octets, bourrage pair), le second
- * morceau tombe deux octets trop tot et tout l'arbre part de travers.
+ * It is not RIFF, despite the resemblance. The file header is sixteen bytes —
+ * "CHFILE" then a four-character subtype ("ANI  "), then the useful size — and
+ * every chunk carries ten bytes of header: a four-byte identifier, a four-byte
+ * size, and two bytes of flags. It is that "ten" that trips you up: read as RIFF
+ * (eight bytes, even padding), the second chunk falls two bytes too early and
+ * the whole tree goes askew.
  *
- * Les morceaux s'imbriquent avec la meme convention — un FRAM contient HEAD,
- * FNAM, CIMG — et il n'y a aucun bourrage.
+ * Chunks nest with the same convention — a FRAM contains HEAD, FNAM, CIMG — and
+ * there is no padding at all.
  */
 
-import { u16, u32, latin1, chaineZero } from './octets.js';
+import { u16, u32, latin1, zeroString } from './bytes.js';
 
-/** Taille de l'en-tete d'un morceau : id(4) + taille(4) + drapeaux(2). */
-export const ENTETE_MORCEAU = 10;
+/** Size of a chunk's header: id(4) + size(4) + flags(2). */
+export const CHUNK_HEADER = 10;
 
-/** Taille de l'en-tete de fichier. */
-export const ENTETE_FICHIER = 16;
+/** Size of the file header. */
+export const FILE_HEADER = 16;
 
 /**
- * Identifiants qui contiennent eux-memes des morceaux.
+ * Identifiers that contain chunks themselves.
  *
- * On ne devine pas l'imbrication en reniflant les premiers octets : un CIMG
- * compresse peut commencer par n'importe quoi, et le reniflage le prendrait
- * pour un conteneur. La liste explicite est le seul moyen sur.
+ * We do not guess the nesting by sniffing the first bytes: a compressed CIMG can
+ * begin with anything, and sniffing would take it for a container. The explicit
+ * list is the only safe way.
  */
-const CONTENEURS = new Set(['FRAM', 'SEQ ']);
+const CONTAINERS = new Set(['FRAM', 'SEQ ']);
 
-function id(octets, position) {
-  return latin1(octets, position, position + 4);
+function id(bytes, position) {
+  return latin1(bytes, position, position + 4);
 }
 
-/** Verifie l'en-tete et rend le sous-type. Leve si ce n'est pas un CHFILE. */
-export function lireEntete(octets) {
-  if (octets.length < ENTETE_FICHIER || latin1(octets, 0, 6) !== 'CHFILE') {
+/** Checks the header and returns the subtype. Throws if it is not a CHFILE. */
+export function readHeader(bytes) {
+  if (bytes.length < FILE_HEADER || latin1(bytes, 0, 6) !== 'CHFILE') {
     throw new Error('ce fichier ne commence pas par CHFILE');
   }
   return {
-    sousType: latin1(octets, 6, 10).trim(),
-    taille: u32(octets, 10),
+    subtype: latin1(bytes, 6, 10).trim(),
+    size: u32(bytes, 10),
   };
 }
 
 /**
- * Parcourt une suite de morceaux et rend un tableau de noeuds.
+ * Walks a run of chunks and returns an array of nodes.
  *
- * Chaque noeud porte `id`, `debut` (position absolue de la charge utile),
- * `taille` et `drapeaux`, plus `enfants` pour un conteneur. On garde les
- * positions dans le tampon d'origine au lieu de decouper : les images font
- * plusieurs kilo-octets et recopier a chaque niveau serait du gaspillage pur.
+ * Each node carries `id`, `start` (absolute position of the payload), `size` and
+ * `flags`, plus `children` for a container. We keep positions in the original
+ * buffer instead of slicing: the images are several kilobytes each and copying at
+ * every level would be pure waste.
  */
-export function lireMorceaux(octets, debut = ENTETE_FICHIER, fin = octets.length) {
-  const noeuds = [];
-  let position = debut;
+export function readChunks(bytes, start = FILE_HEADER, end = bytes.length) {
+  const nodes = [];
+  let position = start;
 
-  while (position + ENTETE_MORCEAU <= fin) {
-    const identifiant = id(octets, position);
-    const taille = u32(octets, position + 4);
-    const drapeaux = u16(octets, position + 8);
-    const charge = position + ENTETE_MORCEAU;
+  while (position + CHUNK_HEADER <= end) {
+    const identifier = id(bytes, position);
+    const size = u32(bytes, position + 4);
+    const flags = u16(bytes, position + 8);
+    const payloadAt = position + CHUNK_HEADER;
 
-    // Une taille qui depasse les bornes veut dire que l'arbre est desynchronise.
-    // On s'arrete en le signalant plutot que de lire au hasard.
-    if (taille > fin - charge) {
-      noeuds.push({ id: identifiant, debut: charge, taille: fin - charge, drapeaux, tronque: true });
+    // A size that goes beyond the bounds means the tree is out of step. We stop
+    // and say so rather than read at random.
+    if (size > end - payloadAt) {
+      nodes.push({ id: identifier, start: payloadAt, size: end - payloadAt, flags, truncated: true });
       break;
     }
 
-    const noeud = { id: identifiant, debut: charge, taille, drapeaux };
-    if (CONTENEURS.has(identifiant)) {
-      noeud.enfants = lireMorceaux(octets, charge, charge + taille);
+    const node = { id: identifier, start: payloadAt, size, flags };
+    if (CONTAINERS.has(identifier)) {
+      node.children = readChunks(bytes, payloadAt, payloadAt + size);
     }
-    noeuds.push(noeud);
-    position = charge + taille;
+    nodes.push(node);
+    position = payloadAt + size;
   }
 
-  return noeuds;
+  return nodes;
 }
 
-/** Rend la charge utile d'un noeud, sans recopie. */
-export function charge(octets, noeud) {
-  return octets.subarray(noeud.debut, noeud.debut + noeud.taille);
+/** Returns a node's payload, without copying. */
+export function payload(bytes, node) {
+  return bytes.subarray(node.start, node.start + node.size);
 }
 
-/** Parcours en profondeur : « tous les CIMG du fichier », en une boucle. */
-export function* parcourir(noeuds, chemin = []) {
-  for (const noeud of noeuds) {
-    yield { noeud, chemin };
-    if (noeud.enfants) yield* parcourir(noeud.enfants, [...chemin, noeud.id]);
+/** Depth-first walk: "every CIMG in the file", in one loop. */
+export function* walk(nodes, path = []) {
+  for (const node of nodes) {
+    yield { node, path };
+    if (node.children) yield* walk(node.children, [...path, node.id]);
   }
 }
 
-/** Une chaine terminee par zero, comme le jeu ecrit les noms. */
-export function chaine(octets) {
-  return chaineZero(octets);
+/** A zero-terminated string, the way the game writes its names. */
+export function string(bytes) {
+  return zeroString(bytes);
 }

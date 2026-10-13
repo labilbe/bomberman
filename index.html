@@ -6,7 +6,7 @@
     <title>Bomberman</title>
     <meta
       name="description"
-      content="Clone d'Atomic Bomberman jouable dans le navigateur : briques, bombes en chaine et power-ups, seul, a deux au clavier ou en ligne."
+      content="Clone d'Atomic Bomberman jouable dans le navigateur : briques, bombes en chaîne et power-ups, seul, à deux au clavier ou en ligne."
     />
     <meta name="theme-color" content="#120f1c" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -14,128 +14,199 @@
   </head>
   <body>
     <div id="app">
-      <header class="entete">
-        <h1>Bomberman</h1>
-        <p class="accroche">Pose, fuis, recommence.</p>
+      <!--
+        The banner is the WHOLE TITLE SCREEN, faded towards the bottom, and not a
+        cut-out logo: the word only exists painted on it, and the bomber's helmet
+        passes behind its letters — no rectangle separates them cleanly.
+      -->
+      <header class="masthead" role="img" aria-label="Atomic Bomberman">
+        <h1>Atomic Bomberman</h1>
       </header>
 
       <main>
-        <section id="menu" class="carte">
-          <div class="champs">
-            <label class="champ">
-              <span>Pseudo</span>
-              <input id="pseudo" type="text" maxlength="16" autocomplete="off" spellcheck="false" />
-            </label>
-            <label class="champ">
-              <span>Salon</span>
-              <input id="salon" type="text" maxlength="8" autocomplete="off" spellcheck="false" />
-            </label>
-            <label class="champ">
-              <span>Sur cette machine</span>
-              <select id="sieges">
-                <option value="1">1 joueur</option>
-                <option value="2">2 joueurs</option>
-              </select>
-            </label>
-            <label class="champ">
-              <span>Match</span>
-              <select id="format">
-                <option value="3">Au meilleur des 3</option>
-                <option value="5">Au meilleur des 5</option>
-                <option value="7">Au meilleur des 7</option>
-              </select>
-            </label>
-            <label class="champ">
-              <span>Adversaires</span>
-              <!--
-                Un simple nombre, et non « 3 bots » : en ligne, ces places vont
-                a qui rejoint le salon, et ne deviennent des bots que si
-                personne ne vient. Le libelle annoncait donc des adversaires
-                artificiels la ou l'on attendait des amis.
-              -->
-              <select id="bots">
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-              </select>
-            </label>
-          </div>
+        <!--
+          The menu takes the original game's entries, in its own language:
+          "Start Game", "Start Network Game", "Join Network Game", "Options",
+          "Online Manual", "About". Those that need a setting slide the menu to
+          the left and bring their screen in from the right, the way the game
+          moved from one screen to the next.
 
-          <div class="boutons">
-            <button id="jouer-local" type="button" class="primaire">Jouer sur cette machine</button>
-            <button id="jouer-multi" type="button">Jouer en ligne</button>
-          </div>
+          "Exit Bomberman" has no translation here: a tab does not close itself,
+          and a button that does nothing is worth less than no button at all.
+        -->
+        <section id="menu" class="menu">
+          <div class="bomber" aria-hidden="true"></div>
 
-          <div class="aide">
-            <h2>Commandes</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>Joueur</th>
-                  <th>Deplacer</th>
-                  <th>Bombe</th>
-                  <th>Detonateur / Gant</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th scope="row"><span class="pastille p0"></span> 1</th>
-                  <td>Fleches</td>
-                  <td>Espace</td>
-                  <td>Entree</td>
-                </tr>
-                <tr>
-                  <th scope="row"><span class="pastille p1"></span> 2</th>
-                  <td>Z Q S D</td>
-                  <td>Maj gauche</td>
-                  <td>Ctrl gauche</td>
-                </tr>
-              </tbody>
-            </table>
-            <p class="note" id="manettes">
-              A la manette : croix ou stick gauche pour se deplacer, A pour poser, B pour declencher et pour frapper.
-              La premiere manette pilote le joueur 1, la seconde le joueur 2.
-            </p>
-            <p class="note">
-              Casse les briques pour trouver des bonus : une bombe de plus, une flamme plus longue,
-              de la vitesse, le coup de pied, le detonateur, le gant de boxe, la goutte. Un bomber
-              qui meurt lache tout ce qu'il avait ramasse : la mort du mieux equipe rouvre la manche.
-            </p>
-            <p class="note">
-              Le gant renvoie une bombe trois cases plus loin, PAR-DESSUS les murs : celle d'en face,
-              ou celle qu'on a sous les pieds. Si la case visee est prise, la bombe poursuit jusqu'au
-              premier trou, quitte a sortir de l'ecran et a revenir par le bord d'en face. Il part sur la
-              touche du detonateur, qui frappe quand il y a quelque chose a frapper et declenche sinon.
-            </p>
-            <p class="note">
-              DOUBLE-TAPEZ la touche des bombes pour les aligner toutes devant vous, d'un coup, jusqu'au
-              premier mur. De quoi condamner un couloir — ou se murer tout seul.
-            </p>
-            <p class="note">
-              La goutte rend vos bombes folles : shootee, une bombe ne s'arrete plus au premier mur,
-              elle rebondit et repart jusqu'a ce que sa meche la rattrape. Sans le coup de pied pour
-              les lancer, elle ne sert a rien.
-            </p>
+          <!--
+            The menu slides rather than unfolding: choosing an entry sends the
+            list out to the left and brings the next screen in from the right,
+            the way the game changed screens. The two sit side by side on the
+            same track, and it is the track that moves.
+          -->
+          <div class="menu-scene">
+            <div class="track" id="track">
+              <nav class="choices">
+                <button type="button" class="row" data-open="game">Lancer une partie</button>
+                <button id="create-online" type="button" class="row">Créer une partie en réseau</button>
+                <button type="button" class="row" data-open="join">Rejoindre une partie en réseau</button>
+                <button type="button" class="row" data-open="options">Options</button>
+                <button type="button" class="row" data-open="manual">Manuel</button>
+                <button type="button" class="row" data-open="about">À propos</button>
+              </nav>
+
+              <div class="screens">
+                <section class="screen" id="screen-game" hidden>
+                  <h2 class="screen-title">Lancer une partie</h2>
+                  <div class="panel">
+                      <label class="field field-players">
+                        <span>Joueurs</span>
+                        <select id="players">
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
+                        </select>
+                      </label>
+                      <ol id="seats" class="seats"></ol>
+                      <button id="play-local" type="button" class="row small">Lancer</button>
+                  </div>
+                  <button type="button" class="row small back">Retour</button>
+                </section>
+                <section class="screen" id="screen-join" hidden>
+                  <h2 class="screen-title">Rejoindre une partie en réseau</h2>
+                  <div class="panel">
+                      <label class="field">
+                        <span>Code du salon</span>
+                        <input id="room" type="text" maxlength="8" autocomplete="off" spellcheck="false" />
+                      </label>
+                      <button id="play-online" type="button" class="row small">Rejoindre ce salon</button>
+                  </div>
+                  <button type="button" class="row small back">Retour</button>
+                </section>
+                <section class="screen" id="screen-options" hidden>
+                  <h2 class="screen-title">Options</h2>
+                  <div class="panel fields">
+                      <label class="field">
+                        <span>Pseudo</span>
+                        <input id="nickname" type="text" maxlength="16" autocomplete="off" spellcheck="false" />
+                      </label>
+                      <label class="field">
+                        <span>Match</span>
+                        <select id="format">
+                          <option value="3">Au meilleur des 3</option>
+                          <option value="5">Au meilleur des 5</option>
+                          <option value="7">Au meilleur des 7</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <!--
+                          A plain number, and not "3 bots": those places go to
+                          whoever joins the room, and only become bots if nobody
+                          comes. In local play it is the launch screen that
+                          decides, player by player.
+                        -->
+                        <span>Places en réseau</span>
+                        <select id="bots">
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                        </select>
+                      </label>
+                  </div>
+                  <button type="button" class="row small back">Retour</button>
+                </section>
+                <section class="screen" id="screen-manual" hidden>
+                  <h2 class="screen-title">Manuel</h2>
+                  <div class="panel help">
+                    <h2>Commandes</h2>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Joueur</th>
+                          <th>Déplacer</th>
+                          <th>Bombe</th>
+                          <th>Détonateur / Gant</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <th scope="row"><span class="dot p0"></span> 1</th>
+                          <td>Flèches</td>
+                          <td>Espace</td>
+                          <td>Entrée</td>
+                        </tr>
+                        <tr>
+                          <th scope="row"><span class="dot p1"></span> 2</th>
+                          <td>Z Q S D</td>
+                          <td>Maj gauche</td>
+                          <td>Ctrl gauche</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <p class="note" id="gamepads">
+                      À la manette : croix ou stick gauche pour se déplacer, A pour poser, B pour déclencher et pour frapper.
+                      La première manette pilote le joueur 1, la seconde le joueur 2.
+                    </p>
+                    <p class="note">
+                      Casse les briques pour trouver des bonus : une bombe de plus, une flamme plus longue,
+                      de la vitesse, le coup de pied, le détonateur, le gant de boxe, la goutte. Un bomber
+                      qui meurt lâche tout ce qu'il avait ramassé : la mort du mieux équipé rouvre la manche.
+                    </p>
+                    <p class="note">
+                      Le gant renvoie une bombe trois cases plus loin, PAR-DESSUS les murs : celle d'en face,
+                      ou celle qu'on a sous les pieds. Si la case visée est prise, la bombe poursuit jusqu'au
+                      premier trou, quitte à sortir de l'écran et à revenir par le bord d'en face. Il part sur la
+                      touche du détonateur, qui frappe quand il y a quelque chose à frapper et déclenche sinon.
+                    </p>
+                    <p class="note">
+                      DOUBLE-TAPEZ la touche des bombes pour les aligner toutes devant vous, d'un coup, jusqu'au
+                      premier mur. De quoi condamner un couloir — ou se murer tout seul.
+                    </p>
+                    <p class="note">
+                      La goutte rend vos bombes folles : shootée, une bombe ne s'arrête plus au premier mur,
+                      elle rebondit et repart jusqu'à ce que sa mèche la rattrape. Sans le coup de pied pour
+                      les lancer, elle ne sert à rien.
+                    </p>
+                  </div>
+                  <button type="button" class="row small back">Retour</button>
+                </section>
+                <section class="screen" id="screen-about" hidden>
+                  <h2 class="screen-title">À propos</h2>
+                  <div class="panel help">
+                      <p class="note">
+                        Un clone d'Atomic Bomberman (Interplay, 1997) écrit en JavaScript, sans bibliothèque :
+                        le moteur tourne à l'identique dans la page et sur le relais, ce qui fait jouer le solo
+                        et le réseau aux mêmes règles.
+                      </p>
+                      <p class="note">
+                        Les sprites et les sons sont ceux du jeu, lus dans vos propres fichiers : ils restent
+                        la propriété d'Interplay et ne sont pas distribués ici. Sans eux, tout est dessiné et
+                        synthétisé par le code.
+                      </p>
+                      <p class="note">
+                        <a href="https://github.com/labilbe/bomberman">Code source sur GitHub</a>
+                      </p>
+                  </div>
+                  <button type="button" class="row small back">Retour</button>
+                </section>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section id="jeu" class="carte" hidden>
+        <section id="game" hidden>
           <div id="hud" class="hud"></div>
-          <div id="arene" class="arene">
-            <canvas id="toile" width="480" height="416"></canvas>
-            <div id="banniere" class="banniere" hidden></div>
+          <div id="arena" class="arena">
+            <canvas id="canvas" width="480" height="416"></canvas>
+            <div id="banner" class="banner" hidden></div>
           </div>
-          <div class="pied-jeu">
-            <button id="quitter" type="button">Quitter la partie</button>
-            <button id="son" type="button" aria-pressed="true">Son : actif</button>
-            <span id="etat-reseau" class="etat-reseau"></span>
+          <div class="game-foot">
+            <button id="quit" type="button">Quitter la partie</button>
+            <button id="sound" type="button" aria-pressed="true">Son : actif</button>
+            <span id="net-state" class="net-state"></span>
           </div>
         </section>
       </main>
 
-      <footer class="pied">
-        <a href="https://github.com/labilbe/bomberman">Code source</a>
-      </footer>
     </div>
 
     <script type="module" src="src/main.js"></script>

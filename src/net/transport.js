@@ -1,156 +1,157 @@
 /**
- * Transport : par ou passent les intentions et les etats.
+ * Transport: where intents and states travel.
  *
- * Le jeu ne touche jamais le moteur directement. Il pousse les intentions dans
- * un transport, et recoit des vues d'arene par ses abonnements. Le mode de jeu
- * choisit l'implementation, et rien d'autre dans la page ne sait comment les
- * messages voyagent — c'est ce qui permettra de brancher le relais a l'etape
- * suivante sans toucher au rendu ni au clavier.
+ * The game never touches the engine directly. It pushes intents into a
+ * transport, and receives arena views through its subscriptions. The game mode
+ * picks the implementation, and nothing else in the page knows how the messages
+ * travel — that is what made it possible to plug the relay in later without
+ * touching the renderer or the keyboard.
  *
- * Contrat commun :
- *   demarrer()               -> Promise<{ places, format, miens: number[] }>
- *   intention(place, entree) -> void   derniere intention connue d'une place
- *   battre(maintenantMs)     -> void   fait avancer le temps (solo seulement)
- *   surVue(f)                -> () => void   f(vue)
- *   surEvenements(f)         -> () => void   f(evenements, pas)
- *   surTransition(f)         -> () => void   f(transition)   round / score / finished
- *   surEtatReseau(f)         -> () => void   f(etat)         attente, absence, erreur
- *   fermer()                 -> void
+ * Common contract:
+ *   start()                 -> Promise<{ places, format, mine: number[] }>
+ *   intent(place, input)    -> void   last known intent of a place
+ *   beat(nowMs)             -> void   advances time (solo only)
+ *   onView(f)               -> () => void   f(view)
+ *   onEvents(f)             -> () => void   f(events, step)
+ *   onTransition(f)         -> () => void   f(transition)   round / score / finished
+ *   onNetState(f)           -> () => void   f(state)        waiting, absence, error
+ *   close()                 -> void
  *
- * En solo, `battre` fait tourner le moteur dans la page. En ligne, c'est le
- * relais qui bat, et `battre` ne fait rien : la page n'a plus qu'a recevoir.
- * C'est la seule difference visible entre les deux, et elle est contenue ici.
+ * In solo play, `beat` runs the engine inside the page. Online it is the relay
+ * that beats, and `beat` does nothing: the page only has to receive. That is the
+ * only visible difference between the two, and it is contained here.
  */
 
 import { randomSeed } from '../engine/rng.js';
-import { creerPartie, pasPartie } from '../engine/partie.js';
-import { creerHorloge, avancer } from '../engine/horloge.js';
-import { ENTREE_VIDE } from '../engine/entrees.js';
-import { FORMATS } from '../engine/manche.js';
+import { createGame, stepGame } from '../engine/game.js';
+import { createClock, advance } from '../engine/clock.js';
+import { EMPTY_INPUT } from '../engine/inputs.js';
+import { FORMATS } from '../engine/round.js';
 
 /**
- * Solo et jeu local : le moteur tourne dans la page, sans latence ni reseau.
+ * Solo and local play: the engine runs in the page, with no latency and no
+ * network.
  *
  * @param {{
- *   graine?: number, places?: number, humains?: number, format?: number,
- *   pilotes?: Record<number, (etat: object, place: number) => object>
+ *   seed?: number, places?: number, humans?: number, format?: number,
+ *   pilots?: Record<number, (state: object, place: number) => object>
  * }} options
  */
-export function creerTransportLocal({
-  graine = randomSeed(),
+export function createLocalTransport({
+  seed = randomSeed(),
   places = 2,
-  humains = 1,
+  humans = 1,
   format = FORMATS[0],
-  pilotes = {},
+  pilots = {},
 } = {}) {
-  const partie = creerPartie({ graine, places, format });
-  const intentions = Array.from({ length: places }, () => ({ ...ENTREE_VIDE }));
-  const vues = new Set();
-  const evenements = new Set();
+  const game = createGame({ seed, places, format });
+  const intents = Array.from({ length: places }, () => ({ ...EMPTY_INPUT }));
+  const views = new Set();
+  const events = new Set();
   const transitions = new Set();
 
-  let horloge = null;
-  let arrete = false;
+  let clock = null;
+  let stopped = false;
 
-  function diffuser(ensemble, ...args) {
-    for (const abonne of ensemble) abonne(...args);
+  function broadcast(set, ...args) {
+    for (const subscriber of set) subscriber(...args);
   }
 
   /**
-   * Les entrees du pas : celles des humains telles qu'elles ont ete poussees,
-   * celles des pilotes calculees a l'instant.
+   * The step's inputs: the humans' as they were pushed, the pilots' computed on
+   * the spot.
    *
-   * Les impulsions sont consommees ici, et non a la lecture du clavier : un pas
-   * de rattrapage ne doit pas reposer une deuxieme bombe avec la meme intention.
+   * Pulses are consumed here, and not when the keyboard is read: a catch-up step
+   * must not drop a second bomb with the same intent.
    */
-  function entreesDuPas() {
-    const entrees = [];
+  function stepInputs() {
+    const inputs = [];
     for (let place = 0; place < places; place += 1) {
-      const pilote = pilotes[place];
-      if (pilote) {
-        entrees[place] = pilote(partie.etat, place);
+      const pilot = pilots[place];
+      if (pilot) {
+        inputs[place] = pilot(game.state, place);
         continue;
       }
-      const voulue = intentions[place];
-      entrees[place] = { ...voulue };
-      voulue.poser = false;
-      voulue.declencher = false;
+      const wanted = intents[place];
+      inputs[place] = { ...wanted };
+      wanted.drop = false;
+      wanted.detonate = false;
     }
-    return entrees;
+    return inputs;
   }
 
   return {
-    async demarrer() {
-      horloge = null;
-      const miens = Array.from({ length: Math.min(humains, places) }, (_, i) => i);
-      // La premiere manche est deja prete : on l'annonce comme le relais le
-      // ferait, pour que la page n'ait qu'un seul chemin de demarrage.
+    async start() {
+      clock = null;
+      const mine = Array.from({ length: Math.min(humans, places) }, (_, i) => i);
+      // The first round is already prepared: we announce it as the relay would,
+      // so that the page has only one start-up path.
       queueMicrotask(() =>
-        diffuser(transitions, {
+        broadcast(transitions, {
           type: 'round',
-          manche: partie.manche,
-          graine: partie.etat.graine,
+          round: game.round,
+          seed: game.state.seed,
         }),
       );
-      return { places, format: partie.format, miens, noms: null };
+      return { places, format: game.format, mine, names: null };
     },
 
-    intention(place, entree) {
-      if (!intentions[place]) return;
-      intentions[place] = {
-        dir: entree.dir,
-        // Une impulsion deja en attente ne se perd pas si l'image suivante
-        // arrive avant le pas de simulation.
-        poser: intentions[place].poser || entree.poser,
-        declencher: intentions[place].declencher || entree.declencher,
+    intent(place, input) {
+      if (!intents[place]) return;
+      intents[place] = {
+        dir: input.dir,
+        // A pulse already waiting is not lost if the next frame arrives before
+        // the simulation step.
+        drop: intents[place].drop || input.drop,
+        detonate: intents[place].detonate || input.detonate,
       };
     },
 
-    battre(maintenant) {
-      if (arrete) return;
-      if (horloge === null) horloge = creerHorloge(maintenant);
-      const avance = avancer(horloge, maintenant);
-      horloge = avance.horloge;
+    beat(now) {
+      if (stopped) return;
+      if (clock === null) clock = createClock(now);
+      const tick = advance(clock, now);
+      clock = tick.clock;
 
-      for (let i = 0; i < avance.pas; i += 1) {
-        const resultat = pasPartie(partie, entreesDuPas());
-        if (resultat.evenements.length > 0) {
-          diffuser(evenements, resultat.evenements, partie.etat.pas);
+      for (let i = 0; i < tick.steps; i += 1) {
+        const result = stepGame(game, stepInputs());
+        if (result.events.length > 0) {
+          broadcast(events, result.events, game.state.step);
         }
-        if (resultat.transition) diffuser(transitions, resultat.transition);
+        if (result.transition) broadcast(transitions, result.transition);
       }
 
-      diffuser(vues, partie.etat, partie.match);
+      broadcast(views, game.state, game.match);
     },
 
-    surVue(f) {
-      vues.add(f);
-      return () => vues.delete(f);
+    onView(f) {
+      views.add(f);
+      return () => views.delete(f);
     },
 
-    surEvenements(f) {
-      evenements.add(f);
-      return () => evenements.delete(f);
+    onEvents(f) {
+      events.add(f);
+      return () => events.delete(f);
     },
 
-    surTransition(f) {
+    onTransition(f) {
       transitions.add(f);
       return () => transitions.delete(f);
     },
 
-    surEtatReseau() {
-      // En solo il n'y a pas de reseau, donc rien a raconter.
+    onNetState() {
+      // In solo play there is no network, so nothing to tell.
       return () => {};
     },
 
-    fermer() {
-      arrete = true;
-      vues.clear();
-      evenements.clear();
+    close() {
+      stopped = true;
+      views.clear();
+      events.clear();
       transitions.clear();
     },
 
-    /** Reserve aux tests et au debogage : l'etat vivant du moteur. */
-    partie,
+    /** Reserved for the tests and for debugging: the engine's live state. */
+    game,
   };
 }

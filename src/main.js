@@ -1,516 +1,974 @@
 /**
- * Le seul module qui connaisse a la fois le DOM, l'horloge et le moteur.
+ * The only module that knows the DOM, the clock and the engine at once.
  *
- * Tout le reste est pur ou specialise : le moteur ignore le navigateur, le rendu
- * ne decide rien, le clavier n'emet rien, le transport ne dessine rien. Cette
- * page est l'endroit ou ces quatre mondes se rencontrent, et c'est volontaire :
- * quand quelque chose ne marche pas, il n'y a qu'un fichier ou le chercher.
+ * Everything else is pure or specialised: the engine knows nothing of the
+ * browser, the renderer decides nothing, the keyboard emits nothing, the
+ * transport draws nothing. This page is where those four worlds meet, and that
+ * is deliberate: when something does not work, there is only one file to look
+ * in.
  */
 
-import { creerScene } from './render/scene.js';
-import { chargerVectoriels } from './render/vectoriels.js';
-import { depuisDessins, depuisVectoriels } from './render/jeuDeSprites.js';
-import { creerClavier, TOUCHES } from './input/clavier.js';
-import { creerManettes } from './input/manettes.js';
-import { fusionner } from './input/fusion.js';
-import { creerHud, creerBanniere } from './view/hud.js';
-import { creerTransportLocal } from './net/transport.js';
-import { creerTransportEnLigne } from './net/enLigne.js';
-import { creerSons } from './audio/sons.js';
-import { creerPilote } from './ai/pilote.js';
+import { createScene } from './render/scene.js';
+import { loadVectors } from './render/vectors.js';
+import { fromDrawings, fromVectors } from './render/spriteSet.js';
+import { createKeyboard, KEYS } from './input/keyboard.js';
+import { createGamepads } from './input/gamepads.js';
+import { merge } from './input/merge.js';
+import { createHud, createBanner } from './view/hud.js';
+import { createLocalTransport } from './net/transport.js';
+import { createOnlineTransport } from './net/online.js';
+import { createSounds } from './audio/sounds.js';
+import { createPilot } from './ai/pilot.js';
 import { randomSeed } from './engine/rng.js';
-import { MAX_JOUEURS, PAS_MS } from './engine/constantes.js';
-import { couleurDePlace } from './render/palette.js';
+import { MAX_PLAYERS, STEP_MS } from './engine/constants.js';
+import { placeColour, PLACES } from './render/palette.js';
 import {
   randomRoom,
   cleanRoom,
   cleanName,
   randomName,
-  nomsDeBots,
+  botNames,
   MIN_PLACES,
   MAX_PLACES,
-} from './net/protocole.js';
+} from './net/protocol.js';
 
 const menu = document.querySelector('#menu');
-const jeu = document.querySelector('#jeu');
-const toile = document.querySelector('#toile');
-const arene = document.querySelector('#arene');
-const pseudoInput = document.querySelector('#pseudo');
-const salonInput = document.querySelector('#salon');
-const siegesSelect = document.querySelector('#sieges');
+const game = document.querySelector('#game');
+const canvas = document.querySelector('#canvas');
+const arena = document.querySelector('#arena');
+const nicknameInput = document.querySelector('#nickname');
+const roomInput = document.querySelector('#room');
+const playersSelect = document.querySelector('#players');
+const seatsList = document.querySelector('#seats');
 const formatSelect = document.querySelector('#format');
 const botsSelect = document.querySelector('#bots');
-const boutonLocal = document.querySelector('#jouer-local');
-const boutonMulti = document.querySelector('#jouer-multi');
-const boutonQuitter = document.querySelector('#quitter');
-const etatReseau = document.querySelector('#etat-reseau');
+const playLocalButton = document.querySelector('#play-local');
+const playOnlineButton = document.querySelector('#play-online');
+const createOnlineButton = document.querySelector('#create-online');
+const quitButton = document.querySelector('#quit');
+const netState = document.querySelector('#net-state');
+const track = document.querySelector('#track');
+const screens = [...document.querySelectorAll('.screen')];
 
-const PREF_PSEUDO = 'bomberman.pseudo';
-const PREF_SALON = 'bomberman.salon';
-const PREF_SIEGES = 'bomberman.sieges';
+const PREF_NICKNAME = 'bomberman.pseudo';
+const PREF_ROOM = 'bomberman.salon';
+const PREF_PLAYERS = 'bomberman.joueurs';
+const PREF_SEATS = 'bomberman.sieges';
 const PREF_FORMAT = 'bomberman.format';
 const PREF_BOTS = 'bomberman.bots';
 
-/** Lecture tolerante du stockage : un navigateur en navigation privee le refuse. */
-function lirePref(cle, defaut) {
+/** Tolerant reading of storage: a browser in private mode refuses it. */
+function readPref(key, fallback) {
   try {
-    return localStorage.getItem(cle) ?? defaut;
+    return localStorage.getItem(key) ?? fallback;
   } catch {
-    return defaut;
+    return fallback;
   }
 }
 
-function ecrirePref(cle, valeur) {
+function writePref(key, value) {
   try {
-    localStorage.setItem(cle, valeur);
+    localStorage.setItem(key, value);
   } catch {
-    // Tant pis : la preference ne survivra pas a la fermeture de l'onglet.
+    // Never mind: the preference will not survive the tab being closed.
   }
 }
 
 /**
- * Les sprites d'Atomic Bomberman s'ils ont ete extraits, sinon ceux peints au
- * code.
+ * Atomic Bomberman's sprites if they have been extracted, otherwise those
+ * painted in code.
  *
- * L'attente est en tete de module, avant toute construction : la taille des
- * cases depend du jeu de sprites, donc la scene ne peut pas naitre avant de
- * savoir lequel elle aura. Un depot fraichement clone n'a pas d'assets et part
- * directement sur les sprites dessines — c'est le cas normal, pas une panne.
+ * The await is at the top of the module, before anything is built: the cell size
+ * depends on the sprite set, so the scene cannot be born before knowing which
+ * one it will have. A freshly cloned repository has no assets and goes straight
+ * to the drawn sprites — that is the normal case, not a breakdown.
  */
-const vectoriels = await chargerVectoriels().catch((erreur) => {
-  // On retombe sur les sprites dessines, mais sans se taire : un repli
-  // silencieux donne un jeu qui marche et une extraction qu'on croit branchee.
-  console.warn('sprites vectoriels indisponibles, repli sur le dessin au code', erreur);
+const vectors = await loadVectors().catch((error) => {
+  // We fall back on the drawn sprites, but not silently: a silent fallback gives
+  // a game that works and an extraction you believe is plugged in.
+  console.warn('sprites vectoriels indisponibles, repli sur le dessin au code', error);
   return null;
 });
-const scene = creerScene(toile, vectoriels ? depuisVectoriels(vectoriels) : depuisDessins());
-const hud = creerHud(document.querySelector('#hud'));
-const banniere = creerBanniere(document.querySelector('#banniere'));
-const clavier = creerClavier({ nombre: TOUCHES.length });
-const manettes = creerManettes({ nombre: TOUCHES.length });
+const spriteSet = vectors ? fromVectors(vectors) : fromDrawings();
+const scene = createScene(canvas, spriteSet);
+const hud = createHud(document.querySelector('#hud'));
+const banner = createBanner(document.querySelector('#banner'));
+const keyboard = createKeyboard({ count: KEYS.length });
+const gamepads = createGamepads({ count: KEYS.length });
 
 /**
- * L'intention d'un siege local, clavier et manette confondus.
+ * The intent of a local seat, keyboard and gamepad taken together.
  *
- * Les DEUX sources sont lues a chaque image, meme quand une seule sert. C'est
- * necessaire, pas gaspille : leurs impulsions se consomment a la lecture, donc
- * sauter celle qui parait inactive perdrait la bombe posee a l'instant meme ou
- * le joueur change de main.
+ * BOTH sources are read on every frame, even when only one is in use. That is
+ * necessary, not wasteful: their pulses are consumed on reading, so skipping the
+ * one that looks idle would lose the bomb dropped at the very moment the player
+ * changes hands.
  */
-const intentionLocale = (siege) => fusionner(clavier.lire(siege), manettes.lire(siege));
-const sons = creerSons();
-const boutonSon = document.querySelector('#son');
+const localIntent = (seat) => merge(keyboard.read(seat), gamepads.read(seat));
+const sounds = createSounds();
+const soundButton = document.querySelector('#sound');
 
-/** La partie en cours, ou null quand on est au menu. */
+/**
+ * What can drive a bomber, and where to read it.
+ *
+ * A control is a SOURCE OF INTENT, not a setting: keyboard and gamepad are read
+ * the same way, and the bot is not one of them — it is the engine that plays for
+ * it. So the list is short and closed, and the frame loop only has to ask each
+ * one for `read()`.
+ */
+const CONTROLS = [
+  { code: 'clavier1', label: 'Clavier 1', read: () => keyboard.read(0) },
+  { code: 'clavier2', label: 'Clavier 2', read: () => keyboard.read(1) },
+  { code: 'manette1', label: 'Manette 1', read: () => gamepads.read(0), gamepad: 0 },
+  { code: 'manette2', label: 'Manette 2', read: () => gamepads.read(1), gamepad: 1 },
+  { code: 'bot', label: 'Bot' },
+];
+
+const controlOf = (code) => CONTROLS.find((choice) => choice.code === code) ?? null;
+
+/**
+ * THE MENU'S BOMB BEATS, like the game's.
+ *
+ * It is the trigger bomb — the one carrying "BOOM" across it — and these are its
+ * own frames, the ones the scene draws in the arena: the menu and the game
+ * therefore show exactly the same object. It is GREEN, like the bomber on the
+ * screen: it is the colour in the file, the one before the per-player
+ * recolouring.
+ *
+ * The frames go through a CSS variable rather than through an animated element:
+ * the marker is a pseudo-element laid on EVERY row, and a variable set once on
+ * the root serves them all at a stroke, visible or not.
+ *
+ * The beat stops during a game: nothing is watching it, and a timer running for
+ * nobody is one timer too many.
+ */
+function animateMenuBomb() {
+  const run =
+    spriteSet.menuBomb ?? spriteSet.bombTrigger?.[0] ?? spriteSet.bomb?.[0] ?? [];
+  const frames = run.map((sprite) => `url(${sprite.canvas.toDataURL()})`);
+  if (frames.length === 0) return;
+
+  const rate = Math.max(60, (spriteSet.bombCycle ?? 900) / frames.length);
+  let frame = 0;
+  let timer = null;
+
+  const beat = () => {
+    document.documentElement.style.setProperty('--bomb', frames[frame]);
+    frame = (frame + 1) % frames.length;
+  };
+
+  const follow = () => {
+    const onMenu = !menu.hidden;
+    if (onMenu && timer === null) {
+      beat();
+      timer = setInterval(beat, rate);
+    } else if (!onMenu && timer !== null) {
+      clearInterval(timer);
+      timer = null;
+    }
+  };
+
+  follow();
+  // The menu opens and closes through several paths — end of match, departure,
+  // network cut — and watching them all would amount to listing them here. So we
+  // watch the attribute, which is the only thing they have in common.
+  new MutationObserver(follow).observe(menu, { attributes: true, attributeFilter: ['hidden'] });
+}
+
+animateMenuBomb();
+
+/**
+ * Builds the sprite series of the chosen colours in advance.
+ *
+ * They are assembled on demand — the game offers ten, a game never shows more
+ * than four — and without this wake-up, the round's first frame would pay for
+ * the recolouring, some sixty milliseconds per colour. Worse: the DEATH series
+ * would only be claimed the moment somebody dies, and the game would stutter at
+ * the worst possible instant.
+ *
+ * So we do it here, with the menu screen still up, where nobody is counting
+ * frames.
+ *
+ * @param {number[]} colours colour indexes, one per place
+ */
+function warmUpColours(colours) {
+  for (const colour of new Set(colours)) {
+    // A plain access is enough: these are accessors that build themselves then
+    // replace themselves with their result.
+    void spriteSet.bombers?.[colour];
+    void spriteSet.idle?.[colour];
+    void spriteSet.dead?.[colour];
+    void spriteSet.punches?.[colour];
+    void spriteSet.bomb?.[colour];
+    void spriteSet.bombTrigger?.[colour];
+    void spriteSet.flame?.[colour];
+  }
+}
+
+/** The game in progress, or null when we are in the menu. */
 let session = null;
 
 /**
- * Met l'arene a l'echelle de la place disponible.
+ * Scales the arena to the room available.
  *
- * Un facteur ENTIER serait l'ideal — des pixels tous de la meme largeur — mais
- * il est hors d'atteinte en pratique : l'arene fait 416 pixels de haut, donc le
- * facteur 2 demande 832 pixels rien que pour elle, ce qu'un ecran d'ordinateur
- * portable n'a pas une fois l'entete et le tableau de bord poses. Le jeu
- * resterait minuscule au milieu d'un ecran vide.
+ * An INTEGER factor would be ideal — pixels all of the same width — but it is
+ * out of reach in practice: the arena is 416 pixels tall, so factor 2 asks for
+ * 832 pixels for it alone, which a laptop screen does not have once the header
+ * and the dashboard are in place. The game would stay tiny in the middle of an
+ * empty screen.
  *
- * On prend donc le facteur exact qui remplit la place, et on le fige a l'entier
- * quand on en est tres proche. Le rendu reste franc : `image-rendering:
- * pixelated` n'interpole jamais, il duplique — un pixel peut etre voisin d'un
- * pixel d'une rangee de plus, mais aucun n'est flou. Et sur un ecran a facteur
- * d'affichage 1,25 ou 1,5, comme la plupart des ecrans Windows, un facteur
- * entier en CSS n'etait de toute facon pas entier en pixels reels.
+ * So we take the exact factor that fills the room, and snap it to the integer
+ * when it comes very close. The rendering stays crisp: `image-rendering:
+ * pixelated` never interpolates, it duplicates — one pixel may be a row wider
+ * than its neighbour, but none is blurred. And on a screen with a display factor
+ * of 1.25 or 1.5, like most Windows screens, an integer factor in CSS was not an
+ * integer in real pixels anyway.
  */
-const ECHELLE_MAX = 3;
+const MAX_SCALE = 3;
 
-function ajusterEchelle() {
-  // La largeur se mesure sur le PARENT, jamais sur le cadre de l'arene : celui-ci
-  // se dimensionne sur le canvas qu'il contient, et se mesurer sur lui revenait a
-  // demander au canvas de quelle taille il voulait etre — il ne grandissait
-  // jamais.
-  const dispoLargeur = Math.max(240, (arene.parentElement?.clientWidth ?? 0) - 40);
-  const dispoHauteur = Math.max(200, window.innerHeight - arene.getBoundingClientRect().top - 96);
-  const brut = Math.min(dispoLargeur / scene.largeur, dispoHauteur / scene.hauteur, ECHELLE_MAX);
-  const proche = Math.round(brut);
-  const facteur = Math.max(1, Math.abs(brut - proche) < 0.08 ? proche : brut);
-  toile.style.width = `${Math.round(scene.largeur * facteur)}px`;
-  toile.style.height = `${Math.round(scene.hauteur * facteur)}px`;
+function adjustScale() {
+  // The width is measured on the PARENT, never on the arena's frame: that one
+  // sizes itself on the canvas it contains, and measuring it amounted to asking
+  // the canvas what size it wanted to be — it never grew.
+  const availableWidth = Math.max(240, (arena.parentElement?.clientWidth ?? 0) - 40);
+  const availableHeight = Math.max(200, window.innerHeight - arena.getBoundingClientRect().top - 96);
+  const raw = Math.min(availableWidth / scene.width, availableHeight / scene.height, MAX_SCALE);
+  const near = Math.round(raw);
+  const factor = Math.max(1, Math.abs(raw - near) < 0.08 ? near : raw);
+  canvas.style.width = `${Math.round(scene.width * factor)}px`;
+  canvas.style.height = `${Math.round(scene.height * factor)}px`;
 }
 
 window.addEventListener('resize', () => {
-  if (session) ajusterEchelle();
+  if (session) adjustScale();
 });
 
-function montrerMenu() {
-  menu.hidden = false;
-  jeu.hidden = true;
-  banniere.cacher();
-  etatReseau.textContent = '';
-}
-
-function arreterSession() {
-  if (!session) return;
-  cancelAnimationFrame(session.image);
-  session.transport.fermer();
-  session = null;
-  clavier.oubli();
-  manettes.oubli();
-  // La musique du menu ne demarre qu'ICI, au retour : au chargement de la page
-  // le contexte audio n'existe pas encore, et le navigateur refuserait de la
-  // lancer sans un geste. Quelqu'un qui clique « Jouer » tout de suite ne la
-  // telecharge donc jamais.
-  sons.musiqueDeMenu();
-  montrerMenu();
-}
-
-/** Libelle d'une place, pour le HUD et les bannieres. */
-function nommer(place, humains, noms) {
-  if (noms?.[place]) return noms[place];
-  if (place < humains) return `${couleurDePlace(place).nom} — vous`;
-  return couleurDePlace(place).nom;
-}
-
 /**
- * Lance une partie locale : un ou deux joueurs au clavier, le reste en bots.
+ * Slides the track onto the requested screen.
+ *
+ * The screen is SHOWN BEFORE the slide and hidden AFTER the return: the track is
+ * as tall as the taller of its two sides, so a manual left in place would
+ * reserve its height under a six-line list.
+ *
+ * The focus follows, failing which the keyboard would stay on a row that has
+ * just left the screen — you would tab into the void.
  */
-function jouerEnLocal() {
-  arreterSession();
+function openScreen(name) {
+  const target = document.querySelector(`#screen-${name}`);
+  if (!target) return;
+  for (const screen of screens) screen.hidden = screen !== target;
+  track.dataset.open = name;
+  // The focus goes to THE SCREEN and not to its first field: placed in a text
+  // field, Backspace deletes a character there instead of going back, and the
+  // arrow keys belong to the drop-down list you have just reached. From the
+  // screen, Tab leads to the settings when you want them.
+  target.tabIndex = -1;
+  target.focus({ preventScroll: true });
+}
 
-  const humains = Math.max(1, Math.min(TOUCHES.length, Number(siegesSelect.value) || 1));
-  const bots = Math.max(0, Math.min(MAX_JOUEURS - humains, Number(botsSelect.value) || 0));
-  const places = Math.min(MAX_JOUEURS, humains + bots);
-  const format = Number(formatSelect.value) || 3;
+function closeScreen({ focus = true } = {}) {
+  const open = track.dataset.open;
+  if (!open) return;
+  delete track.dataset.open;
+  const row = document.querySelector(`[data-open="${open}"]`);
+  if (focus) row?.focus({ preventScroll: true });
 
-  ecrirePref(PREF_SIEGES, String(humains));
-  ecrirePref(PREF_BOTS, String(bots));
-  ecrirePref(PREF_FORMAT, String(format));
-  ecrirePref(PREF_PSEUDO, cleanName(pseudoInput.value, pseudoInput.value));
+  const hide = () => {
+    // Another screen may have opened in the meantime: we only hide when the
+    // track really has come back to the list.
+    if (track.dataset.open) return;
+    for (const screen of screens) screen.hidden = true;
+  };
+  const animated = getComputedStyle(track).transitionDuration !== '0s';
+  if (animated) track.addEventListener('transitionend', hide, { once: true });
+  else hide();
+}
 
-  // Les niveaux montent avec le numero de place : le premier bot laisse
-  // respirer, le dernier chasse. A quatre, la partie a une pente.
-  const niveaux = ['tranquille', 'normal', 'teigneux'];
-  const pilotes = {};
-  const noms = [];
-  // Des prenoms tous differents, et pas les memes d'une partie a l'autre.
-  const prenoms = nomsDeBots(bots, Math.floor(Math.random() * 8));
-  for (let place = 0; place < places; place += 1) {
-    if (place < humains) {
-      noms[place] = humains === 1 ? cleanName(pseudoInput.value) : `Joueur ${place + 1}`;
-      continue;
-    }
-    pilotes[place] = creerPilote({ niveau: niveaux[(place - humains) % niveaux.length] });
-    noms[place] = prenoms[place - humains];
+track?.addEventListener('click', (event) => {
+  const row = event.target.closest('[data-open]');
+  if (row) {
+    sounds.wake();
+    openScreen(row.dataset.open);
+    return;
   }
+  if (event.target.closest('.back')) closeScreen();
+});
 
-  const transport = creerTransportLocal({
-    graine: randomSeed(),
-    places,
-    humains,
-    format,
-    pilotes,
-  });
-
-  demarrer(transport, { humains, places, noms });
-}
+/*
+ * THE MOUSE MOVES THE SELECTION, it does not merely highlight on the way past.
+ *
+ * The bomb used to follow both the hover and the focus: hovering one row while
+ * another was chosen showed TWO of them, and nothing said any more which one
+ * Enter was going to confirm. By giving the focus to the row hovered, the mouse
+ * and the keyboard drive the same thing, and there is only one bomb on screen.
+ */
+track?.addEventListener('mouseover', (event) => {
+  const row = event.target.closest('.row');
+  if (row && row !== document.activeElement) row.focus({ preventScroll: true });
+});
 
 /**
- * Branche un transport sur l'ecran, le clavier et la boucle de rendu. Le meme
- * code servira au jeu en ligne : seul le transport change.
+ * The menu's keyboard: the ARROWS walk the list, ENTER confirms, BACKSPACE and
+ * ESCAPE bring you back to it.
+ *
+ * The arrows only count on the list, and outside a field: within an open screen
+ * they belong to the drop-down lists, which use them to change value. Taking
+ * them away would make a menu where you can no longer choose your colour with
+ * the keyboard.
  */
-async function demarrer(transport, { humains, places, noms }) {
-  // LA SESSION EXISTE DES LA CREATION DU TRANSPORT, et non a l'arrivee de la
-  // premiere arene. En ligne, `demarrer()` ne rend la main qu'une fois le salon
-  // complet : tant qu'on attend un adversaire, une session posee plus bas
-  // n'existerait pas encore, `arreterSession()` sortirait sans rien faire, et un
-  // second clic sur « Jouer en ligne » ouvrirait une DEUXIEME connexion sans
-  // fermer la premiere. Chacune prenait un siege, et le salon se remplissait du
-  // meme joueur repete.
-  //
-  // Le jeton distingue les sessions entre elles : si quelqu'un repart au menu
-  // pendant l'attente, celle-ci doit se taire au lieu de reprendre la main a
-  // l'arrivee tardive de son arene.
-  const jeton = Symbol('session');
-  session = { transport, image: 0, jeton };
+window.addEventListener('keydown', (event) => {
+  if (menu.hidden) return;
+  const inAField = /^(INPUT|SELECT|TEXTAREA)$/.test(event.target?.tagName ?? '');
 
-  const depart = await transport.demarrer();
-  if (session?.jeton !== jeton) {
-    transport.fermer();
+  if (event.key === 'Escape') {
+    closeScreen();
     return;
   }
 
-  const nombre = depart.places ?? places;
-  const etiquettes = Array.from({ length: nombre }, (_, place) =>
-    nommer(place, humains, depart.noms ?? noms),
+  // Backspace: the game's gesture for going up one screen. Not from a field,
+  // where it deletes a character — that is its first job, and the room code is
+  // corrected with it.
+  if (event.key === 'Backspace' && !inAField) {
+    event.preventDefault();
+    closeScreen();
+    return;
+  }
+
+  // ENTER AND SPACE CONFIRM, and it is the page that has to see to it: those two
+  // keys belong to the game — trigger and bomb — so the engine's keyboard
+  // neutralises them from the menu on, which kept the focused button from
+  // activating by itself as it otherwise would have.
+  //
+  // On a button only: in a field, Enter submits a form and Space writes a space,
+  // and neither must start a game.
+  if (event.key === 'Enter' || event.key === ' ') {
+    const target = document.activeElement;
+    if (!inAField && target?.tagName === 'BUTTON' && !target.disabled) {
+      event.preventDefault();
+      target.click();
+    }
+    return;
+  }
+
+  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+  if (track?.dataset.open) return;
+  if (/^(INPUT|SELECT|TEXTAREA)$/.test(event.target?.tagName ?? '')) return;
+
+  const rows = [...document.querySelectorAll('.choices .row')];
+  if (rows.length === 0) return;
+  event.preventDefault();
+  const current = rows.indexOf(document.activeElement);
+  const step = event.key === 'ArrowDown' ? 1 : -1;
+  // From anywhere else, the first arrow takes the top or the bottom of the list
+  // depending on its direction, rather than jumping arbitrarily to the first
+  // entry.
+  const next =
+    current === -1
+      ? (step === 1 ? 0 : rows.length - 1)
+      : (current + step + rows.length) % rows.length;
+  rows[next].focus();
+});
+
+/**
+ * Puts the bomb on "Lancer une partie" when nothing is chosen.
+ *
+ * The marker follows the focus: with no focus, no row is marked and the menu
+ * looks dead. We force nothing when a row is already chosen — the mouse hovering
+ * a row, or the arrow just pressed, have the upper hand.
+ */
+function selectByDefault() {
+  if (menu.hidden) return;
+  if (document.activeElement?.closest?.('.choices .row')) return;
+  document.querySelector('.choices .row')?.focus({ preventScroll: true });
+}
+
+function showMenu() {
+  // We always come back to the list: keeping the launch screen open after a game
+  // would suggest another one is being started.
+  closeScreen({ focus: false });
+  menu.hidden = false;
+  game.hidden = true;
+  banner.hide();
+  netState.textContent = '';
+  selectByDefault();
+}
+
+function stopSession() {
+  if (!session) return;
+  cancelAnimationFrame(session.frame);
+  session.transport.close();
+  session = null;
+  keyboard.forget();
+  gamepads.forget();
+  // The menu music only starts HERE, on coming back: when the page loads the
+  // audio context does not exist yet, and the browser would refuse to start it
+  // without a gesture. Somebody who clicks "Jouer" straight away therefore never
+  // downloads it.
+  sounds.menuMusic();
+  showMenu();
+}
+
+/** A place's label, for the HUD and the banners. */
+function nameOf(place, humans, names, colours = null) {
+  if (names?.[place]) return names[place];
+  const tint = placeColour(colours?.[place] ?? place);
+  if (place < humans) return `${tint.name} — vous`;
+  return tint.name;
+}
+
+/**
+ * Builds one row per player: its colour, and what drives it.
+ *
+ * The rows are REBUILT on every change rather than updated: there are four at
+ * most, and a rebuild keeps the list of controls in step with the hardware
+ * plugged in at that instant — an unplugged gamepad must disappear from the
+ * choice, not sit there waiting.
+ *
+ * The choices already made are read back before the rows are rebuilt: so player
+ * 3's colour is not lost because player 1 took a gamepad.
+ */
+function buildSeats() {
+  const count = Math.max(2, Math.min(MAX_PLAYERS, Number(playersSelect.value) || 2));
+  const previous = readSeats();
+  const connected = gamepads.howMany();
+  // Two bombers of the same colour cannot be told apart: the first row to ask
+  // for it gets it, the following ones take the first one free.
+  const taken = new Set();
+  const assign = (wanted) => {
+    if (Number.isInteger(wanted) && !taken.has(wanted) && wanted < PLACES.length) {
+      taken.add(wanted);
+      return wanted;
+    }
+    for (let i = 0; i < PLACES.length; i += 1) {
+      if (taken.has(i)) continue;
+      taken.add(i);
+      return i;
+    }
+    return 0;
+  };
+
+  seatsList.textContent = '';
+  for (let place = 0; place < count; place += 1) {
+    const old = previous[place] ?? {};
+    const rowTint = assign(old.colour ?? place);
+    const row = document.createElement('li');
+    row.className = 'seat';
+
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+
+    const label = document.createElement('span');
+    label.className = 'seat-name';
+    label.textContent = `Joueur ${place + 1}`;
+
+    const colour = document.createElement('select');
+    colour.className = 'colour';
+    PLACES.forEach((tint, index) => {
+      const option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = tint.name;
+      colour.append(option);
+    });
+    colour.value = String(rowTint);
+
+    const control = document.createElement('select');
+    control.className = 'control';
+    for (const choice of CONTROLS) {
+      // A gamepad we do not have is not offered: it would never answer, and you
+      // would think the game broken rather than the gamepad absent.
+      if (choice.gamepad !== undefined && choice.gamepad >= connected) continue;
+      const option = document.createElement('option');
+      option.value = choice.code;
+      option.textContent = choice.label;
+      control.append(option);
+    }
+    const wanted = old.control ?? (place === 0 ? 'clavier1' : 'bot');
+    control.value = [...control.options].some((o) => o.value === wanted) ? wanted : 'bot';
+
+    const paint = () => {
+      dot.style.background = placeColour(Number(colour.value)).vivid;
+    };
+    paint();
+
+    // Two bombers of the same colour cannot be told apart in play. Rather than
+    // refusing the choice, we SWAP with whoever had it: that is what the game's
+    // selection screen does, and nobody has a mistake to correct.
+    //
+    // The colour handed back is the one this row carried AT THAT INSTANT, kept up
+    // to date here: reading it back from the preferences gave a THIRD colour,
+    // the one from before the last game, and the swap was no longer one.
+    let held = rowTint;
+    colour.addEventListener('change', () => {
+      const chosen = Number(colour.value);
+      for (const other of seatsList.querySelectorAll('.colour')) {
+        if (other === colour || Number(other.value) !== chosen) continue;
+        other.value = String(held);
+        other.dispatchEvent(new Event('swap'));
+      }
+      held = chosen;
+      paint();
+      rememberSeats();
+    });
+    // The swap repaints the yielding row without restarting the search, which
+    // would bounce from one row to the next.
+    colour.addEventListener('swap', () => {
+      held = Number(colour.value);
+      paint();
+    });
+    control.addEventListener('change', rememberSeats);
+
+    row.append(dot, label, wrap('Couleur', colour), wrap('Commande', control));
+    seatsList.append(row);
+  }
+}
+
+/** A field dressed in its label, like those of the options. */
+function wrap(title, control) {
+  const label = document.createElement('label');
+  label.className = 'field';
+  const span = document.createElement('span');
+  span.textContent = title;
+  label.append(span, control);
+  return label;
+}
+
+/** What the launch screen says, row by row. */
+function readSeats() {
+  return [...seatsList.querySelectorAll('.seat')].map((row) => ({
+    colour: Number(row.querySelector('.colour').value),
+    control: row.querySelector('.control').value,
+  }));
+}
+
+function rememberSeats() {
+  const seats = readSeats();
+  writePref(PREF_SEATS, JSON.stringify(seats));
+  writePref(PREF_PLAYERS, String(seats.length));
+}
+
+/**
+ * Starts a local game, as the launch screen describes it.
+ *
+ * Each row gives a bomber: its colour, and what drives it — a set of keys, a
+ * gamepad, or nobody, in which case the engine plays for it. The bots keep
+ * increasing levels, so that a four-way game has a slope rather than a wall.
+ */
+function playLocal() {
+  stopSession();
+
+  const seats = readSeats();
+  const places = seats.length;
+  const format = Number(formatSelect.value) || 3;
+  rememberSeats();
+  writePref(PREF_FORMAT, String(format));
+  writePref(PREF_NICKNAME, cleanName(nicknameInput.value, nicknameInput.value));
+
+  const levels = ['quiet', 'normal', 'nasty'];
+  const pilots = {};
+  const sources = {};
+  const names = [];
+  const colours = seats.map((seat) => seat.colour);
+  const humans = seats.filter((seat) => seat.control !== 'bot').length;
+  // First names all different, and not the same from one game to the next.
+  const firstNames = botNames(places, Math.floor(Math.random() * 8));
+  let botRank = 0;
+  let humanRank = 0;
+
+  for (let place = 0; place < places; place += 1) {
+    const choice = controlOf(seats[place].control);
+    if (!choice || choice.code === 'bot') {
+      pilots[place] = createPilot({ level: levels[botRank % levels.length] });
+      names[place] = firstNames[botRank];
+      botRank += 1;
+      continue;
+    }
+    sources[place] = choice.read;
+    // A single human: it is their nickname. Several: each is announced by their
+    // control, which is what they look at to know which one is them.
+    names[place] = humans === 1 ? cleanName(nicknameInput.value) : choice.label;
+    humanRank += 1;
+  }
+
+  const transport = createLocalTransport({
+    seed: randomSeed(),
+    places,
+    humans: humanRank,
+    format,
+    pilots,
+  });
+
+  startSession(transport, { places, names, sources, colours });
+}
+
+/**
+ * Plugs a transport into the screen, the keyboard and the render loop. The same
+ * code will serve the online game: only the transport changes.
+ */
+async function startSession(transport, { humans = 1, places, names, sources = null, colours = null }) {
+  // THE SESSION EXISTS AS SOON AS THE TRANSPORT IS CREATED, and not when the
+  // first arena arrives. Online, `start()` only returns once the room is full: as
+  // long as we are waiting for an opponent, a session set further down would not
+  // exist yet, `stopSession()` would return without doing anything, and a second
+  // click on "Jouer en ligne" would open a SECOND connection without closing the
+  // first. Each took a seat, and the room filled up with the same player
+  // repeated.
+  //
+  // The token tells sessions apart: if somebody goes back to the menu while
+  // waiting, this one has to keep quiet instead of taking over when its arena
+  // arrives late.
+  const token = Symbol('session');
+  session = { transport, frame: 0, token };
+
+  const start = await transport.start();
+  if (session?.token !== token) {
+    transport.close();
+    return;
+  }
+
+  const count = start.places ?? places;
+  const labels = Array.from({ length: count }, (_, place) =>
+    nameOf(place, humans, start.names ?? names, colours),
   );
 
-  hud.construire(nombre, etiquettes);
+  // The colours chosen apply to the rendering AND to the dashboard: a blue
+  // bomber must have a blue row, otherwise you hunt for yours at every glance.
+  scene.colours(colours);
+  warmUpColours(colours ?? Array.from({ length: count }, (_, place) => place));
+  hud.build(count, labels, colours);
   menu.hidden = true;
-  jeu.hidden = false;
-  // La salle d'attente a fait son office : la partie commence. On la ferme ici
-  // plutot que d'attendre l'annonce de la premiere manche, qui ne vient pas
-  // quand on reprend une partie deja lancee.
-  banniere.cacher();
-  // L'attente est finie, puisque la partie commence. On l'efface ICI et non sur
-  // un message du relais : celui qui l'annonce part avant que la page se soit
-  // abonnee — `demarrer()` ne rend la main qu'une fois la partie formee — et le
-  // « en attente » serait reste affiche toute la manche.
-  etatReseau.textContent = '';
-  ajusterEchelle();
+  game.hidden = false;
+  // The waiting room has done its job: the game is starting. We close it here
+  // rather than wait for the first round's announcement, which does not come
+  // when a game already under way is rejoined.
+  banner.hide();
+  // The wait is over, since the game is starting. We clear it HERE and not on a
+  // message from the relay: the one that announces it goes out before the page
+  // has subscribed — `start()` only returns once the game is formed — and
+  // "waiting" would have stayed on screen for the whole round.
+  netState.textContent = '';
+  adjustScale();
 
-  let vue = null;
+  let view = null;
   let match = null;
 
-  transport.surVue((etat, matchCourant) => {
-    vue = etat;
-    match = matchCourant;
+  transport.onView((state, currentMatch) => {
+    view = state;
+    match = currentMatch;
   });
 
-  transport.surEvenements((liste) => {
-    scene.evenements(liste, performance.now());
-    sons.reagir(liste);
+  transport.onEvents((list) => {
+    scene.events(list, performance.now());
+    sounds.react(list);
   });
 
-  transport.surTransition((transition) => {
-    sons.transition(transition);
+  transport.onTransition((transition) => {
+    sounds.transition(transition);
     if (transition.type === 'round') {
-      // La duree vient du moteur : c'est exactement le temps pendant lequel il
-      // tient l'arene figee. Un reglage a part ici, et l'annonce disparaitrait
-      // avant que la manche demarre, ou resterait apres.
-      banniere.montrer({ titre: `Manche ${transition.manche}`, duree: transition.attente * PAS_MS });
+      // The duration comes from the engine: it is exactly how long it holds the
+      // arena frozen. A separate setting here, and the announcement would
+      // disappear before the round started, or stay on after it.
+      banner.show({ title: `Manche ${transition.round}`, duration: transition.wait * STEP_MS });
       return;
     }
     if (transition.type === 'score') {
-      const titre = transition.verdict.nulle
+      const title = transition.verdict.draw
         ? 'Manche nulle'
-        : `${etiquettes[transition.verdict.gagnante] ?? 'Personne'} gagne la manche`;
-      banniere.montrer({
-        titre,
-        detail: transition.scores.map((score, place) => `${etiquettes[place]} : ${score}`).join('  ·  '),
+        : `${labels[transition.verdict.winningPlace] ?? 'Personne'} gagne la manche`;
+      banner.show({
+        title,
+        detail: transition.scores.map((score, place) => `${labels[place]} : ${score}`).join('  ·  '),
       });
       return;
     }
     if (transition.type === 'finished') {
-      banniere.montrer({
-        titre:
-          transition.vainqueur === null
+      banner.show({
+        title:
+          transition.winner === null
             ? 'Match nul'
-            : `${etiquettes[transition.vainqueur]} remporte le match`,
-        detail: transition.scores.map((score, place) => `${etiquettes[place]} : ${score}`).join('  ·  '),
-        boutons: [{ texte: 'Retour au menu', action: arreterSession }],
+            : `${labels[transition.winner]} remporte le match`,
+        detail: transition.scores.map((score, place) => `${labels[place]} : ${score}`).join('  ·  '),
+        buttons: [{ text: 'Retour au menu', action: stopSession }],
       });
     }
   });
 
-  transport.surEtatReseau((etat) => {
-    etatReseau.textContent = etat?.message ?? '';
+  transport.onNetState((state) => {
+    netState.textContent = state?.message ?? '';
   });
 
-  const miens = depart.miens ?? [];
+  const mine = start.mine ?? [];
 
-  function image(maintenant) {
+  function frame(now) {
     if (!session) return;
-    for (let siege = 0; siege < miens.length; siege += 1) {
-      transport.intention(miens[siege], intentionLocale(siege));
+    if (sources) {
+      // Locally, every place has ITS control: keyboard 2 drives the place that
+      // chose it, not the second one in the list.
+      for (const [place, read] of Object.entries(sources)) {
+        transport.intent(Number(place), read());
+      }
+    } else {
+      // Online, the relay says which places are ours — one in practice — and we
+      // pour keyboard and gamepad into them together.
+      for (let seat = 0; seat < mine.length; seat += 1) {
+        transport.intent(mine[seat], localIntent(seat));
+      }
     }
-    transport.battre(maintenant);
-    if (vue) {
-      scene.dessiner(vue, maintenant);
-      hud.rafraichir(vue, match);
+    transport.beat(now);
+    if (view) {
+      scene.draw(view, now);
+      hud.refresh(view, match);
     }
-    session.image = requestAnimationFrame(image);
+    session.frame = requestAnimationFrame(frame);
   }
 
-  session.image = requestAnimationFrame(image);
+  session.frame = requestAnimationFrame(frame);
 }
 
 /**
- * Le premier geste de la page, quel qu'il soit : audio et musique du menu.
+ * The page's first gesture, whatever it is: audio and menu music.
  *
- * On ne peut pas lancer la musique au chargement — les navigateurs refusent
- * tout son tant que l'utilisateur n'a rien fait, et un contexte ouvert trop tot
- * reste bloque en « suspended » pour toute la session. Le premier clic ou la
- * premiere touche sont donc le plus tot possible, et ca vaut pour n'importe ou
- * dans la page, pas seulement sur le bouton « Jouer ».
+ * The music cannot be started on load — browsers refuse any sound until the user
+ * has done something, and a context opened too early stays stuck in "suspended"
+ * for the whole session. So the first click or the first key is as early as
+ * possible, and that counts anywhere in the page, not only on the "Jouer"
+ * button.
  *
- * La petite attente evite un telechargement pour rien : la musique du menu pese
- * deux megaoctets et demi, et quelqu'un dont le tout premier geste est de
- * cliquer « Jouer » ne l'entendrait pas une seconde.
+ * The small wait saves a download for nothing: the menu music weighs two and a
+ * half megabytes, and somebody whose very first gesture is to click "Jouer"
+ * would not hear a second of it.
  */
-function premierGeste() {
-  document.removeEventListener('pointerdown', premierGeste);
-  document.removeEventListener('keydown', premierGeste);
-  sons.eveiller();
+function firstGesture() {
+  document.removeEventListener('pointerdown', firstGesture);
+  document.removeEventListener('keydown', firstGesture);
+  sounds.wake();
   setTimeout(() => {
-    if (!session) sons.musiqueDeMenu();
+    if (!session) sounds.menuMusic();
   }, 300);
 }
-document.addEventListener('pointerdown', premierGeste);
-document.addEventListener('keydown', premierGeste);
+document.addEventListener('pointerdown', firstGesture);
+document.addEventListener('keydown', firstGesture);
 
-boutonLocal.addEventListener('click', () => {
-  sons.eveiller();
-  jouerEnLocal();
+playLocalButton.addEventListener('click', () => {
+  sounds.wake();
+  playLocal();
 });
-boutonQuitter.addEventListener('click', arreterSession);
+quitButton.addEventListener('click', stopSession);
 
-function basculerSon() {
-  const actif = sons.basculer();
-  boutonSon.textContent = actif ? 'Son : actif' : 'Son : coupe';
-  boutonSon.setAttribute('aria-pressed', String(actif));
+function toggleSound() {
+  const on = sounds.toggle();
+  soundButton.textContent = on ? 'Son : actif' : 'Son : coupé';
+  soundButton.setAttribute('aria-pressed', String(on));
 }
 
-boutonSon.addEventListener('click', basculerSon);
-clavier.raccourci('KeyN', basculerSon);
-clavier.raccourci('Escape', () => {
-  if (session) arreterSession();
+soundButton.addEventListener('click', toggleSound);
+keyboard.shortcut('KeyN', toggleSound);
+keyboard.shortcut('Escape', () => {
+  if (session) stopSession();
 });
 
 /**
- * Adresse du relais.
+ * Address of the relay.
  *
- * Elle est ecrite ici plutot que devinee : la page est servie par GitHub Pages
- * et le relais vit chez Cloudflare, donc rien dans l'URL courante ne permet de
- * la deduire. `?relais=` la remplace, ce qui sert a tester contre un
- * `wrangler dev` local sans toucher au code.
+ * It is written here rather than guessed: the page is served by GitHub Pages and
+ * the relay lives at Cloudflare, so nothing in the current URL lets it be
+ * deduced. `?relais=` replaces it, which serves to test against a local
+ * `wrangler dev` without touching the code.
  */
-const RELAIS = 'wss://bomberman-relais.labilbe.workers.dev/salon';
+const RELAY = 'wss://bomberman-relais.labilbe.workers.dev/room';
 
 /**
- * Lance une partie en ligne.
+ * Starts an online game.
  *
- * Le salon est le rendez-vous : deux joueurs qui tapent le meme code tombent
- * dans la meme arene. Le lien de la barre d'adresse le transporte, pour qu'on
- * puisse inviter quelqu'un en lui envoyant une URL plutot qu'un code a recopier.
+ * The room is the meeting point: two players who type the same code land in the
+ * same arena. The link in the address bar carries it, so that somebody can be
+ * invited by sending them a URL rather than a code to copy out.
  */
-function jouerEnLigne() {
-  arreterSession();
+function playOnline({ fresh = false } = {}) {
+  stopSession();
 
-  const code = cleanRoom(salonInput.value) || randomRoom();
-  salonInput.value = code;
-  ecrirePref(PREF_SALON, code);
-  ecrirePref(PREF_PSEUDO, cleanName(pseudoInput.value, pseudoInput.value));
+  // `fresh` draws a new code rather than taking the one in the field: that is the
+  // whole difference between CREATING a game and JOINING one. The relay does not
+  // tell the two apart — it opens the room if the code is free and seats you in
+  // it otherwise — but the player does: one invites, the other answers.
+  const code = fresh ? randomRoom() : cleanRoom(roomInput.value) || randomRoom();
+  roomInput.value = code;
+  writePref(PREF_ROOM, code);
+  writePref(PREF_NICKNAME, cleanName(nicknameInput.value, nicknameInput.value));
 
   const places = Math.max(MIN_PLACES, Math.min(MAX_PLACES, 1 + (Number(botsSelect.value) || 1)));
   const format = Number(formatSelect.value) || 3;
-  const url = new URLSearchParams(location.search).get('relais') || RELAIS;
+  const url = new URLSearchParams(location.search).get('relais') || RELAY;
 
-  const transport = creerTransportEnLigne({
+  const transport = createOnlineTransport({
     url,
-    salon: code,
-    pseudo: cleanName(pseudoInput.value),
+    room: code,
+    nickname: cleanName(nicknameInput.value),
     places,
     format,
   });
 
-  // Le lien d'invitation, sans recharger la page : qui le recoit arrive dans ce
-  // salon, avec le code deja rempli.
+  // The invitation link, without reloading the page: whoever receives it arrives
+  // in this room, with the code already filled in.
   const invitation = new URL(location.href);
-  invitation.searchParams.set('salon', code);
+  invitation.searchParams.set('room', code);
   history.replaceState(null, '', invitation);
 
-  // La salle d'attente s'ouvre TOUT DE SUITE, avant la moindre reponse du
-  // relais. Sans elle, celui qui cree un salon reste devant le menu sans savoir
-  // si quelque chose se passe, et reclique — c'est exactement ce qui remplissait
-  // le salon du meme joueur.
+  // The waiting room opens STRAIGHT AWAY, before the slightest answer from the
+  // relay. Without it, whoever creates a room stays in front of the menu not
+  // knowing whether anything is happening, and clicks again — which is exactly
+  // what used to fill the room with the same player.
   menu.hidden = true;
-  jeu.hidden = false;
-  ajusterEchelle();
-  montrerAttente(transport, { code, assis: 1, total: places, noms: [] });
-  transport.surSalon((salle) => montrerAttente(transport, salle));
+  game.hidden = false;
+  adjustScale();
+  showWaiting(transport, { code, seated: 1, total: places, names: [] });
+  transport.onRoom((room) => showWaiting(transport, room));
 
-  // Un seul siege local en ligne : les autres bombers sont ailleurs.
-  demarrer(transport, { humains: 1, places, noms: null });
+  // A single local seat online: the other bombers are elsewhere.
+  startSession(transport, { humans: 1, places, names: null });
 }
 
 /**
- * La salle d'attente : qui est assis, qui manque, et de quoi partir.
+ * The waiting room: who is seated, who is missing, and what it takes to set off.
  *
- * N'IMPORTE QUEL JOUEUR PEUT LANCER. Il n'y a pas d'hote : attendre que le
- * createur du salon se decide ferait dependre la partie de celui qui a le moins
- * envie de jouer, et un salon a trois ne demarrerait jamais parce que le
- * quatrieme n'arrive pas. Les places restees vides passent aux bots.
+ * ANY PLAYER CAN START. There is no host: waiting for the room's creator to make
+ * up their mind would make the game depend on whoever least wants to play, and a
+ * room of three would never start because the fourth does not come. The places
+ * left empty go to bots.
  *
- * Elle se redessine a chaque arrivee : la bannniere est reconstruite plutot que
- * modifiee, ce qui evite de tenir a jour des noeuds un par un pour trois lignes
- * de texte.
+ * It redraws itself on every arrival: the banner is rebuilt rather than modified,
+ * which saves keeping nodes up to date one by one for three lines of text.
  */
-function montrerAttente(transport, { code, assis, total, noms, erreur }) {
-  // Le relais a refuse : c'est le SEUL ecran affiche a ce moment, donc le seul
-  // endroit ou le dire. Sans ca, on reste devant une salle d'attente muette,
-  // a se demander pourquoi personne n'arrive.
-  if (erreur) {
-    banniere.montrer({
-      titre: 'Impossible de rejoindre',
-      detail: erreur,
-      boutons: [{ texte: 'Retour au menu', action: arreterSession }],
+function showWaiting(transport, { code, seated, total, names, error }) {
+  // The relay has refused: this is the ONLY screen shown at that moment, hence
+  // the only place to say so. Without that, you stay in front of a silent
+  // waiting room, wondering why nobody arrives.
+  if (error) {
+    banner.show({
+      title: 'Impossible de rejoindre',
+      detail: error,
+      buttons: [{ text: 'Retour au menu', action: stopSession }],
     });
     return;
   }
 
-  const sieges = Array.from({ length: total }, (_, place) => noms?.[place] || '— libre —');
-  const manque = total - assis;
+  const seats = Array.from({ length: total }, (_, place) => names?.[place] || '— libre —');
+  const missing = total - seated;
 
-  banniere.montrer({
-    titre: `Salon ${code}`,
+  banner.show({
+    title: `Salon ${code}`,
     detail: [
-      sieges.join('   ·   '),
-      manque > 0
-        ? `En attente de ${manque} joueur${manque > 1 ? 's' : ''} — partage le lien de la barre d adresse`
+      seats.join('   ·   '),
+      missing > 0
+        ? `En attente de ${missing} joueur${missing > 1 ? 's' : ''} — partage le lien de la barre d'adresse`
         : 'Le salon est complet',
     ].join('\n'),
-    boutons: [
+    buttons: [
       {
-        texte: manque > 0 ? `Demarrer (${manque} bot${manque > 1 ? 's' : ''})` : 'Demarrer',
-        action: () => transport.commencer?.(),
+        text: missing > 0 ? `Démarrer (${missing} bot${missing > 1 ? 's' : ''})` : 'Démarrer',
+        action: () => transport.begin?.(),
       },
-      { texte: 'Quitter', action: arreterSession },
+      { text: 'Quitter', action: stopSession },
     ],
   });
 }
 
-boutonMulti.addEventListener('click', () => {
-  sons.eveiller();
-  banniere.cacher();
-  jouerEnLigne();
+playOnlineButton.addEventListener('click', () => {
+  sounds.wake();
+  banner.hide();
+  playOnline();
+});
+
+createOnlineButton.addEventListener('click', () => {
+  sounds.wake();
+  banner.hide();
+  playOnline({ fresh: true });
 });
 
 /**
- * Dit combien de manettes sont branchees, sous le tableau des commandes.
+ * Says how many gamepads are plugged in, under the table of controls.
  *
- * Le navigateur ne revele une manette qu'apres un premier appui dessus, par
- * souci de vie privee : une page ne doit pas pouvoir reconnaitre un visiteur a
- * son materiel sans qu'il ait rien fait. Une manette allumee peut donc rester
- * invisible jusqu'a ce qu'on presse un bouton, et sans ce compteur on croirait
- * le jeu en panne alors qu'il attend simplement ce geste.
+ * The browser only reveals a gamepad after a first press on it, out of concern
+ * for privacy: a page must not be able to recognise a visitor by their hardware
+ * without their having done anything. A gamepad that is switched on can therefore
+ * stay invisible until a button is pressed, and without this counter you would
+ * think the game broken when it is simply waiting for that gesture.
  */
-const noteManettes = document.querySelector('#manettes');
-const TEXTE_MANETTES = noteManettes?.textContent ?? '';
+const gamepadNote = document.querySelector('#gamepads');
+const GAMEPAD_TEXT = gamepadNote?.textContent ?? '';
 
-function annoncerManettes() {
-  if (!noteManettes) return;
-  const nombre = manettes.combien();
-  const etat = nombre === 0
-    ? 'Aucune manette detectee pour l instant — appuie sur un bouton pour qu elle se signale.'
-    : `${nombre} manette${nombre > 1 ? 's' : ''} detectee${nombre > 1 ? 's' : ''}.`;
-  noteManettes.textContent = `${TEXTE_MANETTES.trim()} ${etat}`;
+function announceGamepads() {
+  if (!gamepadNote) return;
+  const count = gamepads.howMany();
+  const state = count === 0
+    ? "Aucune manette détectée pour l'instant — appuie sur un bouton pour qu'elle se signale."
+    : `${count} manette${count > 1 ? 's' : ''} détectée${count > 1 ? 's' : ''}.`;
+  gamepadNote.textContent = `${GAMEPAD_TEXT.trim()} ${state}`;
 }
 
-window.addEventListener('gamepadconnected', annoncerManettes);
-window.addEventListener('gamepaddisconnected', annoncerManettes);
+/**
+ * A gamepad arriving or leaving changes the choices possible: we rebuild the rows
+ * of the launch screen, which keep whatever still holds on the way.
+ */
+function followGamepads() {
+  announceGamepads();
+  if (seatsList) buildSeats();
+}
 
-/** Etat initial des champs : le lien l'emporte sur la preference locale. */
-function initialiser() {
-  annoncerManettes();
-  const invite = cleanRoom(new URLSearchParams(location.search).get('salon') ?? '');
-  salonInput.value = invite || cleanRoom(lirePref(PREF_SALON, '')) || randomRoom();
-  pseudoInput.value = cleanName(lirePref(PREF_PSEUDO, ''), randomName());
-  siegesSelect.value = lirePref(PREF_SIEGES, '1');
-  formatSelect.value = lirePref(PREF_FORMAT, '3');
-  botsSelect.value = lirePref(PREF_BOTS, '3');
-  salonInput.addEventListener('change', () => {
-    salonInput.value = cleanRoom(salonInput.value);
-    ecrirePref(PREF_SALON, salonInput.value);
+window.addEventListener('gamepadconnected', followGamepads);
+window.addEventListener('gamepaddisconnected', followGamepads);
+
+/** Initial state of the fields: the link wins over the local preference. */
+function initialise() {
+  announceGamepads();
+  const invited = cleanRoom(new URLSearchParams(location.search).get('room') ?? '');
+  playersSelect.value = readPref(PREF_PLAYERS, '2');
+  buildSeats();
+  // The choices remembered from the last game, put back if they still hold — a
+  // gamepad unplugged since, and the row falls back on a bot.
+  try {
+    const remembered = JSON.parse(readPref(PREF_SEATS, '[]'));
+    if (Array.isArray(remembered) && remembered.length > 0) {
+      playersSelect.value = String(Math.max(2, Math.min(MAX_PLAYERS, remembered.length)));
+      buildSeats();
+      [...seatsList.querySelectorAll('.seat')].forEach((row, place) => {
+        const wanted = remembered[place];
+        if (!wanted) return;
+        const colour = row.querySelector('.colour');
+        const control = row.querySelector('.control');
+        colour.value = String(wanted.colour ?? place);
+        row.querySelector('.dot').style.background =
+          placeColour(Number(colour.value)).vivid;
+        if ([...control.options].some((o) => o.value === wanted.control)) {
+          control.value = wanted.control;
+        }
+      });
+    }
+  } catch {
+    // An unreadable preference must not keep anybody from playing: we keep the
+    // default rows.
+  }
+  playersSelect.addEventListener('change', () => {
+    buildSeats();
+    rememberSeats();
   });
-  montrerMenu();
+  roomInput.value = invited || cleanRoom(readPref(PREF_ROOM, '')) || randomRoom();
+  nicknameInput.value = cleanName(readPref(PREF_NICKNAME, ''), randomName());
+  formatSelect.value = readPref(PREF_FORMAT, '3');
+  botsSelect.value = readPref(PREF_BOTS, '3');
+  roomInput.addEventListener('change', () => {
+    roomInput.value = cleanRoom(roomInput.value);
+    writePref(PREF_ROOM, roomInput.value);
+  });
+  showMenu();
+
+  // "Lancer une partie" is selected from the start: the game's menu always
+  // arrives with a row chosen, and that row carries the bomb.
+  //
+  // AFTER THE FIRST FRAME, and not straight away: the browser puts the focus
+  // back on the document once loading is over, which erased ours. If the mouse
+  // is already resting on a row, that row wins — `selectByDefault` only chooses
+  // when nothing is chosen.
+  requestAnimationFrame(selectByDefault);
 }
 
-initialiser();
+initialise();

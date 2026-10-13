@@ -1,252 +1,249 @@
 /**
- * Carte de danger et chemins surs : le coeur de l'adversaire artificiel.
+ * Danger map and safe paths: the heart of the artificial opponent.
  *
- * Tout est pur, sans DOM, sans horloge et sans hasard. Ce n'est pas une
- * coquetterie : ces fonctions tournent DANS LE RELAIS, qui simule l'arene, et
- * elles doivent donner le meme resultat que dans la page en solo. Un seul
- * `Math.random` ici, et deux machines verraient deux bots differents.
+ * Everything is pure, with no DOM, no clock and no randomness. That is not an
+ * affectation: these functions run INSIDE THE RELAY, which simulates the arena,
+ * and they must give the same result as in the page in solo play. One single
+ * call to the browser's random source here, and two machines would see two
+ * different bots.
  *
- * La carte donne, pour chaque case, le nombre de PAS avant qu'elle ne brule, ou
- * `SUR` si rien ne la menace. Un bot ne consulte jamais les bombes directement :
- * tout ce qu'il a besoin de savoir du danger tient dans ce tableau, et c'est ce
- * qui lui evite de raisonner sur des portees et des murs a chaque decision.
+ * The map gives, for each cell, the number of STEPS before it burns, or `SAFE`
+ * when nothing threatens it. A bot never consults the bombs directly:
+ * everything it needs to know about danger is in that array, and that is what
+ * saves it from reasoning about ranges and walls on every decision.
  */
 
-import { COLS, ROWS, VECTEURS, FLAMME_PAS } from '../engine/constantes.js';
-import { index, caseDe, estLibre, caseAxe } from '../engine/grille.js';
-import { rayon } from '../engine/explosion.js';
+import { COLS, ROWS, VECTORS, FLAME_STEPS } from '../engine/constants.js';
+import { index, cellAt, isFree, cellOnAxis } from '../engine/grid.js';
+import { ray } from '../engine/explosion.js';
 
-/** Valeur d'une case que rien ne menace. */
-export const SUR = 30000;
+/** Value of a cell nothing threatens. */
+export const SAFE = 30000;
 
 /**
- * Carte de danger de l'etat.
+ * Danger map of the state.
  *
- * Les chaines ne sont pas simulees : une bombe prise dans l'explosion d'une
- * autre partira plus tot que sa meche ne le dit. On prend donc le minimum des
- * meches qui couvrent la case, ce qui sous-estime parfois le danger d'un ou deux
- * pas. Simuler les chaines couterait une file par appel, soixante fois par
- * seconde et par bot, pour une prudence dont le bot n'a pas besoin : il garde
- * deja une marge de securite.
+ * Chains are not simulated: a bomb caught in another's explosion will go off
+ * sooner than its fuse says. So we take the minimum of the fuses covering the
+ * cell, which sometimes underestimates the danger by a step or two. Simulating
+ * chains would cost a queue per call, sixty times a second and per bot, for a
+ * caution the bot does not need: it already keeps a safety margin.
  *
- * @param {import('../engine/etat.js').Etat} etat
+ * @param {import('../engine/state.js').State} state
  * @returns {Int32Array}
  */
-export function carteDanger(etat) {
-  const carte = new Int32Array(COLS * ROWS).fill(SUR);
+export function dangerMap(state) {
+  const map = new Int32Array(COLS * ROWS).fill(SAFE);
 
-  for (const flamme of etat.flammes) {
-    const i = index(flamme.cx, flamme.cy);
-    if (i >= 0 && i < carte.length) carte[i] = 0;
+  for (const flame of state.flames) {
+    const i = index(flame.cx, flame.cy);
+    if (i >= 0 && i < map.length) map[i] = 0;
   }
 
-  for (const bombe of etat.bombes) {
-    // Une bombe a detonateur n'a pas de meche : elle peut partir a l'instant
-    // meme, au gre d'un doigt. On la compte donc a zero, c'est-a-dire au danger
-    // maximal. Ce n'est pas une prudence excessive, c'est la verite du jeu : il
-    // n'existe aucun delai dont un bot pourrait se prevaloir.
-    const meche = bombe.meche === null ? 0 : Math.max(0, bombe.meche);
-    const centre = index(bombe.cx, bombe.cy);
-    if (carte[centre] > meche) carte[centre] = meche;
-    for (const v of VECTEURS) {
-      for (let pas = 1; pas <= bombe.portee; pas += 1) {
-        const x = bombe.cx + v.dx * pas;
-        const y = bombe.cy + v.dy * pas;
-        const tuile = caseDe(etat, x, y);
-        if (!estLibre(tuile)) break;
+  for (const bomb of state.bombs) {
+    // A trigger bomb has no fuse: it can go off this very instant, at the whim
+    // of a finger. So we count it as zero, that is at maximum danger. That is
+    // not excessive caution, it is the truth of the game: there is no delay a
+    // bot could claim.
+    const fuse = bomb.fuse === null ? 0 : Math.max(0, bomb.fuse);
+    const centre = index(bomb.cx, bomb.cy);
+    if (map[centre] > fuse) map[centre] = fuse;
+    for (const v of VECTORS) {
+      for (let step = 1; step <= bomb.range; step += 1) {
+        const x = bomb.cx + v.dx * step;
+        const y = bomb.cy + v.dy * step;
+        if (!isFree(cellAt(state, x, y))) break;
         const i = index(x, y);
-        if (carte[i] > meche) carte[i] = meche;
+        if (map[i] > fuse) map[i] = fuse;
       }
     }
   }
 
-  return carte;
+  return map;
 }
 
 /**
- * Carte de danger telle qu'elle serait si le bomber posait une bombe maintenant.
+ * The danger map as it would be if the bomber dropped a bomb now.
  *
- * C'est la question que le bot se pose avant chaque pose : « si je lache ca ici,
- * ai-je encore une sortie ? ». Sans elle, un bot se mure tout seul dans un
- * cul-de-sac, et c'est le defaut le plus visible qu'une IA de Bomberman puisse
- * avoir.
+ * It is the question the bot asks itself before every drop: "if I let this go
+ * here, do I still have a way out?". Without it, a bot walls itself into a dead
+ * end, and that is the most visible flaw a Bomberman AI can have.
  *
- * @param {import('../engine/etat.js').Etat} etat
- * @param {import('../engine/etat.js').Joueur} joueur
+ * @param {import('../engine/state.js').State} state
+ * @param {import('../engine/state.js').Player} player
  * @param {Int32Array} base
- * @param {number} meche
+ * @param {number} fuse
  */
-export function dangerAvecBombe(etat, joueur, base, meche) {
-  const carte = base.slice();
-  const cx = caseAxe(joueur.x);
-  const cy = caseAxe(joueur.y);
+export function dangerWithBomb(state, player, base, fuse) {
+  const map = base.slice();
+  const cx = cellOnAxis(player.x);
+  const cy = cellOnAxis(player.y);
   const centre = index(cx, cy);
-  if (carte[centre] > meche) carte[centre] = meche;
-  for (const v of VECTEURS) {
-    for (let pas = 1; pas <= joueur.portee; pas += 1) {
-      const x = cx + v.dx * pas;
-      const y = cy + v.dy * pas;
-      if (!estLibre(caseDe(etat, x, y))) break;
+  if (map[centre] > fuse) map[centre] = fuse;
+  for (const v of VECTORS) {
+    for (let step = 1; step <= player.range; step += 1) {
+      const x = cx + v.dx * step;
+      const y = cy + v.dy * step;
+      if (!isFree(cellAt(state, x, y))) break;
       const i = index(x, y);
-      if (carte[i] > meche) carte[i] = meche;
+      if (map[i] > fuse) map[i] = fuse;
     }
   }
-  return carte;
+  return map;
 }
 
-/** Une case est-elle franchissable par un bot ? Les bombes bloquent, toutes. */
-export function ouverte(etat, cx, cy) {
+/** Can a bot walk onto this cell? Bombs block, all of them. */
+export function open(state, cx, cy) {
   if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS) return false;
-  if (!estLibre(caseDe(etat, cx, cy))) return false;
-  for (const bombe of etat.bombes) {
-    if (bombe.cx === cx && bombe.cy === cy) return false;
+  if (!isFree(cellAt(state, cx, cy))) return false;
+  for (const bomb of state.bombs) {
+    if (bomb.cx === cx && bomb.cy === cy) return false;
   }
   return true;
 }
 
 /**
- * Parcours en largeur depuis la case d'un bomber.
+ * Breadth-first walk from a bomber's cell.
  *
- * Renvoie, pour chaque case atteignable, la distance en cases et la PREMIERE
- * direction a prendre pour y aller. Garder la premiere direction plutot que le
- * chemin entier suffit : le bot redecide avant d'avoir fini de marcher.
+ * Returns, for every reachable cell, the distance in cells and the FIRST
+ * direction to take to get there. Keeping the first direction rather than the
+ * whole path is enough: the bot decides again before it has finished walking.
  *
- * Le parcours est fait dans l'ordre des directions de `VECTEURS`, toujours le
- * meme : a distance egale, deux machines choisissent la meme case.
+ * The walk is done in the order of the directions in `VECTORS`, always the same:
+ * at equal distance, two machines pick the same cell.
  *
- * `evite` rend infranchissables les cases menacees. C'est indispensable des
- * qu'on cherche une destination et non une fuite : sans lui, un bot qui s'est
- * mis a l'abri repart vers une brique en RETRAVERSANT le souffle de sa propre
- * bombe, et arrive dessus juste a temps pour mourir. C'etait la cause de presque
- * toutes les manches nulles.
+ * `avoid` makes threatened cells impassable. It is essential as soon as we look
+ * for a destination rather than an escape: without it, a bot that has taken
+ * cover sets off towards a brick by CROSSING BACK through its own bomb's blast,
+ * and arrives just in time to die. That was the cause of almost every drawn
+ * round.
  *
- * @param {import('../engine/etat.js').Etat} etat
- * @param {number} departX
- * @param {number} departY
- * @param {{ evite?: Int32Array }} options
- * @returns {{ distance: Int32Array, premier: Int8Array }}
+ * @param {import('../engine/state.js').State} state
+ * @param {number} fromX
+ * @param {number} fromY
+ * @param {{ avoid?: Int32Array }} options
+ * @returns {{ distance: Int32Array, first: Int8Array }}
  */
-export function parcourir(etat, departX, departY, { evite = null } = {}) {
+export function walk(state, fromX, fromY, { avoid = null } = {}) {
   const distance = new Int32Array(COLS * ROWS).fill(-1);
-  const premier = new Int8Array(COLS * ROWS).fill(-1);
-  const file = [index(departX, departY)];
-  distance[file[0]] = 0;
+  const first = new Int8Array(COLS * ROWS).fill(-1);
+  const queue = [index(fromX, fromY)];
+  distance[queue[0]] = 0;
 
-  for (let tete = 0; tete < file.length; tete += 1) {
-    const courant = file[tete];
-    const cx = courant % COLS;
-    const cy = Math.floor(courant / COLS);
-    for (let dir = 0; dir < VECTEURS.length; dir += 1) {
-      const x = cx + VECTEURS[dir].dx;
-      const y = cy + VECTEURS[dir].dy;
-      if (!ouverte(etat, x, y)) continue;
-      const suivant = index(x, y);
-      if (distance[suivant] >= 0) continue;
-      if (evite !== null && evite[suivant] < SUR) continue;
-      distance[suivant] = distance[courant] + 1;
-      premier[suivant] = distance[courant] === 0 ? dir : premier[courant];
-      file.push(suivant);
+  for (let head = 0; head < queue.length; head += 1) {
+    const current = queue[head];
+    const cx = current % COLS;
+    const cy = Math.floor(current / COLS);
+    for (let dir = 0; dir < VECTORS.length; dir += 1) {
+      const x = cx + VECTORS[dir].dx;
+      const y = cy + VECTORS[dir].dy;
+      if (!open(state, x, y)) continue;
+      const next = index(x, y);
+      if (distance[next] >= 0) continue;
+      if (avoid !== null && avoid[next] < SAFE) continue;
+      distance[next] = distance[current] + 1;
+      first[next] = distance[current] === 0 ? dir : first[current];
+      queue.push(next);
     }
   }
 
-  return { distance, premier };
+  return { distance, first };
 }
 
 /**
- * Cherche la sortie la plus proche hors de danger.
+ * Looks for the nearest way out of danger.
  *
- * Un refuge est une case que RIEN ne menace. C'est la nuance qui decide de la
- * qualite du bot : la premiere version acceptait toute case ou l'on arrive avant
- * le feu, ce qui incluait la case ou l'on se tient — on vient d'y poser une
- * bombe, sa meche dure deux secondes et demie, donc on « arrive a temps ». Le
- * bot restait assis sur sa propre bombe et mourait. Sept morts sur dix venaient
- * de la.
+ * A shelter is a cell NOTHING threatens. That is the nuance that decides how
+ * good the bot is: the first version accepted any cell you reach before the
+ * fire, which included the cell you are standing on — you have just dropped a
+ * bomb there, its fuse lasts two and a half seconds, so you "arrive in time".
+ * The bot sat on its own bomb and died. Seven deaths out of ten came from that.
  *
- * A defaut de refuge, on rend un repli : la case atteignable qui brulera le plus
- * tard. Cela ne sauve pas toujours, mais gagner du temps vaut mieux que ne pas
- * bouger, et une chaine peut tres bien degager le passage entre-temps.
+ * Failing a shelter, we return a fallback: the reachable cell that will burn
+ * latest. It does not always save you, but buying time beats not moving, and a
+ * chain may well clear the way in the meantime.
  *
- * @param {import('../engine/etat.js').Etat} etat
- * @param {import('../engine/etat.js').Joueur} joueur
+ * @param {import('../engine/state.js').State} state
+ * @param {import('../engine/state.js').Player} player
  * @param {Int32Array} danger
- * @returns {{ dir: number, distance: number, sur: boolean } | null}
+ * @returns {{ dir: number, distance: number, safe: boolean } | null}
  */
-export function fuite(etat, joueur, danger) {
-  const cx = caseAxe(joueur.x);
-  const cy = caseAxe(joueur.y);
-  const pasParCase = Math.ceil(1024 / Math.max(1, joueur.vitesse));
+export function escape(state, player, danger) {
+  const cx = cellOnAxis(player.x);
+  const cy = cellOnAxis(player.y);
+  const stepsPerCell = Math.ceil(1024 / Math.max(1, player.speed));
 
-  // Parcours DATE : chaque case porte le pas auquel on y arriverait. C'est la
-  // correction du defaut le plus couteux de ce bot — il cherchait le refuge le
-  // plus proche sans jamais verifier qu'il y arrivait a temps, ni que le chemin
-  // etait encore praticable. Un bot qui venait de poser partait donc le long de
-  // son propre souffle et explosait en chemin : un mort sur cinq.
+  // A DATED walk: each cell carries the step at which we would get there. It
+  // fixes this bot's most expensive flaw — it used to look for the nearest
+  // shelter without ever checking that it got there in time, nor that the path
+  // was still walkable. A bot that had just dropped therefore set off along its
+  // own blast and exploded on the way: one death in five.
   //
-  // On ne TRAVERSE une case menacee que si on en ressort avant qu'elle ne brule,
-  // et on ne s'ARRETE que sur une case que rien ne menace.
+  // We only CROSS a threatened cell if we leave it before it burns, and we only
+  // STOP on a cell nothing threatens.
   const distance = new Int32Array(COLS * ROWS).fill(-1);
-  const premier = new Int8Array(COLS * ROWS).fill(-1);
-  const depart = index(cx, cy);
-  const file = [depart];
-  distance[depart] = 0;
+  const first = new Int8Array(COLS * ROWS).fill(-1);
+  const start = index(cx, cy);
+  const queue = [start];
+  distance[start] = 0;
 
-  let refuge = null;
-  let repli = null;
+  let shelter = null;
+  let fallback = null;
 
-  for (let tete = 0; tete < file.length; tete += 1) {
-    const courant = file[tete];
-    const ax = courant % COLS;
-    const ay = Math.floor(courant / COLS);
+  for (let head = 0; head < queue.length; head += 1) {
+    const current = queue[head];
+    const ax = current % COLS;
+    const ay = Math.floor(current / COLS);
 
-    for (let dir = 0; dir < VECTEURS.length; dir += 1) {
-      const x = ax + VECTEURS[dir].dx;
-      const y = ay + VECTEURS[dir].dy;
-      if (!ouverte(etat, x, y)) continue;
-      const suivant = index(x, y);
-      if (distance[suivant] >= 0) continue;
+    for (let dir = 0; dir < VECTORS.length; dir += 1) {
+      const x = ax + VECTORS[dir].dx;
+      const y = ay + VECTORS[dir].dy;
+      if (!open(state, x, y)) continue;
+      const next = index(x, y);
+      if (distance[next] >= 0) continue;
 
-      const pasFaits = distance[courant] + 1;
-      const arrivee = pasFaits * pasParCase;
-      // Pour passer, il faut avoir quitte la case avant qu'elle ne s'allume.
-      if (danger[suivant] < SUR && arrivee + pasParCase >= danger[suivant]) continue;
+      const stepsTaken = distance[current] + 1;
+      const arrival = stepsTaken * stepsPerCell;
+      // To get through, the cell must be left before it lights up.
+      if (danger[next] < SAFE && arrival + stepsPerCell >= danger[next]) continue;
 
-      distance[suivant] = pasFaits;
-      premier[suivant] = distance[courant] === 0 ? dir : premier[courant];
-      file.push(suivant);
+      distance[next] = stepsTaken;
+      first[next] = distance[current] === 0 ? dir : first[current];
+      queue.push(next);
 
-      if (danger[suivant] >= SUR) {
-        // Le parcours en largeur sort les cases par distance croissante : la
-        // premiere case sure rencontree est la plus proche.
-        if (refuge === null) refuge = { dir: premier[suivant], distance: pasFaits, sur: true };
-      } else if (danger[suivant] > arrivee + FLAMME_PAS
-        && (repli === null || danger[suivant] > repli.delai)) {
-        repli = { dir: premier[suivant], distance: pasFaits, sur: false, delai: danger[suivant] };
+      if (danger[next] >= SAFE) {
+        // The breadth-first walk yields cells by increasing distance: the first
+        // safe cell met is the nearest.
+        if (shelter === null) shelter = { dir: first[next], distance: stepsTaken, safe: true };
+      } else if (danger[next] > arrival + FLAME_STEPS
+        && (fallback === null || danger[next] > fallback.delay)) {
+        fallback = { dir: first[next], distance: stepsTaken, safe: false, delay: danger[next] };
       }
     }
 
-    if (refuge) break;
+    if (shelter) break;
   }
 
-  if (refuge) return refuge;
-  if (repli) return { dir: repli.dir, distance: repli.distance, sur: false };
+  if (shelter) return shelter;
+  if (fallback) return { dir: fallback.dir, distance: fallback.distance, safe: false };
   return null;
 }
 
 /**
- * La case est-elle dans le souffle de cette bombe ?
+ * Is the cell in this bomb's blast?
  *
- * On passe par `rayon`, qui est la definition du moteur, plutot que de refaire
- * le parcours : la forme d'un souffle a deja change une fois — la case de la
- * brique n'en fait plus partie — et une seconde version aurait menti des ce
- * jour-la, en faisant fuir un bot d'une case ou il ne risquait plus rien.
+ * We go through `ray`, which is the engine's definition, rather than redoing the
+ * walk: the shape of a blast has already changed once — the brick's cell is no
+ * longer part of it — and a second version would have lied from that day on, by
+ * making a bot flee a cell where it was no longer at risk.
  *
- * @param {import('../engine/etat.js').Etat} etat
- * @param {import('../engine/etat.js').Bombe} bombe
+ * @param {import('../engine/state.js').State} state
+ * @param {import('../engine/state.js').Bomb} bomb
  */
-export function souffleCouvre(etat, bombe, cx, cy) {
-  if (bombe.cx === cx && bombe.cy === cy) return true;
-  for (let dir = 0; dir < VECTEURS.length; dir += 1) {
-    for (const [x, y] of rayon(etat, bombe.cx, bombe.cy, dir, bombe.portee).cases) {
+export function blastCovers(state, bomb, cx, cy) {
+  if (bomb.cx === cx && bomb.cy === cy) return true;
+  for (let dir = 0; dir < VECTORS.length; dir += 1) {
+    for (const [x, y] of ray(state, bomb.cx, bomb.cy, dir, bomb.range).cells) {
       if (x === cx && y === cy) return true;
     }
   }

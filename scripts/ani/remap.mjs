@@ -1,26 +1,26 @@
 /**
- * Lecture sur disque des tables de couleurs du jeu.
+ * Reading the game's colour tables off the disk.
  *
- * Tout le raisonnement est dans `src/extraction/couleurs.js`, qui ne connait que
- * des octets. Ici il ne reste que d'aller les chercher : c'est la seule chose
- * qu'un script en ligne de commande peut faire et qu'une page ne peut pas.
+ * All the reasoning is in `src/extraction/colours.js`, which knows nothing but
+ * bytes. All that is left here is to go and fetch them: it is the only thing a
+ * command-line script can do that a page cannot.
  */
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { couleursJoueurs, COULEURS } from '../../src/extraction/couleurs.js';
+import { playerColours, COLOURS } from '../../src/extraction/colours.js';
 
-export { COULEURS };
+export { COLOURS };
 
 /**
- * Lit la couleur de chaque joueur dans une installation du jeu.
+ * Reads each player's colour from an installation of the game.
  *
- * @param {string} racine dossier contenant COLOR.PAL et les .RMP
- * @returns {{ teinte: number, saturation: number, clarte: number }[]}
+ * @param {string} root folder containing COLOR.PAL and the .RMP files
+ * @returns {{ hue: number, saturation: number, lightness: number }[]}
  */
-export function lireCouleursJoueurs(racine) {
-  const pal = readFileSync(join(racine, 'COLOR.PAL'));
+export function readPlayerColours(root) {
+  const pal = readFileSync(join(root, 'COLOR.PAL'));
   const rmps = [];
-  for (let n = 0; n < COULEURS; n += 1) rmps.push(readFileSync(join(racine, `${n}.RMP`)));
-  return couleursJoueurs(pal, rmps);
+  for (let n = 0; n < COLOURS; n += 1) rmps.push(readFileSync(join(root, `${n}.RMP`)));
+  return playerColours(pal, rmps);
 }

@@ -1,166 +1,163 @@
 /**
- * Decodeur des morceaux CIMG : les images d'un .ANI.
+ * Decoder for CIMG chunks: the images of an .ANI file.
  *
- * Deux familles coexistent dans les donnees du jeu, distinguees par le champ
- * `extra` de l'en-tete :
+ * Two families coexist in the game's data, told apart by the header's `extra`
+ * field:
  *
- *   extra = 24    image 16 bits, un mot RGB565 par pixel (2254 images sur 2327)
- *   extra = 1056  image 8 bits, avec sa palette de 256 entrees embarquee
+ *   extra = 24    16-bit image, one RGB565 word per pixel (2254 of 2327 images)
+ *   extra = 1056  8-bit image, with its own 256-entry palette embedded
  *
- * Les deux partagent la meme compression, decrite sur `developper`.
+ * Both share the same compression, described on `expand`.
  *
- * Le fond n'est pas un canal alpha mais une couleur-cle rangee dans l'en-tete —
- * le jeu de 1997 ecrivait en 16 bits sans transparence. On la convertit en alpha
- * zero a la sortie, sinon chaque sprite arrive sur un rectangle opaque.
+ * The background is not an alpha channel but a key colour stored in the header —
+ * the 1997 game wrote 16 bits with no transparency. We turn it into alpha zero
+ * on output, otherwise every sprite arrives on an opaque rectangle.
  */
 
-import { u16, u32 } from './octets.js';
+import { u16, u32 } from './bytes.js';
 
-/** Longueur de l'en-tete de base, avant le bloc `extra`. */
-const ENTETE = 12;
+/** Length of the basic header, before the `extra` block. */
+const HEADER = 12;
 
 /**
- * Lit l'en-tete d'un CIMG.
+ * Reads a CIMG's header.
  *
- * Deux choses ne sont pas devinables. `extra` se compte a partir de l'octet 12,
- * et ses douze derniers octets forment un sous-en-tete qui porte les deux
- * tailles — donc un seul calcul couvre les deux familles. Et `compresse` compte
- * ces douze octets dans son propre total : la charge utile vaut
- * `compresse - 12`. C'est cet ecart qui fait deborder un decodeur naif sur le
- * morceau suivant.
+ * Two things cannot be guessed. `extra` counts from byte 12, and its last twelve
+ * bytes form a sub-header carrying both sizes — so a single computation covers
+ * both families. And `compressed` counts those twelve bytes in its own total:
+ * the payload is `compressed - 12`. It is that discrepancy that makes a naive
+ * decode overrun into the next chunk.
  */
-export function lireEnteteImage(octets) {
-  const extra = u32(octets, 4);
-  const sousEntete = ENTETE + extra - 12;
+export function readImageHeader(bytes) {
+  const extra = u32(bytes, 4);
+  const subHeader = HEADER + extra - 12;
 
-  const entete = {
-    type: u16(octets, 0),
-    sousType: u16(octets, 2),
+  const header = {
+    type: u16(bytes, 0),
+    subtype: u16(bytes, 2),
     extra,
-    largeur: u16(octets, 12),
-    hauteur: u16(octets, 14),
-    // Le point d'accroche : ou le jeu pose le sprite par rapport a sa case. Les
-    // sprites d'Atomic Bomberman sont cadres large avec des marges inegales, et
-    // c'est ce point — pas le coin de l'image — qui les aligne sur la grille.
-    accrocheX: u16(octets, 16),
-    accrocheY: u16(octets, 18),
-    cle: u16(octets, 20),
-    compresse: u32(octets, sousEntete + 4),
-    brut: u32(octets, sousEntete + 8),
-    donnees: ENTETE + extra,
+    width: u16(bytes, 12),
+    height: u16(bytes, 14),
+    // The anchor point: where the game puts the sprite relative to its cell.
+    // Atomic Bomberman's sprites are framed wide with uneven margins, and it is
+    // that point — not the corner of the image — that lines them up on the grid.
+    anchorX: u16(bytes, 16),
+    anchorY: u16(bytes, 18),
+    key: u16(bytes, 20),
+    compressed: u32(bytes, subHeader + 4),
+    raw: u32(bytes, subHeader + 8),
+    data: HEADER + extra,
   };
 
-  // La profondeur se lit sur la taille decompressee, pas sur `extra` : trente-deux
-  // images du jeu sont en 16 bits ET trainent une palette dont elles ne se
-  // servent pas. Deduite de `extra`, elles sortaient lues en 8 bits — un flux
-  // deux fois trop court, donc une image tronquee aux trois quarts.
-  entete.bits = entete.brut === entete.largeur * entete.hauteur * 2 ? 16 : 8;
-  // Quand une palette est la, elle s'intercale entre l'en-tete de base et le
-  // sous-en-tete : 20 octets de rabiot, 1024 de palette, 12 de sous-en-tete.
-  if (extra >= 1056) entete.palette = 32;
-  return entete;
+  // The depth is read from the decompressed size, not from `extra`: thirty-two
+  // of the game's images are 16-bit AND drag a palette along that they do not
+  // use. Deduced from `extra`, they came out read as 8-bit — a stream twice too
+  // short, hence an image three quarters truncated.
+  header.bits = header.raw === header.width * header.height * 2 ? 16 : 8;
+  // When a palette is there, it sits between the basic header and the
+  // sub-header: 20 spare bytes, 1024 of palette, 12 of sub-header.
+  if (extra >= 1056) header.palette = 32;
+  return header;
 }
 
 /**
- * Developpe le RLE d'un CIMG en mots 16 bits ou en indices de palette.
+ * Expands a CIMG's RLE into 16-bit words or palette indexes.
  *
- * Le codage, reconstitue en exigeant que le flux se consomme exactement et
- * remplisse exactement la surface — verifie sur les 2327 images du jeu :
+ * The encoding, reconstructed by demanding that the stream be consumed exactly
+ * and fill the surface exactly — checked on all 2327 images of the game:
  *
- *   0x00..0x7f   (commande + 1) pixels litteraux, a la suite
- *   0x80..0xfe   repetition du pixel suivant, (commande & 0x7f) + 1 fois
- *   0xff         fin d'image
+ *   0x00..0x7f   (command + 1) literal pixels, one after the other
+ *   0x80..0xfe   repetition of the next pixel, (command & 0x7f) + 1 times
+ *   0xff         end of image
  *
- * Le piege est le « + 1 » : les deux longueurs sont decalees d'une unite, parce
- * qu'un litteral ou une repetition de zero pixel n'aurait aucun sens et que le
- * format recupere la valeur. Sans le decalage, l'image derive d'un pixel de plus
- * a chaque commande — le genre d'erreur qui laisse les premieres lignes justes
- * et pourrit tout le reste.
+ * The trap is the "+ 1": both lengths are offset by one, because a literal or a
+ * repetition of zero pixels would make no sense and the format reclaims the
+ * value. Without the offset, the image drifts by one more pixel on every command
+ * — the kind of mistake that leaves the first rows right and ruins all the rest.
  *
- * Il n'y a aucune marque de fin de ligne : les lignes se suivent sans separateur
- * et une repetition traverse les bords sans rien signaler. On compte donc en
- * index lineaire, jamais en (x, y).
+ * There is no end-of-row marker: rows follow one another with no separator and a
+ * repetition crosses the edges without saying anything. So we count in a linear
+ * index, never in (x, y).
  */
-export function developper(donnees, largeur, hauteur, bits, cle) {
-  const total = largeur * hauteur;
-  const pixels = new (bits === 16 ? Uint16Array : Uint8Array)(total).fill(cle);
-  const pas = bits === 16 ? 2 : 1;
-  const lire = bits === 16 ? (p) => u16(donnees, p) : (p) => donnees[p];
+export function expand(data, width, height, bits, key) {
+  const total = width * height;
+  const pixels = new (bits === 16 ? Uint16Array : Uint8Array)(total).fill(key);
+  const step = bits === 16 ? 2 : 1;
+  const read = bits === 16 ? (p) => u16(data, p) : (p) => data[p];
 
   let p = 0;
   let index = 0;
 
-  while (p < donnees.length && index < total) {
-    const commande = donnees[p];
+  while (p < data.length && index < total) {
+    const command = data[p];
     p += 1;
-    if (commande === 0xff) break;
+    if (command === 0xff) break;
 
-    const repetition = (commande & 0x80) !== 0;
-    const nombre = (commande & 0x7f) + 1;
-    if (index + nombre > total || p + (repetition ? pas : nombre * pas) > donnees.length) {
+    const repeat = (command & 0x80) !== 0;
+    const count = (command & 0x7f) + 1;
+    if (index + count > total || p + (repeat ? step : count * step) > data.length) {
       throw new Error(`flux CIMG incoherent a l'octet ${p - 1} (index ${index}/${total})`);
     }
 
-    if (repetition) {
-      pixels.fill(lire(p), index, index + nombre);
-      p += pas;
+    if (repeat) {
+      pixels.fill(read(p), index, index + count);
+      p += step;
     } else {
-      for (let i = 0; i < nombre; i += 1) pixels[index + i] = lire(p + i * pas);
-      p += nombre * pas;
+      for (let i = 0; i < count; i += 1) pixels[index + i] = read(p + i * step);
+      p += count * step;
     }
-    index += nombre;
+    index += count;
   }
 
-  return { pixels, consomme: p, remplis: index };
+  return { pixels, consumed: p, filled: index };
 }
 
 /**
- * Convertit un mot 16 bits en RGB.
+ * Converts a 16-bit word into RGB.
  *
- * Les donnees sont en RGB555, pas en 565 : cinq bits par composante et le bit de
- * poids fort inutilise. L'histogramme le prouve — les gris du jeu valent 0x0c63,
- * 0x1084, 0x6739, c'est-a-dire la meme valeur repetee sur trois champs de cinq
- * bits. Lus en 565, ces gris virent au vert parce qu'un bit de rouge tombe dans
- * le vert, et toute la planche part en teinte.
+ * The data is RGB555, not 565: five bits per component and the top bit unused.
+ * The histogram proves it — the game's greys are 0x0c63, 0x1084, 0x6739, that is
+ * the same value repeated over three five-bit fields. Read as 565, those greys
+ * turn green because one bit of red falls into the green, and the whole sheet
+ * takes on a tint.
  *
- * Les composantes sont repliees sur elles-memes (`<< 3 | >> 2`) plutot que
- * seulement decalees : sinon le blanc plafonne a 248 et les aplats clairs
- * prennent un voile gris.
+ * The components are folded onto themselves (`<< 3 | >> 2`) rather than merely
+ * shifted: otherwise white tops out at 248 and light flats take on a grey veil.
  */
-export function rgb555(mot) {
-  const r = (mot >> 10) & 0x1f;
-  const v = (mot >> 5) & 0x1f;
-  const b = mot & 0x1f;
-  return [(r << 3) | (r >> 2), (v << 3) | (v >> 2), (b << 3) | (b >> 2)];
+export function rgb555(word) {
+  const r = (word >> 10) & 0x1f;
+  const g = (word >> 5) & 0x1f;
+  const b = word & 0x1f;
+  return [(r << 3) | (r >> 2), (g << 3) | (g >> 2), (b << 3) | (b >> 2)];
 }
 
-/** Decode un CIMG complet en RGBA, la couleur-cle devenant transparente. */
-export function decoder(octets) {
-  const entete = lireEnteteImage(octets);
-  const { largeur, hauteur, bits, cle } = entete;
-  const donnees = octets.subarray(entete.donnees, entete.donnees + entete.compresse - 12);
-  const { pixels } = developper(donnees, largeur, hauteur, bits, cle);
+/** Decodes a whole CIMG into RGBA, the key colour becoming transparent. */
+export function decode(bytes) {
+  const header = readImageHeader(bytes);
+  const { width, height, bits, key } = header;
+  const data = bytes.subarray(header.data, header.data + header.compressed - 12);
+  const { pixels } = expand(data, width, height, bits, key);
 
-  // Palette des images 8 bits : 256 entrees BGRX, comme Windows les ecrivait.
+  // Palette of the 8-bit images: 256 BGRX entries, the way Windows wrote them.
   let palette = null;
   if (bits === 8) {
     palette = [];
     for (let i = 0; i < 256; i += 1) {
-      const o = entete.palette + i * 4;
-      palette.push([octets[o + 2], octets[o + 1], octets[o]]);
+      const o = header.palette + i * 4;
+      palette.push([bytes[o + 2], bytes[o + 1], bytes[o]]);
     }
   }
 
-  const rgba = new Uint8ClampedArray(largeur * hauteur * 4);
+  const rgba = new Uint8ClampedArray(width * height * 4);
   for (let i = 0; i < pixels.length; i += 1) {
-    const valeur = pixels[i];
-    if (valeur === cle) continue;
-    const [r, v, b] = palette ? palette[valeur] : rgb555(valeur);
+    const value = pixels[i];
+    if (value === key) continue;
+    const [r, g, b] = palette ? palette[value] : rgb555(value);
     rgba[i * 4] = r;
-    rgba[i * 4 + 1] = v;
+    rgba[i * 4 + 1] = g;
     rgba[i * 4 + 2] = b;
     rgba[i * 4 + 3] = 255;
   }
 
-  return { ...entete, rgba };
+  return { ...header, rgba };
 }

@@ -1,31 +1,30 @@
 /**
- * Generateur pseudo-aleatoire a graine (xorshift32).
+ * Seeded pseudo-random generator (xorshift32).
  *
- * Le coeur est purement fonctionnel, comme au Tetris : tirer un nombre ne
- * modifie rien, il renvoie la valeur ET le generateur suivant. C'est ce qui
- * permet au relais, au navigateur et aux tests de voir la meme arene et les
- * memes bonus a partir de la meme graine, et de rejouer une partie depuis son
- * journal.
+ * The core is purely functional: drawing a number changes nothing, it returns
+ * the value AND the next generator. That is what lets the relay, the browser
+ * and the tests see the same arena and the same bonuses from the same seed, and
+ * what makes replaying a match from its log possible.
  *
- * Une seule facilite est accordee au moteur : `tirer(etat)`, qui avance le
- * generateur loge dans l'etat. La mutation est admise parce que le moteur
- * possede son etat, et seulement la ; rien d'autre dans le projet n'a le droit
- * de faire avancer un generateur sur place.
+ * One convenience is granted to the engine: `draw(state)`, which advances the
+ * generator stored inside the state. The mutation is allowed because the engine
+ * owns its state, and only there; nothing else in the project may advance a
+ * generator in place.
  */
 
 /** @typedef {{ seed: number }} Rng */
 
 /**
- * @param {number} seed graine initiale (0 est remplace par 1, xorshift y reste bloque)
+ * @param {number} seed initial seed (0 becomes 1, xorshift would be stuck there)
  * @returns {Rng}
  */
 export function createRng(seed) {
-  const normalise = seed >>> 0;
-  return { seed: normalise === 0 ? 1 : normalise };
+  const normalised = seed >>> 0;
+  return { seed: normalised === 0 ? 1 : normalised };
 }
 
 /**
- * Tire un flottant dans [0, 1).
+ * Draws a float in [0, 1).
  * @param {Rng} rng
  * @returns {{ rng: Rng, value: number }}
  */
@@ -40,45 +39,45 @@ export function nextRandom(rng) {
 }
 
 /**
- * Tire un entier dans [0, borne). Renvoie 0 si la borne n'a pas de sens.
+ * Draws an integer in [0, bound). Returns 0 when the bound makes no sense.
  * @param {Rng} rng
- * @param {number} borne
+ * @param {number} bound
  * @returns {{ rng: Rng, value: number }}
  */
-export function nextEntier(rng, borne) {
-  const tirage = nextRandom(rng);
-  if (!Number.isFinite(borne) || borne <= 0) return { rng: tirage.rng, value: 0 };
-  return { rng: tirage.rng, value: Math.min(borne - 1, Math.floor(tirage.value * borne)) };
+export function nextInt(rng, bound) {
+  const drawn = nextRandom(rng);
+  if (!Number.isFinite(bound) || bound <= 0) return { rng: drawn.rng, value: 0 };
+  return { rng: drawn.rng, value: Math.min(bound - 1, Math.floor(drawn.value * bound)) };
 }
 
 /**
- * Avance le generateur loge dans un porteur (l'etat du moteur) et rend le
- * flottant tire. Seul le moteur s'en sert.
+ * Advances the generator stored in a holder (the engine state) and returns the
+ * float drawn. Only the engine uses this.
  *
- * @param {{ rng: Rng }} porteur
+ * @param {{ rng: Rng }} holder
  * @returns {number}
  */
-export function tirer(porteur) {
-  const tirage = nextRandom(porteur.rng);
-  porteur.rng = tirage.rng;
-  return tirage.value;
+export function draw(holder) {
+  const drawn = nextRandom(holder.rng);
+  holder.rng = drawn.rng;
+  return drawn.value;
 }
 
 /**
- * Meme chose pour un entier dans [0, borne).
+ * Same, for an integer in [0, bound).
  *
- * @param {{ rng: Rng }} porteur
- * @param {number} borne
+ * @param {{ rng: Rng }} holder
+ * @param {number} bound
  * @returns {number}
  */
-export function tirerEntier(porteur, borne) {
-  const tirage = nextEntier(porteur.rng, borne);
-  porteur.rng = tirage.rng;
-  return tirage.value;
+export function drawInt(holder, bound) {
+  const drawn = nextInt(holder.rng, bound);
+  holder.rng = drawn.rng;
+  return drawn.value;
 }
 
 /**
- * Melange une copie du tableau (Fisher-Yates) sans toucher a l'original.
+ * Shuffles a copy of the array (Fisher-Yates), leaving the original alone.
  * @template T
  * @param {readonly T[]} items
  * @param {Rng} rng
@@ -86,17 +85,17 @@ export function tirerEntier(porteur, borne) {
  */
 export function shuffle(items, rng) {
   const out = items.slice();
-  let courant = rng;
+  let current = rng;
   for (let i = out.length - 1; i > 0; i -= 1) {
-    const tirage = nextEntier(courant, i + 1);
-    courant = tirage.rng;
-    const j = tirage.value;
+    const drawn = nextInt(current, i + 1);
+    current = drawn.rng;
+    const j = drawn.value;
     [out[i], out[j]] = [out[j], out[i]];
   }
-  return { rng: courant, items: out };
+  return { rng: current, items: out };
 }
 
-/** Graine aleatoire, a utiliser uniquement en solo : en reseau elle vient du relais. */
+/** Random seed, for solo play only: online it comes from the relay. */
 export function randomSeed() {
   return (Math.random() * 0x100000000) >>> 0;
 }

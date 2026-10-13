@@ -1,132 +1,130 @@
 /**
- * Les sons d'Atomic Bomberman : lecture des .RSS, ecriture en WAV.
+ * Atomic Bomberman's sounds: reading the .RSS files, writing WAV.
  *
- * Il n'y a rien a deviner pour une fois — l'auteur du jeu a ecrit le format en
- * tete de son propre fichier de ressources, DATA/RES/SOUNDLST.RES :
+ * There is nothing to guess for once — the game's author wrote the format at the
+ * top of his own resource file, DATA/RES/SOUNDLST.RES:
  *
- *   « These files all should have a .RSS extension and be raw 22khz Stereo
- *     16bit signed, Intel-endian. »
+ *   "These files all should have a .RSS extension and be raw 22khz Stereo
+ *    16bit signed, Intel-endian."
  *
- * Donc aucun en-tete, aucune compression : le fichier EST le flux. Verifie sur
- * les 251 sons — toutes les tailles sont des multiples de quatre octets (une
- * trame stereo de deux echantillons 16 bits), les cretes montent a pleine
- * echelle et la composante continue est nulle.
+ * So no header and no compression: the file IS the stream. Checked on all 251
+ * sounds — every size is a multiple of four bytes (one stereo frame of two
+ * 16-bit samples), the peaks reach full scale and the DC component is zero.
  *
- * On ressort en WAV parce que c'est le seul format que le navigateur decode
- * nativement sans qu'on embarque un encodeur : le depot n'a aucune dependance,
- * et il n'y a pas de ffmpeg sur la machine.
+ * We write WAV out because it is the only format the browser decodes natively
+ * without our shipping an encoder: the repository has no dependency at all, and
+ * there is no ffmpeg on the machine.
  */
 
-import { i16, ecrireU16, ecrireU32, ecrireLatin1, concat } from './octets.js';
+import { i16, writeU16, writeU32, writeLatin1, concat } from './bytes.js';
 
-/** Frequence d'echantillonnage des .RSS, annoncee par le jeu. */
-export const FREQUENCE = 22050;
+/** Sample rate of the .RSS files, announced by the game. */
+export const RATE = 22050;
 
-/** Nombre de canaux d'un .RSS. */
-const CANAUX = 2;
+/** Number of channels in a .RSS. */
+const CHANNELS = 2;
 
 /**
- * Lit un .RSS en echantillons entrelaces.
+ * Reads a .RSS into interleaved samples.
  *
- * @param {Uint8Array} octets
+ * @param {Uint8Array} bytes
  * @returns {Int16Array}
  */
-export function lireRss(octets) {
-  const trames = Math.floor(octets.length / (2 * CANAUX));
-  const sortie = new Int16Array(trames * CANAUX);
-  for (let i = 0; i < sortie.length; i += 1) sortie[i] = i16(octets, i * 2);
-  return sortie;
+export function readRss(bytes) {
+  const frames = Math.floor(bytes.length / (2 * CHANNELS));
+  const output = new Int16Array(frames * CHANNELS);
+  for (let i = 0; i < output.length; i += 1) output[i] = i16(bytes, i * 2);
+  return output;
 }
 
 /**
- * Replie un flux stereo en mono.
+ * Folds a stereo stream down to mono.
  *
- * Les bruitages du jeu sont a 99 % identiques sur les deux canaux — c'est du
- * mono stocke en stereo. Les replier divise le poids par deux sans rien perdre,
- * et le jeu les joue de toute facon au centre.
+ * The game's sound effects are 99 % identical on both channels — it is mono
+ * stored as stereo. Folding them halves the weight without losing anything, and
+ * the game plays them in the centre anyway.
  *
- * @param {Int16Array} entrelace
+ * @param {Int16Array} interleaved
  */
-export function enMono(entrelace) {
-  const trames = entrelace.length / CANAUX;
-  const sortie = new Int16Array(trames);
-  for (let i = 0; i < trames; i += 1) {
-    sortie[i] = (entrelace[i * CANAUX] + entrelace[i * CANAUX + 1]) / 2;
+export function toMono(interleaved) {
+  const frames = interleaved.length / CHANNELS;
+  const output = new Int16Array(frames);
+  for (let i = 0; i < frames; i += 1) {
+    output[i] = (interleaved[i * CHANNELS] + interleaved[i * CHANNELS + 1]) / 2;
   }
-  return sortie;
+  return output;
 }
 
 /**
- * Reechantillonne, en moyennant la fenetre quand on descend.
+ * Resamples, averaging the window when going down.
  *
- * La moyenne n'est pas un ornement. Sans elle, descendre de 22 a 11 kHz prend
- * un echantillon sur deux et replie tout l'aigu dans le grave : la musique
- * devient metallique et sale. C'est exactement ce qui s'etait entendu sur la
- * musique du menu, reduite par simple interpolation.
+ * The average is not an ornament. Without it, going from 22 to 11 kHz takes
+ * every other sample and folds all the treble into the bass: the music becomes
+ * metallic and dirty. That is exactly what could be heard on the menu music,
+ * shrunk by plain interpolation.
  *
- * Ce filtre a moyenne glissante vaut ce qu'il vaut — il n'a pas la raideur d'un
- * vrai passe-bas — mais il supprime l'essentiel du repliement pour trois lignes.
- * Le mieux reste de ne pas reechantillonner du tout, ce que fait maintenant la
- * musique.
+ * This moving-average filter is worth what it is worth — it has none of a real
+ * low-pass's steepness — but it removes most of the aliasing in three lines. The
+ * best is not to resample at all, which is what the music now does.
  *
  * @param {Int16Array} source
- * @param {number} de
- * @param {number} vers
+ * @param {number} from
+ * @param {number} to
  */
-export function reechantillonner(source, de, vers) {
-  if (de === vers) return source;
-  const rapport = vers / de;
-  const trames = Math.floor(source.length * rapport);
-  const sortie = new Int16Array(trames);
-  // Largeur de la fenetre a moyenner : une sortie couvre autant d'entrees.
-  const fenetre = Math.max(1, Math.round(de / vers));
+export function resample(source, from, to) {
+  if (from === to) return source;
+  const ratio = to / from;
+  const frames = Math.floor(source.length * ratio);
+  const output = new Int16Array(frames);
+  // Width of the window to average: one output covers that many inputs.
+  const window = Math.max(1, Math.round(from / to));
 
-  for (let i = 0; i < trames; i += 1) {
-    const centre = Math.round(i / rapport);
-    let somme = 0;
-    let compte = 0;
-    for (let k = -(fenetre >> 1); k <= fenetre >> 1; k += 1) {
+  for (let i = 0; i < frames; i += 1) {
+    const centre = Math.round(i / ratio);
+    let sum = 0;
+    let count = 0;
+    for (let k = -(window >> 1); k <= window >> 1; k += 1) {
       const j = centre + k;
       if (j < 0 || j >= source.length) continue;
-      somme += source[j];
-      compte += 1;
+      sum += source[j];
+      count += 1;
     }
-    sortie[i] = Math.round(somme / compte);
+    output[i] = Math.round(sum / count);
   }
-  return sortie;
+  return output;
 }
 
-/** Ecrit un morceau RIFF : identifiant, longueur, charge. */
-function morceau(type, charge) {
-  const entete = new Uint8Array(8);
-  ecrireLatin1(entete, 0, type);
-  ecrireU32(entete, 4, charge.length);
-  return concat([entete, charge]);
+/** Writes a RIFF chunk: identifier, length, payload. */
+function chunk(type, payload) {
+  const header = new Uint8Array(8);
+  writeLatin1(header, 0, type);
+  writeU32(header, 4, payload.length);
+  return concat([header, payload]);
 }
 
 /**
- * Encode des echantillons en WAV PCM.
+ * Encodes samples as PCM WAV.
  *
- * @param {Int16Array} echantillons entrelaces
- * @param {{ canaux?: number, frequence?: number }} options
+ * @param {Int16Array} samples interleaved
+ * @param {{ channels?: number, rate?: number }} options
  */
-export function versWav(echantillons, { canaux = 1, frequence = FREQUENCE } = {}) {
-  const octetsParTrame = canaux * 2;
+export function toWav(samples, { channels = 1, rate = RATE } = {}) {
+  const bytesPerFrame = channels * 2;
   const format = new Uint8Array(16);
-  ecrireU16(format, 0, 1); // PCM entier
-  ecrireU16(format, 2, canaux);
-  ecrireU32(format, 4, frequence);
-  ecrireU32(format, 8, frequence * octetsParTrame);
-  ecrireU16(format, 12, octetsParTrame);
-  ecrireU16(format, 14, 16);
+  writeU16(format, 0, 1); // integer PCM
+  writeU16(format, 2, channels);
+  writeU32(format, 4, rate);
+  writeU32(format, 8, rate * bytesPerFrame);
+  writeU16(format, 12, bytesPerFrame);
+  writeU16(format, 14, 16);
 
-  const donnees = new Uint8Array(
-    echantillons.buffer,
-    echantillons.byteOffset,
-    echantillons.byteLength,
+  const data = new Uint8Array(
+    samples.buffer,
+    samples.byteOffset,
+    samples.byteLength,
   );
-  const entete = new Uint8Array(4);
-  ecrireLatin1(entete, 0, 'WAVE');
-  const corps = concat([entete, morceau('fmt ', format), morceau('data', donnees)]);
-  return morceau('RIFF', corps);
+  const header = new Uint8Array(4);
+  writeLatin1(header, 0, 'WAVE');
+  const body = concat([header, chunk('fmt ', format), chunk('data', data)]);
+  return chunk('RIFF', body);
 }

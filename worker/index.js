@@ -1,135 +1,127 @@
 /**
- * Le relais, cote Cloudflare : la plomberie, et rien d'autre.
+ * The relay, on the Cloudflare side: plumbing, and nothing else.
  *
- * Tout ce qui est une REGLE vit dans `salon.js`, qui ne connait ni WebSocket ni
- * Durable Object et se teste donc dans Node. Ce fichier-ci ne fait que trois
- * choses : router une connexion vers le salon de son code, transformer des
- * trames en messages, et battre la mesure. Si une partie se comporte mal, ce
- * n'est presque jamais ici qu'il faut regarder.
+ * Everything that is a RULE lives in `room.js`, which knows neither WebSocket
+ * nor Durable Object and is therefore tested in Node. This file only does three
+ * things: route a connection to the room of its code, turn frames into messages,
+ * and beat time. If a game misbehaves, this is almost never where to look.
  *
- * UN SALON = UN DURABLE OBJECT. C'est ce qui rend l'arene partagee possible :
- * les Workers ordinaires sont sans memoire et repartis sur toute la planete,
- * deux joueurs du meme salon tomberaient sur deux instances differentes et
- * joueraient chacun dans son coin. Un Durable Object, lui, est unique pour un
- * nom donne — le code du salon — et tient la partie en memoire.
+ * ONE ROOM = ONE DURABLE OBJECT. That is what makes the shared arena possible:
+ * ordinary Workers have no memory and are spread over the whole planet, two
+ * players of the same room would land on two different instances and each play
+ * on their own. A Durable Object, on the other hand, is unique for a given name
+ * — the room's code — and holds the game in memory.
  *
- * Le code du salon est NORMALISE avant de nommer l'objet, par la meme fonction
- * que la page utilise : sans quoi « essai » et « ESSAI » seraient deux parties
- * differentes, et deux amis qui se recopient un code a l'oral ne se
- * retrouveraient jamais.
+ * The room code is NORMALISED before the object is named, by the same function
+ * the page uses: failing which "essai" and "ESSAI" would be two different games,
+ * and two friends reading a code out to each other would never meet.
  */
 
-import { creerSalon } from './salon.js';
-import { PAS_HZ } from '../src/engine/constantes.js';
-import { encode, decode, CLIENT, cleanRoom } from '../src/net/protocole.js';
+import { createRoom } from './room.js';
+import { STEP_HZ } from '../src/engine/constants.js';
+import { encode, decode, CLIENT, cleanRoom } from '../src/net/protocol.js';
 
-/** Periode du battement, en millisecondes. Le salon rattrape les retards. */
-const BATTEMENT_MS = Math.round(1000 / PAS_HZ);
+/** Period of the beat, in milliseconds. The room catches up when it falls behind. */
+const BEAT_MS = Math.round(1000 / STEP_HZ);
 
-/**
- * Un salon vivant, avec ses connexions.
- *
- * Le nom de la classe est en francais comme le reste du code ; seul le
- * protocole est en anglais, parce que lui voyage sur le fil.
- */
-export class SalonDurable {
+/** A live room, with its connections. */
+export class RoomObject {
   constructor(state) {
     this.state = state;
-    this.salon = null;
+    this.room = null;
     /** @type {Map<string, WebSocket>} */
-    this.fils = new Map();
-    this.battement = null;
+    this.sockets = new Map();
+    this.beat = null;
   }
 
-  /** Distribue des envois : `pour: null` veut dire « a tout le monde ». */
-  diffuser(envois) {
-    for (const { pour, message } of envois) {
-      const trame = encode(message);
-      if (pour === null) {
-        for (const fil of this.fils.values()) this.envoyer(fil, trame);
+  /** Hands out messages: `to: null` means "to everybody". */
+  broadcast(outgoing) {
+    for (const { to, message } of outgoing) {
+      const frame = encode(message);
+      if (to === null) {
+        for (const socket of this.sockets.values()) this.send(socket, frame);
         continue;
       }
-      const fil = this.fils.get(pour);
-      if (fil) this.envoyer(fil, trame);
+      const socket = this.sockets.get(to);
+      if (socket) this.send(socket, frame);
     }
   }
 
   /**
-   * Envoie, en avalant l'echec.
+   * Sends, swallowing the failure.
    *
-   * Un socket peut mourir entre le moment ou l'on decide d'ecrire et celui ou
-   * l'on ecrit. Laisser l'exception remonter couperait la diffusion aux autres
-   * joueurs, pour une raison qui ne les concerne pas.
+   * A socket can die between the moment we decide to write and the moment we
+   * write. Letting the exception through would cut the broadcast to the other
+   * players, for a reason that does not concern them.
    */
-  envoyer(fil, trame) {
+  send(socket, frame) {
     try {
-      fil.send(trame);
+      socket.send(frame);
     } catch {
-      // Le `close` qui suivra fera le menage.
+      // The `close` that follows will do the tidying up.
     }
   }
 
   /**
-   * Demarre le battement, s'il ne bat pas deja.
+   * Starts the beat, if it is not already beating.
    *
-   * Il ne tourne QUE quand quelqu'un est connecte. Un salon vide qui continue
-   * de simuler consommerait sans fin, et le Durable Object ne s'endormirait
-   * jamais.
+   * It only runs while somebody is connected. An empty room that kept simulating
+   * would consume without end, and the Durable Object would never fall asleep.
    */
-  battre() {
-    if (this.battement !== null) return;
-    this.battement = setInterval(() => {
-      if (!this.salon) return;
-      this.diffuser(this.salon.battre(Date.now()));
-      if (!this.salon.vivant) this.arreter();
-    }, BATTEMENT_MS);
+  startBeat() {
+    if (this.beat !== null) return;
+    this.beat = setInterval(() => {
+      if (!this.room) return;
+      this.broadcast(this.room.beat(Date.now()));
+      if (!this.room.alive) this.stopBeat();
+    }, BEAT_MS);
   }
 
-  arreter() {
-    if (this.battement === null) return;
-    clearInterval(this.battement);
-    this.battement = null;
-    this.salon = null;
+  stopBeat() {
+    if (this.beat === null) return;
+    clearInterval(this.beat);
+    this.beat = null;
+    this.room = null;
   }
 
-  async fetch(requete) {
-    if (requete.headers.get('Upgrade') !== 'websocket') {
-      return new Response('Ce point d entree attend une WebSocket.', { status: 426 });
+  async fetch(request) {
+    if (request.headers.get('Upgrade') !== 'websocket') {
+      return new Response('Ce point d entrée attend une WebSocket.', { status: 426 });
     }
 
-    const url = new URL(requete.url);
-    const code = cleanRoom(url.searchParams.get('salon') ?? '');
+    const url = new URL(request.url);
+    const code = cleanRoom(url.searchParams.get('room') ?? '');
     if (!code) return new Response('Code de salon manquant.', { status: 400 });
 
-    if (!this.salon) this.salon = creerSalon({ code, maintenant: Date.now() });
+    if (!this.room) this.room = createRoom({ code, now: Date.now() });
 
-    const paire = new WebSocketPair();
-    const [client, serveur] = Object.values(paire);
-    serveur.accept();
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    server.accept();
 
     const id = crypto.randomUUID();
-    this.fils.set(id, serveur);
+    this.sockets.set(id, server);
 
-    serveur.addEventListener('message', (evenement) => {
-      const message = decode(evenement.data);
-      if (!message || !this.salon) return;
-      const envois = message.type === CLIENT.JOIN
-        ? this.salon.rejoindre(id, message, Date.now())
-        : this.salon.message(id, message, Date.now());
-      this.diffuser(envois);
-      if (this.salon.lancee) this.battre();
+    server.addEventListener('message', (event) => {
+      const message = decode(event.data);
+      if (!message || !this.room) return;
+      const outgoing = message.type === CLIENT.JOIN
+        ? this.room.join(id, message, Date.now())
+        : this.room.message(id, message, Date.now());
+      this.broadcast(outgoing);
+      if (this.room.started) this.startBeat();
     });
 
-    const fermer = () => {
-      this.fils.delete(id);
-      if (!this.salon) return;
-      this.diffuser(this.salon.partir(id, Date.now()));
-      // Plus personne : on coupe le battement sans attendre qu'il s'en
-      // apercoive, pour que l'objet puisse s'endormir.
-      if (this.fils.size === 0) this.arreter();
+    const close = () => {
+      this.sockets.delete(id);
+      if (!this.room) return;
+      this.broadcast(this.room.leave(id, Date.now()));
+      // Nobody left: we cut the beat without waiting for it to notice, so that
+      // the object can fall asleep.
+      if (this.sockets.size === 0) this.stopBeat();
     };
-    serveur.addEventListener('close', fermer);
-    serveur.addEventListener('error', fermer);
+    server.addEventListener('close', close);
+    server.addEventListener('error', close);
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -137,29 +129,29 @@ export class SalonDurable {
 
 export default {
   /**
-   * Route une connexion vers le salon de son code.
+   * Routes a connection to the room of its code.
    *
-   * `idFromName` est la cle de voute : deux connexions portant le meme code
-   * tombent sur le MEME objet, ou qu'elles soient dans le monde.
+   * `idFromName` is the keystone: two connections carrying the same code land on
+   * the SAME object, wherever in the world they are.
    */
-  async fetch(requete, env) {
-    const url = new URL(requete.url);
+  async fetch(request, env) {
+    const url = new URL(request.url);
 
-    if (url.pathname === '/sante') {
+    if (url.pathname === '/health') {
       return new Response('ok', { headers: { 'Content-Type': 'text/plain' } });
     }
 
-    if (url.pathname !== '/salon') {
-      return new Response('Relais Bomberman. Le jeu se connecte sur /salon?salon=CODE.', {
+    if (url.pathname !== '/room') {
+      return new Response('Relais Bomberman. Le jeu se connecte sur /room?room=CODE.', {
         status: 404,
         headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       });
     }
 
-    const code = cleanRoom(url.searchParams.get('salon') ?? '');
+    const code = cleanRoom(url.searchParams.get('room') ?? '');
     if (!code) return new Response('Code de salon manquant.', { status: 400 });
 
-    const identifiant = env.SALONS.idFromName(code);
-    return env.SALONS.get(identifiant).fetch(requete);
+    const id = env.ROOMS.idFromName(code);
+    return env.ROOMS.get(id).fetch(request);
   },
 };

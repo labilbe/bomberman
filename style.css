@@ -1,28 +1,59 @@
 /*
- * Habillage de la page.
+ * The page's clothing.
  *
- * Le jeu occupe un canvas de 480 x 416 pixels logiques, mis a l'echelle en
- * JavaScript pour remplir la place disponible. La propriete image-rendering
- * pixelated garantit que l'agrandissement duplique les pixels sans interpoler :
- * le dessin reste franc meme quand le facteur n'est pas entier.
+ * THE HOME SCREEN IS THE ORIGINAL GAME'S, taken from its menu screen: starry
+ * sky and nebula, bomber floating on the left, choices in yellow on the right.
+ * These are its colours, picked off its images, and not an invented palette —
+ * the yellow of the labels, the pink of the logo, the green of the helmet.
  *
- * Tout le reste est sombre et sobre, pour que l'arene soit la seule chose
- * coloree de l'ecran.
+ * Three crops come from its files: the title screen as a banner, the floating
+ * bomber cut out, and a square of starry sky. None is in the repository, they
+ * belong to Interplay. So everything degrades cleanly without them: the sky goes
+ * back to being a gradient, and both banner and bomber disappear — what is left
+ * is the list, which is the essential part.
+ *
+ * The game itself occupies a canvas of 480 x 416 logical pixels, scaled in
+ * JavaScript. `image-rendering: pixelated` guarantees that scaling up duplicates
+ * pixels without interpolating: the drawing stays crisp even when the factor is
+ * not an integer.
  */
 
 :root {
-  --fond: #120f1c;
-  --fond-carte: #1b1729;
-  --fond-creux: #14111f;
-  --trait: #2c2740;
-  --texte: #ece9f5;
-  --texte-doux: #a49fbd;
-  --accent: #ff9f1c;
-  --accent-sombre: #c97a08;
+  /* Picked off the game's screens, eyedropper in hand. */
+  --night: #06091c;
+  --night-light: #121a3a;
+  --yellow: #ffd21e;
+  --pink: #ff43b3;
+  --green: #4fd219;
+  --steel: #c3cbe0;
+  --steel-dark: #8089a6;
+
+  --bg: var(--night);
+  --bg-card: rgba(10, 14, 38, 0.82);
+  --bg-sunken: #0a1026;
+  --line: #2a3566;
+  --text: #eef1fb;
+  --text-soft: var(--steel-dark);
+  --accent: var(--yellow);
+  --accent-dark: #c9a200;
   --p0: #f2f2f7;
   --p1: #4a4a5e;
   --p2: #e63946;
   --p3: #2f80ed;
+
+  /*
+   * The typeface of Atomic Bomberman's menus, read off its own screen: NARROW
+   * AND TALL capitals and lower case, very bold, with flat and slightly
+   * bevelled terminals, laid bright yellow on the sky with a hard drop shadow —
+   * and with no outline, contrary to what you think from afar.
+   *
+   * It lives in one of the game's .FON files, which we cannot read: the stack
+   * below comes close enough on all three systems, and costs no download. The
+   * order matters — the first two are real bold narrows, the third a wide
+   * fallback, and 'Arial Narrow' only comes last because it is far too thin
+   * beside them.
+   */
+  --display: 'Haettenschweiler', Impact, 'Franklin Gothic Heavy', 'Arial Narrow', sans-serif;
   color-scheme: dark;
 }
 
@@ -36,144 +67,385 @@ body {
   min-height: 100%;
 }
 
+/*
+ * The menu's sky.
+ *
+ * The square of stars is OPAQUE — it is a crop from the game's image — and would
+ * cover the gradients if laid on them as it is. `screen` solves that: its night
+ * blue fades against the background, its stars add up. With the image missing,
+ * the blend applies to nothing and the nebula remains, which is enough.
+ */
 body {
-  /*
-   * L'ecran-titre du jeu, sous un voile.
-   *
-   * Les deux degrades passent AVANT l'image et la couvrent : sans eux le
-   * formulaire se lit par-dessus un ciel etoile et des couleurs vives, et plus
-   * rien n'est lisible. Le voile du haut est le plus dense, c'est la que se
-   * trouvent les champs.
-   *
-   * DEUX fonds sont empiles, et c'est voulu. Celui du jeu n'est pas dans le
-   * depot : il appartient a Interplay, assets/ est exclu, et la version publiee
-   * ne l'a donc pas. En dessous attend `fond-accueil.svg`, dessine pour ce
-   * projet et versionne avec lui.
-   *
-   * Une couche CSS dont l'image manque ne peint rien et laisse voir la suivante.
-   * Le repli se fait donc tout seul, sans une ligne de JavaScript : l'ecran du
-   * jeu chez qui l'a extrait, le notre partout ailleurs.
-   */
   background:
-    linear-gradient(180deg, rgba(20, 16, 34, 0.88) 0%, rgba(20, 16, 34, 0.62) 38%, rgba(20, 16, 34, 0.55) 62%, rgba(20, 16, 34, 0.94) 100%),
-    radial-gradient(1200px 600px at 50% -10%, #241d38 0%, transparent 70%),
-    url('assets/jeu/accueil.png') no-repeat center center / cover fixed,
-    url('fond-accueil.svg') no-repeat center center / cover fixed,
-    var(--fond);
-  color: var(--texte);
+    url('assets/jeu/stars.png') repeat top left / 200px auto,
+    radial-gradient(1100px 620px at 50% -8%, rgba(255, 138, 0, 0.32), transparent 62%),
+    radial-gradient(760px 540px at 12% 72%, rgba(123, 44, 191, 0.3), transparent 66%),
+    var(--night);
+  background-blend-mode: screen, normal, normal, normal;
+  background-attachment: fixed;
+  color: var(--text);
   font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  padding: 24px 16px 40px;
+  padding: 20px 16px 40px;
 }
 
 #app {
-  max-width: 1080px;
+  max-width: 1040px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 
-.entete {
-  text-align: center;
+/* ---- Home ---- */
+
+/*
+ * THE BANNER IS THE GAME'S TITLE SCREEN, framed on its top and faded towards the
+ * bottom.
+ *
+ * Not a cut-out logo: the word only exists painted on that screen, and the
+ * bomber's helmet passes BEHIND its letters — no rectangle separates them, and
+ * every cut-out tried left either a piece of helmet or clipped letters. The
+ * whole image, on the other hand, is right by construction.
+ *
+ * The title stays in the HTML for screen readers and search engines: it is only
+ * taken out of the frame, not removed.
+ */
+.masthead {
+  height: clamp(140px, 22vw, 250px);
+  /* 190 %: the word takes the top third of the title screen, and it is the word
+     we want in the frame — not the grass. */
+  background: url('assets/jeu/home.png') no-repeat top center / auto 190%;
+  /*
+   * The title screen's sky is black and the page's is night blue: the "screen"
+   * blend erases one into the other, and the banner loses its edges. The mask
+   * finishes the bottom off, where the image becomes grass and bomber.
+   */
+  mix-blend-mode: screen;
+  -webkit-mask-image: linear-gradient(180deg, #000 56%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 56%, transparent 100%);
 }
 
-.entete h1 {
-  margin: 0;
-  font-size: clamp(30px, 6vw, 46px);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  background: linear-gradient(180deg, #ffe066 0%, var(--accent) 60%, #e63946 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+.masthead h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
-.accroche {
-  margin: 4px 0 0;
-  color: var(--texte-doux);
-  letter-spacing: 0.08em;
-  text-transform: lowercase;
-}
-
-.carte {
-  background: var(--fond-carte);
-  border: 1px solid var(--trait);
-  border-radius: 14px;
-  padding: 20px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-}
-
-.champs {
+/*
+ * The menu: the bomber on the left, the choices on the right, as in the game.
+ * Below 760 px there is no longer room to put them side by side — the bomber
+ * then steps out rather than disappearing behind.
+ */
+.menu {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1fr);
+  gap: 0 20px;
+  align-items: center;
+}
+
+.bomber {
+  background: url('assets/jeu/bomber.png') no-repeat center bottom / contain;
+  aspect-ratio: 310 / 440;
+  min-height: 300px;
+  image-rendering: pixelated;
+  animation: float 7s ease-in-out infinite;
+}
+
+/* It floats, as on the game's menu screen. The one movement on the page. */
+@keyframes float {
+  0%, 100% { transform: translateY(-6px); }
+  50% { transform: translateY(10px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bomber {
+    animation: none;
+  }
+}
+
+/*
+ * THE MENU SLIDES. Choosing an entry sends the list out to the left and brings
+ * the next screen in from the right, the way the game moves from one screen to
+ * the next. The two sit side by side on a track two columns wide, and it is the
+ * track that moves — nothing appears or disappears, everything moves, which says
+ * where you came from and where you are going.
+ */
+.menu-scene {
+  overflow: hidden;
+}
+
+.track {
+  display: grid;
+  grid-template-columns: 100% 100%;
+  transition: transform 0.34s cubic-bezier(0.33, 0.1, 0.2, 1);
+}
+
+.track[data-open] {
+  transform: translateX(-100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track {
+    transition: none;
+  }
+}
+
+/* The screen takes the focus when it opens: it must not frame itself for that. */
+.screen:focus {
+  outline: none;
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.screen-title {
+  margin: 0 0 6px;
+  font-family: var(--display);
+  font-size: clamp(22px, 3.2vw, 31px);
+  font-weight: 400;
+  color: var(--yellow);
+  letter-spacing: 0.045em;
+  text-shadow: 3px 3px 0 #000;
+}
+
+/* Going back is a menu entry like any other, laid at the bottom of the screen. */
+.screen .back {
+  margin-top: 10px;
+}
+
+/*
+ * The list, in place of the game's labels: one entry per row, in bold yellow
+ * with a black shadow. Nothing around it — Atomic Bomberman's menu screen does
+ * not have a single frame, and adding one would make a dialog box where there is
+ * only a list.
+ */
+.choices {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 4px 0 4px 10px;
+}
+
+.row {
+  font-family: var(--display);
+  font-size: clamp(22px, 3.2vw, 31px);
+  font-weight: 400;
+  /* The game's letters breathe: they are narrow but not tight. */
+  letter-spacing: 0.045em;
+  color: var(--yellow);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 1px 0;
+  cursor: pointer;
+  list-style: none;
+  /*
+   * A hard drop shadow at the bottom right, like the game, and not an outline on
+   * all four sides: the outline thickened the letters and made them lose the
+   * narrowness that is the whole point of this typeface.
+   */
+  text-shadow: 3px 3px 0 #000, 0 0 14px rgba(255, 210, 30, 0.2);
+  transition: color 0.12s ease;
+}
+
+/*
+ * THE BOMB MARKS THE CHOSEN ROW, as in the game. It is laid by a pseudo-element
+ * and the space is RESERVED for it permanently: appearing by pushing the text
+ * would make the whole menu jump as the mouse went by.
+ *
+ * It follows the focus as much as the mouse — the focus is what says where you
+ * stand when navigating with the arrow keys, and a menu with no keyboard
+ * position is not one.
+ */
+.row {
+  position: relative;
+  padding-left: 1.75em;
+}
+
+.row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1.3em;
+  height: 1.3em;
+  margin-top: -0.65em;
+  background: var(--bomb, url('assets/jeu/bomb.png')) no-repeat center / contain;
+  image-rendering: pixelated;
+  opacity: 0;
+  transform: translateX(-5px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+/*
+ * ONE BOMB ON SCREEN, and it is the focus that carries it. It used to follow the
+ * hover as well, and you then saw TWO: that of the row hovered and that of the
+ * row chosen, which did not move. So the mouse moves the selection itself (see
+ * main.js), and there is only one marker left to follow.
+ */
+.row:focus::before {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row::before {
+    transition: none;
+  }
+}
+
+/*
+ * The text no longer changes colour on hover: the bomb says where you are, and
+ * two signals for one single thing tread on each other. The game does not colour
+ * its entries either — they are yellow, all of them, all the time.
+ */
+
+/*
+ * A panel: just enough tint for the stars not to show through the text.
+ */
+.panel {
+  margin: 6px 0 14px;
+  border-left: 2px solid rgba(60, 74, 134, 0.8);
+  background: linear-gradient(90deg, rgba(6, 9, 28, 0.62), rgba(6, 9, 28, 0.3));
+  padding: 10px 14px 8px;
+  max-width: 64ch;
+}
+
+/*
+ * The launch screen: one row per player, its dot, its colour, its control. The
+ * dot carries the colour CHOSEN, and it is what you look for while playing — the
+ * colour's name only serves to name it.
+ */
+.seats {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.seat {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.seat .dot {
+  width: 14px;
+  height: 14px;
+  margin: 0 0 6px;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.18);
+}
+
+.seat-name {
+  font-family: var(--display);
+  font-size: 19px;
+  color: var(--steel);
+  min-width: 5.5em;
+  margin-bottom: 2px;
+}
+
+.seat .field {
+  font-size: 15px;
+}
+
+.field-players {
+  max-width: 7em;
+}
+
+.panel.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
   gap: 12px;
 }
 
-.champ {
+.panel .row.small {
+  font-size: clamp(18px, 2.2vw, 22px);
+  margin-top: 10px;
+}
+
+.field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--texte-doux);
+  gap: 5px;
+  font-family: var(--display);
+  font-size: 17px;
+  letter-spacing: 0.02em;
+  color: var(--steel);
 }
 
-.champ input,
-.champ select {
+/*
+ * The fields are TEXT laid on the sky, underlined, and not plates: the game's
+ * menu screen does not have a single frame. The background stays very slightly
+ * tinted so that the stars do not show through the letters.
+ */
+.field input,
+.field select {
   font: inherit;
-  font-size: 15px;
-  letter-spacing: normal;
-  text-transform: none;
-  color: var(--texte);
-  background: var(--fond-creux);
-  border: 1px solid var(--trait);
-  border-radius: 8px;
-  padding: 9px 10px;
+  font-family: var(--display);
+  font-size: 19px;
+  letter-spacing: 0.02em;
+  color: var(--yellow);
+  background: rgba(6, 9, 28, 0.55);
+  border: 0;
+  border-bottom: 2px solid #3c4a86;
+  border-radius: 0;
+  padding: 4px 6px;
+  text-shadow: 1px 1px 0 #000;
 }
 
-.champ input:focus-visible,
-.champ select:focus-visible,
+.field input:hover,
+.field select:hover {
+  border-bottom-color: var(--yellow);
+}
+
+.field select {
+  /* The default chevron is system grey: we redo it, in yellow. */
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--yellow) 50%),
+    linear-gradient(135deg, var(--yellow) 50%, transparent 50%);
+  background-position: right 14px center, right 8px center;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 28px;
+}
+
+.field input:focus-visible,
+.field select:focus-visible,
 button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--pink);
   outline-offset: 2px;
 }
 
-#salon {
+/*
+ * No frame around a menu entry: THE BOMB IS THE MARKER, and it follows the focus
+ * as much as the mouse. Two markers for one selection tread on each other, and
+ * the frame is the one too many.
+ */
+.row:focus,
+.row:focus-visible {
+  outline: none;
+}
+
+#room {
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
-}
-
-.boutons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 18px;
-}
-
-button {
-  font: inherit;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--texte);
-  background: #241f36;
-  border: 1px solid var(--trait);
-  border-radius: 9px;
-  padding: 11px 18px;
-  cursor: pointer;
-  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
-}
-
-button:hover:not(:disabled) {
-  background: #2d2743;
-  border-color: #40385c;
-}
-
-button:active:not(:disabled) {
-  transform: translateY(1px);
 }
 
 button:disabled {
@@ -181,62 +453,83 @@ button:disabled {
   cursor: not-allowed;
 }
 
-button.primaire {
-  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-sombre) 100%);
-  border-color: #8f5a06;
-  color: #1c1205;
+/* The game's buttons, for their part, stay buttons: they are clicked mid-game. */
+button {
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  background: #141b3c;
+  border: 2px solid #4a5a9e;
+  border-top-color: #10163a;
+  border-left-color: #10163a;
+  border-radius: 0;
+  padding: 9px 16px;
+  cursor: pointer;
 }
 
-button.primaire:hover:not(:disabled) {
-  background: linear-gradient(180deg, #ffb347 0%, #d98709 100%);
+button:hover:not(:disabled) {
+  background: #1c2550;
 }
 
-.aide {
-  margin-top: 22px;
-  border-top: 1px solid var(--trait);
-  padding-top: 16px;
+/* The manual now lives in a panel: it no longer has a frame of its own. */
+.help {
+  max-width: 68ch;
 }
 
-.aide h2 {
-  margin: 0 0 10px;
-  font-size: 13px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--texte-doux);
+.help h2 {
+  margin: 0 0 8px;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--steel);
+  text-shadow: 2px 2px 0 #000;
 }
 
-.aide table {
+.help table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
 }
 
-.aide th,
-.aide td {
+.help th,
+.help td {
   text-align: left;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--trait);
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(42, 53, 102, 0.6);
 }
 
-.aide thead th {
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--texte-doux);
+.help thead th {
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--steel);
 }
 
-.aide tbody th {
+.help tbody th {
   font-weight: 600;
   white-space: nowrap;
 }
 
-.note {
-  margin: 12px 0 0;
-  color: var(--texte-doux);
-  font-size: 14px;
+.note a {
+  color: var(--yellow);
+  text-decoration-color: rgba(255, 210, 30, 0.45);
 }
 
-.pastille {
+.note a:hover {
+  color: var(--pink);
+}
+
+.note {
+  margin: 10px 0 0;
+  color: var(--text-soft);
+  font-size: 13.5px;
+  max-width: 76ch;
+}
+
+.dot {
   display: inline-block;
   width: 10px;
   height: 10px;
@@ -246,14 +539,42 @@ button.primaire:hover:not(:disabled) {
   vertical-align: baseline;
 }
 
-.pastille.p0 { background: var(--p0); }
-.pastille.p1 { background: var(--p1); }
-.pastille.p2 { background: var(--p2); }
-.pastille.p3 { background: var(--p3); }
+.dot.p0 { background: var(--p0); }
+.dot.p1 { background: var(--p1); }
+.dot.p2 { background: var(--p2); }
+.dot.p3 { background: var(--p3); }
 
-/* ---- Jeu ---- */
+@media (max-width: 760px) {
+  /*
+   * No more room to put the bomber next to the form, and moving it behind does
+   * not work: they are two blocks of the same grid, and overlapping them by hand
+   * moved the help to the first row. So it steps out, and the logo alone carries
+   * the screen's identity.
+   */
+  .menu {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-#jeu {
+  .bomber {
+    display: none;
+  }
+
+  .choices {
+    padding: 14px;
+  }
+}
+
+/*
+ * During a game the title fades out: the arena needs the height, and the
+ * original game's play screen does not show its logo either.
+ */
+body:has(#game:not([hidden])) .masthead {
+  display: none;
+}
+
+/* ---- Game ---- */
+
+#game {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -267,19 +588,19 @@ button.primaire:hover:not(:disabled) {
   width: 100%;
 }
 
-.joueur {
-  background: var(--fond-creux);
-  border: 1px solid var(--trait);
-  border-top: 3px solid var(--couleur, var(--trait));
+.player {
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--colour, var(--line));
   border-radius: 10px;
   padding: 8px 10px;
 }
 
-.joueur.mort {
+.player.dead {
   opacity: 0.45;
 }
 
-.joueur .nom {
+.player .name {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -288,49 +609,49 @@ button.primaire:hover:not(:disabled) {
   font-weight: 600;
 }
 
-.joueur .manches {
+.player .rounds {
   color: var(--accent);
   letter-spacing: 0.1em;
   font-variant-numeric: tabular-nums;
 }
 
-.joueur .pouvoirs {
+.player .powers {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 8px;
   margin-top: 6px;
   font-size: 12px;
-  color: var(--texte-doux);
+  color: var(--text-soft);
   font-variant-numeric: tabular-nums;
 }
 
-.joueur .pouvoirs b {
-  color: var(--texte);
+.player .powers b {
+  color: var(--text);
   font-weight: 600;
 }
 
-.joueur .pouvoirs .actif {
+.player .powers .on {
   color: #70e000;
 }
 
-.arene {
+.arena {
   position: relative;
   line-height: 0;
   background: #0b0912;
-  border: 1px solid var(--trait);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 6px;
   max-width: 100%;
   overflow: auto;
 }
 
-#toile {
+#canvas {
   display: block;
   image-rendering: pixelated;
   border-radius: 4px;
 }
 
-.banniere {
+.banner {
   position: absolute;
   inset: 6px;
   display: flex;
@@ -345,60 +666,45 @@ button.primaire:hover:not(:disabled) {
   padding: 16px;
 }
 
-.banniere .titre {
+.banner .title {
   font-size: clamp(20px, 4vw, 30px);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.banniere .detail {
-  color: var(--texte-doux);
-  /* La salle d'attente ecrit sur deux lignes : les sieges, puis ce qui manque.
-     Sans ce `pre-line`, le saut de ligne du texte serait avale et les deux
-     phrases se colleraient. */
+.banner .detail {
+  color: var(--text-soft);
+  /* The waiting room writes on two lines: the seats, then what is missing.
+     Without this `pre-line`, the text's line break would be swallowed and the
+     two sentences would run together. */
   white-space: pre-line;
 }
 
-/* Les boutons de la banniere se mettent cote a cote, et passent dessous quand
-   la place manque : « Demarrer » et « Quitter » n'ont pas a s'empiler sur un
-   ecran large. */
-.banniere .boutons {
+/* The banner's buttons sit side by side, and go underneath when there is no
+   room: "Démarrer" and "Quitter" have no business stacking on a wide screen. */
+.banner .buttons {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
 }
 
-.pied-jeu {
+.game-foot {
   display: flex;
   align-items: center;
   gap: 14px;
   width: 100%;
 }
 
-.etat-reseau {
-  color: var(--texte-doux);
+.net-state {
+  color: var(--text-soft);
   font-size: 14px;
-}
-
-.pied {
-  text-align: center;
-  color: var(--texte-doux);
-  font-size: 14px;
-}
-
-.pied a {
-  color: var(--texte-doux);
 }
 
 @media (max-width: 520px) {
   body {
     padding: 16px 10px 28px;
-  }
-
-  .carte {
-    padding: 14px;
   }
 }
 
@@ -409,11 +715,11 @@ button.primaire:hover:not(:disabled) {
 }
 
 /*
- * L'attribut `hidden` doit gagner contre les `display` ci-dessus.
+ * The `hidden` attribute has to win against the `display` rules above.
  *
- * Sans cette regle, `#jeu { display: flex }` l'emporte sur la feuille par
- * defaut du navigateur, et la section cachee reste a l'ecran : un canvas noir
- * sous le menu, que rien n'explique quand on lit le JavaScript.
+ * Without this rule, `#game { display: flex }` beats the browser's default
+ * stylesheet, and the hidden section stays on screen: a black canvas under the
+ * menu, which nothing explains when you read the JavaScript.
  */
 [hidden] {
   display: none !important;
