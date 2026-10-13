@@ -98,7 +98,7 @@ export function randomName(random = Math.random) {
  */
 export const BOT_NAMES = [
   'hicks', 'sharak', 'cyberpsycho', 'penetrator', 'littlepsylo', 'psycho',
-  'chacal', 'genghis', 'sybaris', 'zuul', 'igrec',
+  'chacal', 'genghis', 'sybaris', 'zuul', 'igrec', 'kakaruto',
 ];
 
 /**
