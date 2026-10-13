@@ -293,7 +293,11 @@ function openScreen(name) {
   const target = document.querySelector(`#screen-${name}`);
   if (!target) return;
   for (const screen of screens) screen.hidden = screen !== target;
-  track.dataset.open = name;
+  // `data-screen` on the track, `data-open` on the rows, and the two names must
+  // STAY DIFFERENT: the click handler walks up from whatever was clicked looking
+  // for `[data-open]`, so a track carrying the same attribute answered for the
+  // "Retour" button inside it — and going back reopened the screen instead.
+  track.dataset.screen = name;
   // The focus goes to THE SCREEN and not to its first field: placed in a text
   // field, Backspace deletes a character there instead of going back, and the
   // arrow keys belong to the drop-down list you have just reached. From the
@@ -303,16 +307,16 @@ function openScreen(name) {
 }
 
 function closeScreen({ focus = true } = {}) {
-  const open = track.dataset.open;
+  const open = track.dataset.screen;
   if (!open) return;
-  delete track.dataset.open;
+  delete track.dataset.screen;
   const row = document.querySelector(`[data-open="${open}"]`);
   if (focus) row?.focus({ preventScroll: true });
 
   const hide = () => {
     // Another screen may have opened in the meantime: we only hide when the
     // track really has come back to the list.
-    if (track.dataset.open) return;
+    if (track.dataset.screen) return;
     for (const screen of screens) screen.hidden = true;
   };
   const animated = getComputedStyle(track).transitionDuration !== '0s';
@@ -387,7 +391,7 @@ window.addEventListener('keydown', (event) => {
   }
 
   if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-  if (track?.dataset.open) return;
+  if (track?.dataset.screen) return;
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(event.target?.tagName ?? '')) return;
 
   const rows = [...document.querySelectorAll('.choices .row')];

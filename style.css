@@ -187,7 +187,7 @@ body {
   transition: transform 0.34s cubic-bezier(0.33, 0.1, 0.2, 1);
 }
 
-.track[data-open] {
+.track[data-screen] {
   transform: translateX(-100%);
 }
 
