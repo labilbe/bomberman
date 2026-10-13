@@ -14,11 +14,26 @@
  *    brique ne rapporterait jamais rien.
  */
 
-import { FLAMME_PAS, CHUTE_PAS, DEMI_MORTEL, VECTEURS, VIDE, BRIQUE } from './constantes.js';
+import {
+  FLAMME_PAS,
+  CHUTE_PAS,
+  DEMI_MORTEL,
+  VECTEURS,
+  VIDE,
+  BRIQUE,
+  COLS,
+  ROWS,
+  BOMBES_DEPART,
+  FLAMME_DEPART,
+  VITESSE_BASE,
+  VITESSE_PALIER,
+  DETONATEURS_PAR_BONUS,
+} from './constantes.js';
 import { caseDe, poserCase, index, estLibre, boiteSurCase, caseAxe } from './grille.js';
 import { noter } from './etat.js';
+import { tirer } from './rng.js';
 import { bombeSur, rendreLesMeches } from './bombes.js';
-import { estCache, estVisible, codeDe, appliquer, NOMS_BONUS } from './bonus.js';
+import { estCache, estVisible, codeDe, appliquer, NOMS_BONUS, CODES_BONUS } from './bonus.js';
 
 /** Causes de mort, telles qu'elles partent sur le reseau. */
 export const PAR_FLAMME = 0;
@@ -278,7 +293,80 @@ export function brulerJoueurs(etat) {
 }
 
 /**
+ * Tout ce qu'un bomber a ramasse, en codes de bonus, un par exemplaire.
+ *
+ * On compte l'ECART a la dotation de depart, et non les ramassages : le moteur
+ * ne les retient pas, et l'ecart dit exactement la meme chose — trois bombes
+ * quand on en avait une, ce sont deux bonus bombe.
+ */
+function butin(joueur) {
+  const codes = [];
+  const ajouter = (code, nombre) => {
+    for (let i = 0; i < nombre; i += 1) codes.push(code);
+  };
+  ajouter(CODES_BONUS.BOMBE, joueur.bombes - BOMBES_DEPART);
+  ajouter(CODES_BONUS.FLAMME, joueur.portee - FLAMME_DEPART);
+  ajouter(CODES_BONUS.VITESSE, Math.round((joueur.vitesse - VITESSE_BASE) / VITESSE_PALIER));
+  if (joueur.kick) ajouter(CODES_BONUS.KICK, 1);
+  if (joueur.gant) ajouter(CODES_BONUS.GANT, 1);
+  if (joueur.goutte) ajouter(CODES_BONUS.GOUTTE, 1);
+  // Une plaquette par paquet entame : il reste trois charges sur cinq, c'est
+  // encore un detonateur, et le rendre entier vaut mieux que de le perdre.
+  ajouter(CODES_BONUS.DETONATEUR, Math.ceil(joueur.detonateur / DETONATEURS_PAR_BONUS));
+  return codes;
+}
+
+/**
+ * Seme le butin d'un mort AU HASARD DANS TOUTE L'ARENE.
+ *
+ * Pas autour du corps : les bonus tomberaient dans le souffle qui vient de le
+ * tuer, donc au milieu d'un endroit ou personne ne peut aller, et le tueur —
+ * seul present — les ramasserait tous en traversant. Repandus au hasard, ils
+ * obligent a traverser le plateau pour les reprendre, et celui qui est distance
+ * a autant de chances d'en trouver un que celui qui vient de tuer.
+ *
+ * Le tirage passe par le GENERATEUR A GRAINE de l'etat, comme celui des briques
+ * et des bonus caches. Le hasard du navigateur aurait donne deux arenes
+ * differentes au relais et au rejeu — c'est ce que le moteur s'interdit depuis
+ * le premier jour, et un test le verifie en relisant ses sources.
+ *
+ * On evite les cases EN FEU : un bonus y survivrait, puisque seule une flamme
+ * NEUVE brule, et l'on verrait une plaquette intacte au milieu des flammes. Ce
+ * qui ne trouve pas de place — arene pleine — est perdu.
+ */
+function semer(etat, joueur) {
+  const codes = butin(joueur);
+  if (codes.length === 0) return;
+
+  const libres = [];
+  for (let cy = 0; cy < ROWS; cy += 1) {
+    for (let cx = 0; cx < COLS; cx += 1) {
+      if (caseDe(etat, cx, cy) !== VIDE) continue;
+      if (etat.objets[index(cx, cy)] !== 0) continue;
+      if (bombeSur(etat, cx, cy)) continue;
+      if (etat.flammes.some((flamme) => flamme.cx === cx && flamme.cy === cy)) continue;
+      libres.push([cx, cy]);
+    }
+  }
+
+  for (const code of codes) {
+    if (libres.length === 0) return;
+    // On retire la case tiree de la liste : deux bonus ne se posent jamais l'un
+    // sur l'autre, ce qui en perdrait un sans que personne ne le voie.
+    const [cx, cy] = libres.splice(Math.floor(tirer(etat) * libres.length), 1)[0];
+    etat.objets[index(cx, cy)] = code;
+    noter(etat, ['item', cx, cy, NOMS_BONUS[code]]);
+  }
+}
+
+/**
  * Tue un bomber, quelle qu'en soit la cause.
+ *
+ * IL LACHE TOUT CE QU'IL AVAIT RAMASSE. Sans cela, tuer le joueur le mieux
+ * equipe retirait definitivement ses bonus de la manche, et celui qui restait
+ * n'avait plus rien a convoiter ; les derniers duels se jouaient entre deux
+ * bombers nus sur une arene sans briques. Les rendre fait de chaque mort un
+ * butin, et donne a celui qui est distance une derniere raison de s'avancer.
  *
  * @param {import('./etat.js').Etat} etat
  * @param {import('./etat.js').Joueur} joueur
@@ -293,6 +381,7 @@ export function tuer(etat, joueur, cause) {
 
   // Ses bombes a detonateur n'attendent plus personne : on leur rend une meche.
   rendreLesMeches(etat, joueur.place);
+  semer(etat, joueur);
 
   noter(etat, ['death', joueur.place, cause]);
 }

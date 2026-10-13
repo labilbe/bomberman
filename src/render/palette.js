@@ -70,4 +70,7 @@ export const BONUS_COULEURS = {
   trigger: { fond: '#70e000', glyphe: '#14331f', eclat: '#ccff33' },
   // Le gant : rouge cuir, la couleur qu'on attend d'un gant de boxe.
   punch: { fond: '#e5383b', glyphe: '#4a0d10', eclat: '#ff9a94' },
+  // La goutte : le violet du 'jelly' d'Interplay, qui ne ressemble a aucun
+  // autre bonus — c'est tout ce qu'on demande a seize pixels.
+  jelly: { fond: '#9d4edd', glyphe: '#2d0a45', eclat: '#e0aaff' },
 };

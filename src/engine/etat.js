@@ -37,13 +37,16 @@ import { DEPARTS, genererArene } from './arene.js';
  *   place: number, vivant: boolean, x: number, y: number,
  *   dir: number, marche: boolean,
  *   vitesse: number, bombes: number, portee: number,
- *   kick: boolean, detonateur: number, gant: boolean,
+ *   kick: boolean, detonateur: number, gant: boolean, goutte: boolean,
+ *   frappeAu: number | null,
  *   posees: number, surBombe: number | null, mortAu: number | null
  * }} Joueur
  *
  * @typedef {{
  *   id: number, cx: number, cy: number, place: number, portee: number,
- *   meche: number, glisse: { dir: number, x: number, y: number } | null
+ *   meche: number, glisse: { dir: number, x: number, y: number } | null,
+ *   rebond: boolean,
+ *   vol: { dir: number, depuisX: number, depuisY: number, reste: number, duree: number } | null
  * }} Bombe
  *
  * @typedef {{ cx: number, cy: number, reste: number }} Flamme
@@ -85,6 +88,8 @@ export function creerJoueur(place) {
     detonateur: 0,
     /** Le gant de boxe : il envoie une bombe en l air plutot que de la pousser. */
     gant: false,
+    /** La goutte : ses bombes rebondissent au lieu de s arreter au premier mur. */
+    goutte: false,
     /**
      * Le pas du dernier coup de poing, ou null. Il n'a aucun effet sur les
      * regles : c'est le rendu qui s'en sert pour jouer le geste.

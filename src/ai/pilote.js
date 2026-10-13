@@ -188,7 +188,10 @@ export function decider(etat, place, memoire = creerMemoire(), options = {}) {
  * @param {import('../engine/etat.js').Joueur} joueur
  */
 function veutDeclencher(etat, joueur) {
-  if (!joueur.detonateur) return false;
+  // Pas de garde sur la reserve : elle se vide A LA POSE, et une bombe deja
+  // posee en attente obeit encore au bouton. Exiger une charge ici laissait le
+  // bot planter sa derniere bombe et la regarder attendre jusqu a la fin de la
+  // manche — quatre bots ne s achevaient plus.
 
   let ancienne = null;
   for (const bombe of etat.bombes) {

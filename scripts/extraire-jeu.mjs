@@ -81,6 +81,8 @@ const rolesDe = (terrain) => ({
   // Le gant de boxe. Absent des extractions faites avant son ajout : le rendu
   // dessine alors sa plaquette lui-meme, a la taille des tuiles du jeu.
   bonusGant: ['POWERS.ANI', 'power punch'],
+  // La goutte, qui fait rebondir les bombes : 'jelly' chez Interplay.
+  bonusGoutte: ['POWERS.ANI', 'power jelly'],
 });
 
 const argv = process.argv.slice(2);

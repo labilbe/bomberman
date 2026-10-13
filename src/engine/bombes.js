@@ -17,6 +17,7 @@ import {
   MECHE_PAS,
   VECTEURS,
   VITESSE_BOMBE,
+  VITESSE_BOMBE_GOUTTE,
   UNITES,
   PORTEE_GANT,
   VOL_PAS_PAR_CASE,
@@ -84,6 +85,13 @@ export function peutPoser(etat, joueur) {
  * que l'adversaire s'y engage. Atomic Bomberman la distingue d'ailleurs a
  * l'ecran, et le rendu fait de meme.
  *
+ * LA CHARGE EST PRISE ICI, A LA POSE, et non au declenchement. La reserve
+ * compte donc des bombes a retardement a poser, pas des appuis sur le bouton :
+ * c'est ce qu'on lit a l'ecran — il reste trois bombes de ce genre — et c'est
+ * ce qui permet de les faire partir toutes sans que l'une d'elles coute une
+ * charge de plus. Une fois posee, la bombe est payee ; elle obeira au bouton
+ * autant de fois qu'il faudra, et de toute facon elle ne part qu'une fois.
+ *
  * Le nombre de bombes posables reste la limite : un porteur de detonateur ne
  * peut pas couvrir l'arene, il doit declencher pour reposer.
  *
@@ -95,14 +103,25 @@ export function poser(etat, joueur) {
   if (!peutPoser(etat, joueur)) return null;
   const cx = caseAxe(joueur.x);
   const cy = caseAxe(joueur.y);
+  // Le drapeau est lu AVANT le prelevement : sinon la derniere charge se
+  // retirerait elle-meme le retardement, et la bombe qu on vient de payer
+  // partirait a la meche.
+  const aRetardement = joueur.detonateur > 0;
+  if (aRetardement) joueur.detonateur -= 1;
   const bombe = {
     id: etat.prochainId,
     cx,
     cy,
     place: joueur.place,
     portee: joueur.portee,
-    meche: joueur.detonateur ? null : MECHE_PAS,
+    meche: aRetardement ? null : MECHE_PAS,
     glisse: null,
+    // LA GOUTTE EST UNE PROPRIETE DE LA BOMBE, prise a la pose, et non du
+    // joueur qui la pousse. C'est ce qui fait qu'une bombe reste folle quand son
+    // poseur meurt, et qu'on reconnait a sa course celle de l'adversaire qui a
+    // ramasse le bonus — a l'inverse, lire le bonus au moment du kick aurait
+    // rendu la meme bombe sage ou folle selon qui la touche.
+    rebond: joueur.goutte,
     /** Vol du gant de boxe : non nul tant que la bombe est en l air. */
     vol: null,
   };
@@ -175,6 +194,13 @@ export function pousser(etat, bombe, dir) {
  * bombe retombe donc exactement sur une case, et une bombe decalee d'une
  * sous-unite ne fait pas partir sa flamme de travers.
  *
+ * LA GOUTTE SE JOUE ICI. Une bombe ordinaire s'arrete au premier obstacle ;
+ * celle d'un porteur de la goutte repart en sens inverse et continue sa course
+ * jusqu'a ce que sa meche la rattrape. Le rebond ne se decide qu'aux centres
+ * de case, comme l'arret : une bombe qui changerait de sens entre deux cases
+ * finirait a cheval, et une bombe a cheval est une flamme dont on ne sait pas
+ * d'ou elle part.
+ *
  * @param {import('./etat.js').Etat} etat
  */
 export function avancerGlissements(etat) {
@@ -186,10 +212,14 @@ export function avancerGlissements(etat) {
     const restantX = cibleX - bombe.glisse.x;
     const restantY = cibleY - bombe.glisse.y;
     const restant = Math.abs(restantX) + Math.abs(restantY);
+    // La bombe de la goutte roule deux fois moins vite : elle ne s'arrete plus,
+    // donc sa course n'est plus une affaire de deux cases mais de toute la
+    // manche, et au rythme du kick on ne la voyait pas venir.
+    const vitesse = bombe.rebond ? VITESSE_BOMBE_GOUTTE : VITESSE_BOMBE;
 
-    if (restant > VITESSE_BOMBE) {
-      bombe.glisse.x += Math.sign(restantX) * VITESSE_BOMBE;
-      bombe.glisse.y += Math.sign(restantY) * VITESSE_BOMBE;
+    if (restant > vitesse) {
+      bombe.glisse.x += Math.sign(restantX) * vitesse;
+      bombe.glisse.y += Math.sign(restantY) * vitesse;
       continue;
     }
 
@@ -199,9 +229,29 @@ export function avancerGlissements(etat) {
     bombe.glisse.x = cibleX;
     bombe.glisse.y = cibleY;
 
-    if (!caseOuvertePourBombe(etat, bombe.cx + v.dx, bombe.cy + v.dy)) {
-      bombe.glisse = null;
+    if (caseOuvertePourBombe(etat, bombe.cx + v.dx, bombe.cy + v.dy)) continue;
+
+    // UNE BOMBE A MECHE REVEILLE CELLE QUI ATTEND. Heurter une bombe a
+    // retardement la fait partir sur-le-champ, au lieu de la laisser dormir : le
+    // coup de pied devient une reponse a l'embuscade, et le poseur ne choisit
+    // plus seul l'instant de sa bombe. L'inverse serait injouable — une bombe en
+    // attente poussee contre une autre ne doit pas s'allumer toute seule, sans
+    // quoi elle ne servirait plus a tendre un piege.
+    const butee = bombeSur(etat, bombe.cx + v.dx, bombe.cy + v.dy);
+    if (butee && butee.meche === null && bombe.meche !== null) butee.meche = 1;
+
+    // La voie est bouchee. Une bombe ordinaire s'arrete ici ; une bombe de la
+    // goutte REBONDIT et repart en sens inverse, et ne s'arrete que si le
+    // chemin du retour est bouche lui aussi — coincee entre deux murs, elle se
+    // pose plutot que de vibrer sur place.
+    const retour = (bombe.glisse.dir + 2) % 4;
+    const r = VECTEURS[retour];
+    if (bombe.rebond && caseOuvertePourBombe(etat, bombe.cx + r.dx, bombe.cy + r.dy)) {
+      bombe.glisse.dir = retour;
+      noter(etat, ['bounce', bombe.id, retour]);
+      continue;
     }
+    bombe.glisse = null;
   }
 }
 
@@ -323,24 +373,23 @@ export function avancerVols(etat) {
  * c'est aussi le seul qui laisse jouer — tout faire sauter d'un coup prive le
  * detonateur de son interet, qui est de choisir l'instant de chaque bombe.
  *
+ * SEULES LES BOMBES EN ATTENTE obeissent, et le bouton ne coute rien : la
+ * charge a ete prise a la pose. Une bombe a meche ne se declenche donc pas —
+ * elle n'a jamais ete payee pour ca — et une reserve epuisee n'empeche pas de
+ * faire partir ce qui est deja au sol, ce qui aurait condamne le poseur a
+ * regarder ses propres bombes attendre pour toujours.
+ *
  * @param {import('./etat.js').Etat} etat
  * @param {import('./etat.js').Joueur} joueur
  * @returns {import('./etat.js').Bombe | null}
  */
 export function declencher(etat, joueur) {
-  if (!joueur.detonateur || !joueur.vivant) return null;
+  if (!joueur.vivant) return null;
   let choisie = null;
   for (const bombe of etat.bombes) {
-    if (bombe.place !== joueur.place) continue;
+    if (bombe.place !== joueur.place || bombe.meche !== null) continue;
     if (choisie === null || bombe.id < choisie.id) choisie = bombe;
   }
-  if (choisie === null) return null;
-
-  // Une charge par bombe reellement declenchee, et pas par appui : appuyer dans
-  // le vide ne doit pas gaspiller la reserve.
-  joueur.detonateur -= 1;
-  // La derniere charge partie, ce qui attendait encore n'attend plus personne.
-  if (joueur.detonateur === 0) rendreLesMeches(etat, joueur.place, choisie.id);
   return choisie;
 }
 

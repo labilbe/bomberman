@@ -1564,6 +1564,13 @@
       "hauteur": 36,
       "accrocheX": 20,
       "accrocheY": 35
+    },
+    {
+      "fichier": "214.svg",
+      "largeur": 40,
+      "hauteur": 36,
+      "accrocheX": 20,
+      "accrocheY": 35
     }
   ],
   "roles": {
@@ -2804,6 +2811,12 @@
     "bonusGant": [
       {
         "image": 213,
+        "duree": 30
+      }
+    ],
+    "bonusGoutte": [
+      {
+        "image": 214,
         "duree": 30
       }
     ]

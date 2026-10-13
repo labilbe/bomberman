@@ -92,6 +92,23 @@ export const VITESSE_PALIER = 18;
 export const VITESSE_MAX = 184;
 export const VITESSE_BOMBE = 240;
 
+/**
+ * Vitesse d'une bombe de la GOUTTE : la moitie de celle d'un simple kick.
+ *
+ * Une bombe shootee ne fait que quelques cases avant de buter sur un mur ; a
+ * 14 tuiles par seconde, sa course est breve et le joueur n'a qu'a s'ecarter
+ * une fois. Celle de la goutte, elle, ne s'arrete plus : au meme rythme elle
+ * balayait l'arene en zigzag plus vite que l'oeil ne la suit, et mourir sous
+ * elle tenait du tirage au sort plutot que du placement.
+ *
+ * A la moitie — 7 tuiles par seconde — on la voit venir, on la contourne, on la
+ * reprend d'un coup de pied. Elle reste plus rapide qu'un bomber de base, qui
+ * en fait 5,5 : fuir en ligne droite ne suffit pas, il faut tourner. Celui qui
+ * a ramasse des patins, lui, la seme — et c'est tant mieux, un bonus doit
+ * servir a quelque chose.
+ */
+export const VITESSE_BOMBE_GOUTTE = 120;
+
 /** Duree de meche : 2,4 s. Le temps de reculer de deux cases, pas de trois. */
 export const MECHE_PAS = 144;
 
@@ -200,4 +217,5 @@ export const BONUS = {
   KICK: 'kick',
   DETONATEUR: 'trigger',
   GANT: 'punch',
+  GOUTTE: 'jelly',
 };

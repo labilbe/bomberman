@@ -55,9 +55,11 @@ export function creerHud(racine) {
     ];
     if (joueur.kick) morceaux.push('<span class="actif">Kick</span>');
     if (joueur.gant) morceaux.push('<span class="actif">Gant</span>');
+    if (joueur.goutte) morceaux.push('<span class="actif">Goutte</span>');
     // Le detonateur est une reserve, pas un etat : on affiche ce qu'il en
-    // reste. Sans le compte, on appuie une fois de trop et on decouvre qu'il
-    // est vide au pire moment — une bombe posee pour attendre qui part seule.
+    // reste. Le compte est celui des BOMBES A RETARDEMENT qu'il reste a poser,
+    // puisque la charge se prend a la pose — sans lui, on en pose une de plus
+    // que prevu et l'on decouvre au pire moment qu'elle a une meche.
     if (joueur.detonateur) {
       morceaux.push(`<span class="actif">Detonateur <b>${joueur.detonateur}</b></span>`);
     }

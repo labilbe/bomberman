@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { pas, avancerDe } from '../src/engine/pas.js';
-import { peutPoser, bombeSur } from '../src/engine/bombes.js';
+import { peutPoser, bombeSur, pousser } from '../src/engine/bombes.js';
 import { caseAxe, centreAxe } from '../src/engine/grille.js';
 import {
   MECHE_PAS,
@@ -302,33 +302,54 @@ test('appuyer dans le vide ne gaspille pas une charge', () => {
   assert.equal(joueur.detonateur, DETONATEURS_PAR_BONUS, 'aucune bombe, aucune charge');
 });
 
-test('la derniere charge rend leur meche aux bombes encore en attente', () => {
-  // Sinon elles resteraient posees pour toujours : plus aucune charge ne peut
-  // les declencher, et elles bloqueraient l arene.
+test('la reserve se vide a la pose, pas au declenchement', () => {
+  // Elle compte des bombes a retardement a poser, et non des appuis : poser
+  // trois bombes coute trois charges, les faire partir n en coute aucune.
   const etat = areneNue();
   const joueur = placer(etat, 0, 1, 5);
   joueur.bombes = 3;
-  joueur.detonateur = 1;
+  joueur.detonateur = 3;
 
   pas(etat, entree(0, { poser: true }));
+  assert.equal(joueur.detonateur, 2, 'la pose preleve');
   placer(etat, 0, 5, 5);
   pas(etat, entree(0, { poser: true }));
   placer(etat, 0, 9, 5);
   pas(etat, entree(0, { poser: true }));
+  assert.equal(joueur.detonateur, 0, 'trois bombes, trois charges');
   assert.equal(etat.bombes.every((bombe) => bombe.meche === null), true);
 
+  // Reserve vide, et pourtant les trois partent, une par appui.
+  placer(etat, 0, 13, 11);
   pas(etat, entree(0, { declencher: true }));
-  assert.equal(joueur.detonateur, 0);
   assert.equal(etat.bombes.length, 2, 'la plus ancienne est partie');
-  // MECHE_PAS - 1 et non MECHE_PAS : les meches rendues brulent deja d un pas
-  // avant la fin de celui-ci, comme toutes les autres.
-  assert.equal(
-    etat.bombes.every((bombe) => bombe.meche === MECHE_PAS - 1),
-    true,
-    'les autres ont une meche',
-  );
+  assert.equal(joueur.detonateur, 0, 'le bouton ne coute rien');
+  avancerDe(etat, FLAMME_PAS + 1, []);
+  pas(etat, entree(0, { declencher: true }));
+  avancerDe(etat, FLAMME_PAS + 1, []);
+  pas(etat, entree(0, { declencher: true }));
+  avancerDe(etat, 2, []);
+  assert.equal(etat.bombes.length, 0, 'les trois ont fini par partir');
 });
 
+test('la reserve vide, on revient aux bombes a meche', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 1, 5);
+  joueur.bombes = 2;
+  joueur.detonateur = 1;
+
+  pas(etat, entree(0, { poser: true }));
+  assert.equal(etat.bombes[0].meche, null, 'la derniere charge donne bien une attente');
+  placer(etat, 0, 5, 5);
+  pas(etat, entree(0, { poser: true }));
+  assert.equal(etat.bombes[1].meche, MECHE_PAS - 1, 'la suivante a une meche');
+
+  // Et le bouton ne commande pas une bombe a meche : elle n a jamais ete payee.
+  placer(etat, 0, 13, 11);
+  pas(etat, entree(0, { declencher: true }));
+  pas(etat, entree(0, { declencher: true }));
+  assert.equal(bombeSur(etat, 5, 5) !== null, true, 'la bombe a meche attend son heure');
+});
 test('un second bonus recharge la reserve', () => {
   const etat = areneNue();
   const joueur = placer(etat, 0, 1, 5);
@@ -628,4 +649,156 @@ test('une ligne entierement prise ne laisse rien partir', () => {
   assert.equal(bombe.vol, null, 'elle reste ou elle est');
   assert.deepEqual([bombe.cx, bombe.cy], [3, 5]);
   assert.equal(evenements(etat, 'punch').length, 0);
+});
+
+test('la goutte fait rebondir la bombe au lieu de l arreter', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 3, 3);
+  joueur.kick = true;
+  joueur.goutte = true;
+  brique(etat, 6, 3);
+
+  pas(etat, entree(0, { poser: true }));
+  const bombe = etat.bombes[0];
+  assert.equal(bombe.rebond, true, 'la bombe nait folle, elle ne le devient pas');
+
+  // On sort par la gauche, on revient : le bomber la shoote vers la droite.
+  avancerDe(etat, 20, entree(0, { dir: GAUCHE }));
+
+  // On avance jusqu au premier rebond, et on regarde ou il se produit.
+  let touche = null;
+  for (let i = 0; i < 60 && touche === null; i += 1) {
+    pas(etat, entree(0, { dir: i < 40 ? DROITE : -1 }));
+    if (evenements(etat, 'bounce').length > 0) touche = [bombe.cx, bombe.cy];
+  }
+
+  // Sans la goutte elle se serait ARRETEE la, en (5,3), contre la brique.
+  assert.deepEqual(touche, [5, 3], 'elle rebondit contre la brique de (6,3)');
+  assert.ok(bombe.glisse, 'et elle glisse toujours');
+  assert.equal(bombe.glisse.dir, GAUCHE, 'en sens inverse');
+});
+
+test('le rebond est annonce, une fois par mur touche', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 3, 3);
+  joueur.kick = true;
+  joueur.goutte = true;
+  brique(etat, 6, 3);
+  brique(etat, 1, 3);
+
+  pas(etat, entree(0, { poser: true }));
+  avancerDe(etat, 20, entree(0, { dir: GAUCHE }));
+
+  let rebonds = 0;
+  for (let i = 0; i < 200; i += 1) {
+    pas(etat, entree(0, { dir: i < 40 ? DROITE : -1 }));
+    rebonds += evenements(etat, 'bounce').length;
+  }
+  // Elle fait la navette entre les deux briques : au moins un aller-retour.
+  assert.ok(rebonds >= 2, `elle doit rebondir plusieurs fois (${rebonds})`);
+  assert.ok(etat.bombes.length === 0 || etat.bombes[0].glisse, 'elle n a pas cale en route');
+});
+
+test('sans la goutte, rien ne rebondit', () => {
+  const etat = areneNue();
+  const joueur = placer(etat, 0, 3, 3);
+  joueur.kick = true;
+  brique(etat, 6, 3);
+
+  pas(etat, entree(0, { poser: true }));
+  const bombe = etat.bombes[0];
+  assert.equal(bombe.rebond, false);
+  avancerDe(etat, 20, entree(0, { dir: GAUCHE }));
+  avancerDe(etat, 40, entree(0, { dir: DROITE }));
+
+  assert.equal(bombe.cx, 5, 'elle s arrete contre la brique');
+  assert.equal(bombe.glisse, null);
+  assert.equal(evenements(etat, 'bounce').length, 0);
+});
+
+test('coincee entre deux murs, elle se pose au lieu de vibrer', () => {
+  const etat = areneNue();
+  // Un couloir d une seule case : briques de part et d autre.
+  brique(etat, 2, 1);
+  brique(etat, 4, 1);
+  const joueur = placer(etat, 0, 3, 1);
+  joueur.kick = true;
+  joueur.goutte = true;
+
+  pas(etat, entree(0, { poser: true }));
+  const bombe = etat.bombes[0];
+  avancerDe(etat, 20, entree(0, { dir: BAS }));
+  avancerDe(etat, 40, entree(0, { dir: HAUT }));
+
+  assert.equal(bombe.glisse, null, 'elle finit par se poser');
+  assert.deepEqual([bombe.cx, bombe.cy], [3, 1]);
+});
+
+test('la bombe de la goutte roule deux fois moins vite', () => {
+  // Elle ne s arrete plus : au rythme du kick, elle balayait l arene plus vite
+  // que l oeil ne la suit.
+  const parcours = (goutte) => {
+    const etat = areneNue();
+    const joueur = placer(etat, 0, 3, 3);
+    joueur.goutte = goutte;
+    pas(etat, entree(0, { poser: true }));
+    const bombe = etat.bombes[0];
+    // Shootee a la main : on mesure la course, pas la facon de la declencher.
+    placer(etat, 0, 7, 7);
+    pousser(etat, bombe, DROITE);
+    const depart = bombe.glisse.x;
+    avancerDe(etat, 4, entree(0, {}));
+    return bombe.glisse.x - depart;
+  };
+
+  const sage = parcours(false);
+  const folle = parcours(true);
+  assert.ok(sage > 0 && folle > 0, 'les deux doivent avoir bouge');
+  assert.equal(folle * 2, sage, 'exactement la moitie du chemin');
+});
+
+test('une bombe a meche qui heurte une bombe en attente la fait partir', () => {
+  const etat = areneNue();
+  // Le guetteur pose sa bombe a retardement en (6,5) et l abandonne la.
+  const guetteur = placer(etat, 1, 6, 5);
+  guetteur.detonateur = 1;
+  pas(etat, entree(1, { poser: true }));
+  const piege = bombeSur(etat, 6, 5);
+  assert.equal(piege.meche, null, 'elle attend bien');
+  placer(etat, 1, 13, 11);
+
+  // L autre shoote une bombe ordinaire dedans.
+  const tireur = placer(etat, 0, 3, 5);
+  tireur.kick = true;
+  pas(etat, entree(0, { poser: true }));
+  const projectile = bombeSur(etat, 3, 5);
+  avancerDe(etat, 20, entree(0, { dir: GAUCHE }));
+  avancerDe(etat, 40, entree(0, { dir: DROITE }));
+
+  assert.equal(etat.bombes.includes(piege), false, 'le piege a saute');
+  assert.ok(projectile);
+});
+
+test('une bombe en attente poussee contre une autre ne s allume pas', () => {
+  // L inverse serait injouable : une bombe a retardement doit pouvoir etre
+  // deplacee sans se declencher, sinon elle ne sert plus a tendre un piege.
+  const etat = areneNue();
+  const dormeuse = placer(etat, 1, 6, 5);
+  dormeuse.detonateur = 1;
+  pas(etat, entree(1, { poser: true }));
+  const cible = bombeSur(etat, 6, 5);
+  placer(etat, 1, 13, 11);
+
+  const poseur = placer(etat, 0, 3, 5);
+  poseur.kick = true;
+  poseur.detonateur = 1;
+  pas(etat, entree(0, { poser: true }));
+  const poussee = bombeSur(etat, 3, 5);
+  assert.equal(poussee.meche, null, 'les deux attendent');
+  avancerDe(etat, 20, entree(0, { dir: GAUCHE }));
+  avancerDe(etat, 40, entree(0, { dir: DROITE }));
+
+  assert.equal(cible.meche, null, 'celle qui dormait dort encore');
+  assert.equal(poussee.meche, null);
+  assert.equal(etat.bombes.length, 2);
 });

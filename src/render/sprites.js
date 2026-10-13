@@ -205,6 +205,14 @@ function peindreBonus(nom) {
     bloc(ctx, 7, 8, 4, 1, couleurs.glyphe);
     bloc(ctx, 6, 9, 4, 1, couleurs.glyphe);
     bloc(ctx, 5, 10, 3, 1, couleurs.glyphe);
+  } else if (nom === 'jelly') {
+    // Une goutte : large du bas, pointue du haut, avec son reflet. C'est la
+    // seule silhouette ronde et pointue du lot, donc elle se distingue sans
+    // qu'on ait a lire la couleur.
+    bloc(ctx, 7, 4, 2, 2, couleurs.glyphe);
+    bloc(ctx, 6, 6, 4, 2, couleurs.glyphe);
+    disque(ctx, 8, 10, 3.4, couleurs.glyphe);
+    point(ctx, 7, 9, couleurs.eclat);
   } else if (nom === 'kick') {
     // Une semelle de botte, de profil.
     bloc(ctx, 5, 5, 3, 5, couleurs.glyphe);
@@ -320,6 +328,7 @@ export function construireSprites(places = 4) {
       // pour tout nom qu'il ne connait pas, et l'on aurait eu deux plaquettes
       // identiques pour deux bonus qui ne font pas du tout la meme chose.
       punch: peindreGant(),
+      jelly: peindreBonus('jelly'),
     },
     bombers,
     morts,
@@ -364,6 +373,41 @@ export function peindreGant(largeur = COTE, hauteur = largeur) {
   disque(ctx, px, py, r, couleurs.glyphe);
   // Le reflet part du cote ou le gant frappe : vers la droite, comme le coup.
   disque(ctx, px + Math.round(r * 0.45), py - Math.round(r * 0.45), r * 0.3, couleurs.eclat);
+
+  return canvas;
+}
+
+/**
+ * La plaquette de la goutte, a la taille qu'on lui demande.
+ *
+ * Meme raison d'etre que `peindreGant` : `power jelly` manque aux extractions
+ * faites avant ce bonus, et il faut bien montrer quelque chose. Toutes ses
+ * mesures sont donc des fractions du cote, pour qu'elle se dessine aussi bien
+ * sur 16 pixels que sur les 40 d'une tuile d'Atomic Bomberman.
+ *
+ * Une goutte : pointue en haut, large et ronde en bas. C'est la seule
+ * silhouette de ce genre parmi les plaquettes, donc elle se reconnait sans
+ * qu'on ait a lire sa couleur.
+ */
+export function peindreGoutte(largeur = COTE, hauteur = largeur) {
+  const { canvas, ctx } = toile(largeur, hauteur);
+  const couleurs = BONUS_COULEURS.jelly;
+  const u = (f) => Math.round(f * largeur);
+  const v = (f) => Math.round(f * hauteur);
+
+  bloc(ctx, u(0.06), v(0.06), largeur - u(0.12), hauteur - v(0.12), CONTOUR);
+  bloc(ctx, u(0.12), v(0.12), largeur - u(0.24), hauteur - v(0.24), couleurs.fond);
+  bloc(ctx, u(0.12), v(0.12), largeur - u(0.24), v(0.14), couleurs.eclat);
+  bloc(ctx, u(0.12), hauteur - v(0.26), largeur - u(0.24), v(0.14), couleurs.glyphe);
+
+  const cx = largeur / 2;
+  const r = Math.max(2, u(0.2));
+  const cy = hauteur - v(0.38);
+  // La pointe, en deux marches qui s'elargissent vers le ventre.
+  bloc(ctx, Math.round(cx - u(0.05)), v(0.26), u(0.1), v(0.12), couleurs.glyphe);
+  bloc(ctx, Math.round(cx - u(0.1)), v(0.36), u(0.2), v(0.12), couleurs.glyphe);
+  disque(ctx, cx, cy, r, couleurs.glyphe);
+  disque(ctx, cx - Math.round(r * 0.4), cy - Math.round(r * 0.35), r * 0.28, couleurs.eclat);
 
   return canvas;
 }

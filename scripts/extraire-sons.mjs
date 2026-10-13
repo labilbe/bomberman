@@ -33,6 +33,9 @@ const ROLES = {
   kick: [120, 123], // bombe frappee du pied
   death: [300, 301], // mourir dans les flammes
   pick: [400, 412], // ramasser un bonus
+  // Les « boing » de la goutte. SOUNDLST les groupe lui-meme : « jelly bomb
+  // bouncing », de 135 a 139.
+  bounce: [135, 139], // bombe folle qui rebondit
 };
 
 /**

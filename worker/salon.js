@@ -83,6 +83,9 @@ function instantane(etat, absents) {
       // l'affichait pas, et l'intention envoyee au salon etait celle de
       // quelqu'un qui n'a pas le bonus.
       n: joueur.gant ? 1 : 0,
+      // La goutte : elle ne change rien au dessin, mais le bandeau l affiche,
+      // et sans elle le joueur ne sait pas pourquoi ses bombes repartent.
+      l: joueur.goutte ? 1 : 0,
       // Et le PAS de sa derniere frappe, comme pour la mort : le rendu joue le
       // geste a partir de cette date.
       u: joueur.frappeAu,

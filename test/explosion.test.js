@@ -21,10 +21,19 @@ import {
 import { CODES_BONUS } from '../src/engine/bonus.js';
 import { areneNue, brique, objet, placer, entree, evenements } from './aide.js';
 
-/** Fait exploser sur-le-champ la bombe d un joueur muni du detonateur. */
+/**
+ * Fait exploser sur-le-champ la plus ancienne bombe d un joueur.
+ *
+ * On raccourcit sa meche plutot que d appuyer sur le detonateur : celui-ci ne
+ * commande que les bombes posees EN ATTENTE, et les tests d explosion posent
+ * des bombes ordinaires. C est d ailleurs exactement ce que fait le moteur
+ * quand on declenche — une meche a 1, qui part au releve du pas.
+ */
 function detonner(etat, place) {
-  etat.joueurs[place].detonateur = DETONATEURS_PAR_BONUS;
-  pas(etat, entree(place, { declencher: true }));
+  const siennes = etat.bombes.filter((bombe) => bombe.place === place);
+  const choisie = siennes.sort((a, b) => a.id - b.id)[0];
+  if (choisie) choisie.meche = 1;
+  pas(etat, entree(place, {}));
 }
 
 test('la croix s arrete au premier mur dur', () => {
@@ -378,4 +387,105 @@ test('ce que le bonus couvre survit a l explosion', () => {
 
   assert.equal(etat.objets[index(5, 3)], 0, 'le premier est brule');
   assert.equal(etat.objets[index(6, 3)], CODES_BONUS.FLAMME, 'le second est a l abri derriere lui');
+});
+
+test('un mort lache tout ce qu il avait ramasse', () => {
+  // Sans cela, tuer le joueur le mieux equipe retirait ses bonus de la manche
+  // pour de bon, et le survivant n avait plus rien a convoiter.
+  const etat = areneNue({ places: 3 });
+  const riche = placer(etat, 0, 7, 7);
+  riche.bombes = 3;      // deux bonus bombe
+  riche.portee = 4;      // deux bonus flamme
+  riche.kick = true;     // un
+  riche.gant = true;     // un
+  riche.goutte = true;   // un
+  riche.detonateur = 3;  // un paquet entame
+
+  const tueur = placer(etat, 1, 7, 5);
+  tueur.portee = 1;
+  placer(etat, 2, 13, 11);
+  poser(etat, tueur);
+  placer(etat, 1, 13, 1);
+  placer(etat, 0, 7, 6);
+  detonner(etat, 1);
+
+  assert.equal(riche.vivant, false, 'il doit mourir');
+  const semes = evenements(etat, 'item');
+  assert.equal(semes.length, 8, 'deux bombes, deux flammes, kick, gant, goutte, detonateur');
+  const noms = semes.map((evenement) => evenement[3]).sort();
+  assert.deepEqual(noms, ['bomb', 'bomb', 'flame', 'flame', 'jelly', 'kick', 'punch', 'trigger']);
+
+  // Et chacun est bien pose sur la grille, sur une case a lui.
+  const cases = new Set(semes.map((evenement) => `${evenement[1]},${evenement[2]}`));
+  assert.equal(cases.size, 8, 'un bonus par case, jamais empiles');
+});
+
+test('les bonus laches ne tombent pas dans les flammes', () => {
+  const etat = areneNue({ places: 3 });
+  const riche = placer(etat, 0, 7, 7);
+  riche.kick = true;
+  const tueur = placer(etat, 1, 7, 5);
+  tueur.portee = 3;
+  placer(etat, 2, 13, 11);
+  poser(etat, tueur);
+  placer(etat, 1, 13, 1);
+  placer(etat, 0, 7, 6);
+  detonner(etat, 1);
+
+  const [seme] = evenements(etat, 'item');
+  assert.ok(seme, 'le kick doit etre lache quelque part');
+  const [, cx, cy] = seme;
+  assert.equal(
+    etat.flammes.some((flamme) => flamme.cx === cx && flamme.cy === cy),
+    false,
+    'et jamais sur une case en feu',
+  );
+});
+
+test('un mort sans bonus ne lache rien', () => {
+  const etat = areneNue({ places: 3 });
+  placer(etat, 0, 7, 7);
+  const tueur = placer(etat, 1, 7, 5);
+  tueur.portee = 3;
+  placer(etat, 2, 13, 11);
+  poser(etat, tueur);
+  placer(etat, 1, 13, 1);
+  placer(etat, 0, 7, 6);
+  detonner(etat, 1);
+
+  assert.equal(etat.joueurs[0].vivant, false);
+  assert.equal(evenements(etat, 'item').length, 0);
+});
+
+test('le butin tombe au hasard dans l arene, et pas autour du corps', () => {
+  // Autour du corps, les bonus seraient tombes dans le souffle qui vient de le
+  // tuer, et le tueur — seul sur place — les aurait tous ramasses en passant.
+  const semis = (graine) => {
+    const etat = areneNue({ places: 3, graine });
+    const riche = placer(etat, 0, 7, 7);
+    riche.bombes = 4;
+    riche.portee = 5;
+    riche.kick = true;
+    const tueur = placer(etat, 1, 7, 5);
+    tueur.portee = 1;
+    placer(etat, 2, 13, 11);
+    poser(etat, tueur);
+    placer(etat, 1, 13, 1);
+    placer(etat, 0, 7, 6);
+    detonner(etat, 1);
+    assert.equal(riche.vivant, false);
+    return evenements(etat, 'item').map((evenement) => [evenement[1], evenement[2]]);
+  };
+
+  const premier = semis(1);
+  assert.equal(premier.length, 7, 'trois bombes, trois flammes, un kick');
+  // Aucun empilement, et le tout ne se serre pas contre la case du mort.
+  assert.equal(new Set(premier.map((c) => c.join())).size, premier.length);
+  const colles = premier.filter(([cx, cy]) => Math.abs(cx - 7) <= 1 && Math.abs(cy - 7) <= 1);
+  assert.ok(colles.length < premier.length, 'ils ne sont pas tous voisins du corps');
+
+  // Meme graine, meme semis : le tirage vient du generateur de l etat, pas du
+  // hasard du navigateur. Sans cela, relais et rejeu divergeraient.
+  assert.deepEqual(semis(1), premier);
+  assert.notDeepEqual(semis(7), premier, 'une autre graine seme ailleurs');
 });

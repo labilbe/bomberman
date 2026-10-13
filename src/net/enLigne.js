@@ -158,6 +158,7 @@ export function creerTransportEnLigne({ url, salon, pseudo, places = 2, format =
       joueur.kick = j.k === 1;
       joueur.detonateur = j.g;
       joueur.gant = j.n === 1;
+      joueur.goutte = j.l === 1;
       joueur.frappeAu = j.u ?? null;
     }
 

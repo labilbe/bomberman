@@ -32,6 +32,7 @@ export const CODES_BONUS = {
   KICK: 4,
   DETONATEUR: 5,
   GANT: 6,
+  GOUTTE: 7,
 };
 
 /**
@@ -45,6 +46,7 @@ export const NOMS_BONUS = {
   [CODES_BONUS.KICK]: 'kick',
   [CODES_BONUS.DETONATEUR]: 'trigger',
   [CODES_BONUS.GANT]: 'punch',
+  [CODES_BONUS.GOUTTE]: 'jelly',
 };
 
 /**
@@ -53,6 +55,10 @@ export const NOMS_BONUS = {
  * Bombe et flamme dominent : ce sont elles qui font progresser une manche, et
  * les voir souvent recompense le fait de casser des briques. Kick et detonateur
  * sont rares parce qu'ils changent la facon de jouer, pas seulement sa force.
+ *
+ * La goutte est au meme rang que le gant : elle ne sert a rien sans le kick, et
+ * la voir trop souvent remplirait l'arene de bombes folles chez des joueurs qui
+ * n'ont rien pour les lancer.
  */
 export const TABLE_BONUS = [
   [CODES_BONUS.BOMBE, 30],
@@ -61,6 +67,7 @@ export const TABLE_BONUS = [
   [CODES_BONUS.KICK, 12],
   [CODES_BONUS.DETONATEUR, 8],
   [CODES_BONUS.GANT, 8],
+  [CODES_BONUS.GOUTTE, 8],
 ];
 
 /** Vrai si l'octet designe un bonus encore cache sous une brique. */
@@ -85,7 +92,7 @@ export function codeDe(valeur) {
  * avec huit bombes de portee quinze chacune, l'arene entiere brule en
  * permanence et plus personne ne joue.
  *
- * @param {{ bombes: number, portee: number, vitesse: number, kick: boolean, detonateur: number }} joueur
+ * @param {{ bombes: number, portee: number, vitesse: number, kick: boolean, detonateur: number, goutte: boolean }} joueur
  * @param {number} code
  */
 export function appliquer(joueur, code) {
@@ -107,6 +114,9 @@ export function appliquer(joueur, code) {
       break;
     case CODES_BONUS.GANT:
       joueur.gant = true;
+      break;
+    case CODES_BONUS.GOUTTE:
+      joueur.goutte = true;
       break;
     default:
       break;

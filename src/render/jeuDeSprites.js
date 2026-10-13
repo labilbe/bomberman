@@ -13,7 +13,7 @@
  * propre calage a la main dans la scene.
  */
 
-import { construireSprites, peindreGant, COTE, IMAGES_MARCHE } from './sprites.js';
+import { construireSprites, peindreGant, peindreGoutte, COTE, IMAGES_MARCHE } from './sprites.js';
 import { PLACES } from './palette.js';
 
 /** Nombre d'images du cycle de marche, pour les deux fournisseurs. */
@@ -315,6 +315,10 @@ export function depuisVectoriels(charge, places = PLACES.length) {
       punch: roles.bonusGant
         ? un('bonusGant')
         : spriteDeTuile(peindreGant(tuile.largeur, tuile.hauteur), tuile),
+      // La goutte, meme histoire : absente des extractions faites avant elle.
+      jelly: roles.bonusGoutte
+        ? un('bonusGoutte')
+        : spriteDeTuile(peindreGoutte(tuile.largeur, tuile.hauteur), tuile),
     },
     bombe: parPlace('bombe'),
     bombeDetonateur: Array.from({ length: places }, (_, p) => suiteAvecBandeau(parPlace('bombe')[p])),

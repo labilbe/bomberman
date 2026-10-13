@@ -126,6 +126,10 @@ export function creerSons() {
     },
     itemgone: () => note('sine', 300, 120, 0.12, 0.3),
     kick: () => note('sawtooth', 240, 520, 0.12, 0.35),
+    // Le rebond de la goutte : le coup de pied a l'envers, plus court et plus
+    // haut. Une bombe folle traverse l'arene sans qu'on la regarde, et c'est
+    // l'oreille qui doit prevenir qu'elle revient.
+    bounce: () => note('square', 520, 300, 0.07, 0.3),
     death: () => {
       note('sawtooth', 420, 60, 0.5, 0.5);
       souffle(0.3, 900, 100, 0.4);
