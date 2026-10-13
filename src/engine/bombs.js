@@ -23,7 +23,8 @@ import {
   COLS,
   ROWS,
 } from './constants.js';
-import { cellAt, isFree, cellOnAxis, centreOnAxis, boxOnCell, wrap } from './grid.js';
+import { cellAt, isFree, cellOnAxis, centreOnAxis, boxOnCell, wrap, index } from './grid.js';
+import { isVisible } from './bonus.js';
 import { record } from './state.js';
 
 /**
@@ -253,6 +254,30 @@ export function pushBomb(state, bomb, dir) {
 }
 
 /**
+ * A ROLLING BOMB CRUSHES THE BONUS IT RUNS OVER, and carries on.
+ *
+ * As in the original game, and it is what gives the kick its second use: a bonus
+ * lying in the open can be denied to everybody by sending a bomb across it,
+ * where otherwise you had to get there first. It also explains what you see —
+ * the bonus is gone and the bomb has not stopped — which is the only reading a
+ * player can make of it in half a second.
+ *
+ * Only a VISIBLE bonus: a hidden one lies under a brick, and the brick has
+ * already stopped the bomb.
+ *
+ * @param {import('./state.js').State} state
+ */
+function crushItem(state, cx, cy) {
+  const i = index(cx, cy);
+  if (!isVisible(state.items[i])) return;
+  state.items[i] = 0;
+  // The same event as a burnt bonus: for everybody downstream — the renderer, the
+  // online client's grid, the bots' map — a bonus that is gone is a bonus that is
+  // gone, whatever took it.
+  record(state, ['itemgone', cx, cy]);
+}
+
+/**
  * Advances the kicked bombs by one step.
  *
  * Called BEFORE the bombers: a bomb moving after them would pass through them in
@@ -295,6 +320,7 @@ export function advanceSlides(state) {
     bomb.cy += v.dy;
     bomb.slide.x = targetX;
     bomb.slide.y = targetY;
+    crushItem(state, bomb.cx, bomb.cy);
 
     if (cellOpenForBomb(state, bomb.cx + v.dx, bomb.cy + v.dy)) continue;
 

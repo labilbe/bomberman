@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { step, advanceBy } from '../src/engine/step.js';
 import { canDrop, bombAt, pushBomb } from '../src/engine/bombs.js';
-import { cellOnAxis, centreOnAxis } from '../src/engine/grid.js';
+import { cellOnAxis, centreOnAxis, index } from '../src/engine/grid.js';
 import {
   FUSE_STEPS,
   DOUBLE_TAP_STEPS,
@@ -17,8 +17,8 @@ import {
   COLS,
   FLIGHT_STEPS_PER_CELL,
 } from '../src/engine/constants.js';
-import { apply, BONUS_CODES } from '../src/engine/bonus.js';
-import { bareArena, brick, place, input, events } from './helpers.js';
+import { apply, BONUS_CODES, HIDDEN } from '../src/engine/bonus.js';
+import { bareArena, brick, item, place, input, events } from './helpers.js';
 
 test('you never drop more bombs than your quota', () => {
   const state = bareArena();
@@ -1011,4 +1011,41 @@ test('a carrier that dies lets the bomb fall where it stood', () => {
   assert.equal(carrier.alive, false);
   assert.equal(carried.held, null, 'the hands open');
   assert.equal(carried.flight, null, 'and the bomb falls rather than flying off');
+});
+
+test('a kicked bomb crushes the bonuses it runs over, and carries on', () => {
+  // As in the original game: a bonus lying in the open can be denied to
+  // everybody by sending a bomb across it. What you see has to be readable at a
+  // glance — the bonus is gone, the bomb has not stopped.
+  const state = bareArena();
+  const player = place(state, 0, 3, 3);
+  player.kick = true;
+  item(state, 5, 3, BONUS_CODES.FLAME);
+  item(state, 7, 3, BONUS_CODES.BOMB);
+  brick(state, 9, 3);
+
+  step(state, input(0, { drop: true }));
+  const bomb = state.bombs[0];
+  // We step off to the left, then come back into the bomb: it leaves rightwards.
+  advanceBy(state, 20, input(0, { dir: LEFT }));
+  advanceBy(state, 120, input(0, { dir: RIGHT }));
+
+  assert.equal(bomb.cx, 8, 'it ran to the brick, over the two bonuses');
+  assert.equal(state.items[index(5, 3)], 0, 'the first is crushed');
+  assert.equal(state.items[index(7, 3)], 0, 'and the second too');
+});
+
+test('a bonus hidden under a brick survives: the brick stops the bomb', () => {
+  const state = bareArena();
+  const player = place(state, 0, 3, 3);
+  player.kick = true;
+  brick(state, 5, 3);
+  state.items[index(5, 3)] = HIDDEN + BONUS_CODES.KICK;
+
+  step(state, input(0, { drop: true }));
+  advanceBy(state, 20, input(0, { dir: LEFT }));
+  advanceBy(state, 120, input(0, { dir: RIGHT }));
+
+  assert.equal(state.bombs[0].cx, 4, 'it stopped against the brick');
+  assert.equal(state.items[index(5, 3)], HIDDEN + BONUS_CODES.KICK, 'nothing was crushed');
 });
