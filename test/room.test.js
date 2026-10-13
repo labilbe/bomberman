@@ -22,12 +22,16 @@ const of = (outgoing, type) => outgoing.filter((e) => e.message.type === type).m
 /** Who the first message of a given type goes to. */
 const to = (outgoing, type) => outgoing.find((e) => e.message.type === type)?.to;
 
-/** A room where two players have sat down and the host has given the signal. */
+/**
+ * A room where two players have sat down, so the game has started.
+ *
+ * Neither of them laid the table — both come through "join" — and such a room
+ * sets off by itself once full.
+ */
 function startedRoom(now = 0) {
   const room = createRoom({ code: 'TEST', now, seed: 7 });
   room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, format: 3 }, now);
-  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, now);
-  const outgoing = room.message('a', { type: CLIENT.BEGIN }, now);
+  const outgoing = room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, now);
   return { room, outgoing };
 }
 
@@ -52,9 +56,9 @@ test('the first to arrive is announced as waiting, not as playing', () => {
   assert.equal(room.started, false);
 });
 
-test('a full room waits for its host', () => {
+test('a room laid out by somebody waits for them, full or not', () => {
   const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
-  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, format: 3 }, 0);
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, format: 3, host: true }, 0);
   const onArrival = room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
 
   assert.equal(room.started, false, 'an arrival is not a signal');
@@ -70,7 +74,7 @@ test('a full room waits for its host', () => {
 
 test('each one is told whether it is up to them to start', () => {
   const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
-  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2 }, 0);
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, host: true }, 0);
   const outgoing = room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
 
   const waiting = outgoing.filter((e) => e.message.type === SERVER.WAITING);
@@ -79,16 +83,31 @@ test('each one is told whether it is up to them to start', () => {
   assert.equal(waiting.find((e) => e.to === 'b').message.host, false);
 });
 
-test('the host leaving passes the room to the oldest of those left', () => {
+test('a room nobody laid out belongs to nobody', () => {
+  // Two players who agreed on a code and both came through "join": neither is
+  // offered the start, so the room has to set off by itself once full — waiting
+  // for a signal nothing would ever give.
   const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
-  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  const alone = room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2 }, 0);
+  assert.equal(of(alone, SERVER.WAITING)[0].host, false, 'joining lays no table');
+  assert.equal(room.message('a', { type: CLIENT.BEGIN }, 0).length, 0, 'and gives no signal');
+
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+  assert.equal(room.started, true, 'full, it sets off on its own');
+});
+
+test('the host leaving leaves a room nobody laid out', () => {
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, host: true }, 0);
   room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
   const outgoing = room.leave('a', 0, { voluntary: true });
 
   const [waiting] = of(outgoing, SERVER.WAITING);
-  assert.equal(waiting.host, true, 'Bob inherits it');
-  room.message('b', { type: CLIENT.BEGIN }, 0);
-  assert.equal(room.started, true, 'a room must not survive its creator unstartable');
+  assert.equal(waiting.host, false, 'Bob does not inherit a table he did not lay');
+
+  // And the room goes back to the only rule left to it: full, it sets off.
+  room.join('c', { type: CLIENT.JOIN, name: 'Carol' }, 0);
+  assert.equal(room.started, true);
 });
 
 test('the host starts the game, and each one is sent their place', () => {
@@ -115,7 +134,7 @@ test('the start is only sent to its addressee', () => {
 
 test('you can start without waiting, the empty places go to bots', () => {
   const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
-  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, host: true }, 0);
   const outgoing = room.message('a', { type: CLIENT.BEGIN }, 0);
 
   assert.equal(room.started, true);
@@ -130,7 +149,7 @@ test('you can start without waiting, the empty places go to bots', () => {
 
 test('a bot can be added before the start', () => {
   const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
-  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, host: true }, 0);
   const outgoing = room.message('a', { type: CLIENT.BOT }, 0);
 
   const [waiting] = of(outgoing, SERVER.WAITING);
@@ -143,7 +162,7 @@ test('a bot asks for a precise seat and gets it', () => {
   // a bot asked for at place 2 must not land at place 1 — the board shown while
   // waiting would not be the one played.
   const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
-  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, host: true }, 0);
   const outgoing = room.message('a', { type: CLIENT.BOT, seat: 2 }, 0);
 
   const [waiting] = of(outgoing, SERVER.WAITING);
@@ -157,7 +176,7 @@ test('a seat already held sends the bot to the first free one', () => {
   // The seat comes off the network: asking for a place that is taken, or for one
   // that does not exist, must seat the bot rather than lose it.
   const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
-  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, host: true }, 0);
   const onMine = of(room.message('a', { type: CLIENT.BOT, seat: 0 }, 0), SERVER.WAITING)[0];
   assert.ok(onMine.names[1], 'it falls back on the first free place');
 
@@ -166,8 +185,10 @@ test('a seat already held sends the bot to the first free one', () => {
 });
 
 test('adding bots until it is full starts the game', () => {
+  // The host's own gesture, and the last seat is theirs to fill: no need to then
+  // ask them to press start in front of a room nobody else can enter.
   const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
-  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2 }, 0);
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, host: true }, 0);
   const outgoing = room.message('a', { type: CLIENT.BOT }, 0);
   assert.equal(room.started, true);
   assert.equal(of(outgoing, SERVER.START).length, 1);
@@ -186,7 +207,7 @@ test('a finished match frees the room, and its code serves again', () => {
   // code, and there was no starting again without changing it.
   // A room of four started with a single human: so places are left.
   const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
-  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, host: true }, 0);
   room.message('a', { type: CLIENT.BEGIN }, 0);
   assert.equal(room.started, true);
 
@@ -206,8 +227,7 @@ test('a finished match frees the room, and its code serves again', () => {
 test('the room format is set by the first to arrive', () => {
   const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
   room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, format: 7 }, 0);
-  room.join('b', { type: CLIENT.JOIN, name: 'Bob', places: 4, format: 3 }, 0);
-  const outgoing = room.message('a', { type: CLIENT.BEGIN }, 0);
+  const outgoing = room.join('b', { type: CLIENT.JOIN, name: 'Bob', places: 4, format: 3 }, 0);
 
   const [start] = of(outgoing, SERVER.START);
   assert.equal(start.places, 2, 'the second does not resize the room');
@@ -324,7 +344,7 @@ test('a free place is null, not a filler label', () => {
   // The waiting room has to tell an empty seat from a seated player: a "Place 3"
   // would show there as somebody already waiting.
   const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
-  const outgoing = room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  const outgoing = room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, host: true }, 0);
 
   const [waiting] = of(outgoing, SERVER.WAITING);
   assert.equal(waiting.names[0], 'Alice');
@@ -333,7 +353,7 @@ test('a free place is null, not a filler label', () => {
 
 test('at the start, no place is free any more', () => {
   const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
-  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, host: true }, 0);
   const outgoing = room.message('a', { type: CLIENT.BEGIN }, 0);
 
   const [start] = of(outgoing, SERVER.START);

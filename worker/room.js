@@ -150,15 +150,17 @@ export function createRoom({ code, now, seed = randomSeed() }) {
   let format = FORMATS[0];
   let counter = 0;
   /**
-   * Who lays the table: the first to arrive, and they alone give the signal.
+   * Who lays the table, when somebody did: whoever said so on arriving.
    *
    * THE ROOM BELONGS TO WHOEVER OPENED IT. They are the one who knows who is
    * still coming, and starting as soon as the last seat is filled took that
    * decision away from them — a friend arriving set the game off in their face.
    *
-   * It is passed on rather than held: if the host leaves, the oldest of those
-   * left takes over, failing which a room would survive its creator with nobody
-   * able to start it.
+   * It is NOT passed on, and a room can very well have none: two players who
+   * both come through "join" with an agreed code have laid nothing out, nobody
+   * is waiting for anybody, and such a room sets off by itself once full — as it
+   * always did. The same goes once the host has left: what is left is a room
+   * nobody laid out.
    */
   let hostId = null;
 
@@ -235,10 +237,9 @@ export function createRoom({ code, now, seed = randomSeed() }) {
 
   const full = () => freePlace() === null;
 
-  /** Keeps the host if they are still there, otherwise the oldest member. */
+  /** Drops the host once they are gone: nobody inherits a table they did not lay. */
   function passHost() {
-    if (hostId !== null && members.has(hostId)) return;
-    hostId = members.keys().next().value ?? null;
+    if (hostId !== null && !members.has(hostId)) hostId = null;
   }
 
   /**
@@ -259,6 +260,10 @@ export function createRoom({ code, now, seed = randomSeed() }) {
         max: places,
         names: names(),
         host: member.id === hostId,
+        // Whether ANYBODY holds the room, which is not the same question: a
+        // guest has to know if they are waiting for a signal or for the last
+        // seat to be taken, and a room nobody laid out sets off on its own.
+        hosted: hostId !== null,
       });
     }
   }
@@ -434,9 +439,17 @@ export function createRoom({ code, now, seed = randomSeed() }) {
         leftAt: null,
       });
 
-      // NOT A WORD ABOUT STARTING, even when the last seat has just been taken:
-      // it is the host who gives the signal, and an arrival is not a signal.
+      // WHOEVER LAYS THE TABLE SAYS SO ON ARRIVING, and only the first one to
+      // say it is heard: a second "create" on the same code is somebody who
+      // dialled a code already in use, and the room is not theirs to start.
+      if (hostId === null && message.host === true) hostId = id;
+
       announceWaiting();
+      // A room NOBODY laid out sets off by itself once full: two players who
+      // agreed on a code and both came through "join" are waiting for a signal
+      // that nothing would ever give. With a host, on the other hand, an arrival
+      // is not a signal — it is theirs to give.
+      if (hostId === null && full()) start(nowMs);
       return outgoing.slice();
     },
 

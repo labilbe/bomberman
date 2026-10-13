@@ -1082,6 +1082,11 @@ function playOnline({ fresh = false } = {}) {
     places,
     format,
     bots,
+    // ONLY "CRÉER" LAYS A TABLE. Whoever comes through "Rejoindre" answers an
+    // invitation, even when they turn out to be the first to arrive: they are
+    // not offered the start, and the room falls back on setting off by itself
+    // once full — which is how a room nobody created has always worked.
+    host: fresh,
   });
 
   // The invitation link, without reloading the page: whoever receives it arrives
@@ -1097,7 +1102,7 @@ function playOnline({ fresh = false } = {}) {
   menu.hidden = true;
   game.hidden = false;
   adjustScale();
-  showWaiting(transport, { code, seated: 1, total: places, names: [], host: fresh });
+  showWaiting(transport, { code, seated: 1, total: places, names: [], host: fresh, hosted: fresh });
   transport.onRoom((room) => showWaiting(transport, room));
 
   // A single local seat online: the other bombers are elsewhere.
@@ -1116,7 +1121,7 @@ function playOnline({ fresh = false } = {}) {
  * It redraws itself on every arrival: the banner is rebuilt rather than modified,
  * which saves keeping nodes up to date one by one for three lines of text.
  */
-function showWaiting(transport, { code, seated, total, names, host = false, error }) {
+function showWaiting(transport, { code, seated, total, names, host = false, hosted = false, error }) {
   // The relay has refused: this is the ONLY screen shown at that moment, hence
   // the only place to say so. Without that, you stay in front of a silent
   // waiting room, wondering why nobody arrives.
@@ -1133,16 +1138,20 @@ function showWaiting(transport, { code, seated, total, names, host = false, erro
   const missing = total - seated;
 
   // What the guest is waiting for is NOT the same thing as what the host is
-  // waiting for: one waits for players, the other for a signal. Saying "le salon
-  // est complet" to somebody who has nothing to press leaves them staring at a
-  // screen that looks stuck.
+  // waiting for: one waits for players, the other for a signal — and in a room
+  // nobody laid out, for the last seat, since such a room sets off on its own.
+  // Saying "le salon est complet" to somebody who has nothing to press leaves
+  // them staring at a screen that looks stuck.
+  const others = `${missing} joueur${missing > 1 ? 's' : ''}`;
   const detail = host
     ? missing > 0
-      ? `En attente de ${missing} joueur${missing > 1 ? 's' : ''} — partage le lien de la barre d'adresse`
+      ? `En attente de ${others} — partage le lien de la barre d'adresse`
       : 'Le salon est complet'
-    : missing > 0
-      ? `En attente de ${missing} joueur${missing > 1 ? 's' : ''} et du créateur du salon`
-      : 'Le salon est complet — le créateur lance la partie';
+    : hosted
+      ? missing > 0
+        ? `En attente de ${others} et du créateur du salon`
+        : 'Le salon est complet — le créateur lance la partie'
+      : `En attente de ${others} — la partie démarre dès que le salon est complet`;
 
   const start = {
     text: missing > 0 ? `Démarrer (${missing} bot${missing > 1 ? 's' : ''})` : 'Démarrer',

@@ -78,10 +78,10 @@ try {
   await Promise.all([alice.open, bob.open]);
   console.log('deux clients connectes');
 
-  alice.send({ type: CLIENT.JOIN, room: ROOM, name: 'Alice', places: 2, format: 3 });
+  alice.send({ type: CLIENT.JOIN, room: ROOM, name: 'Alice', places: 2, format: 3, host: true });
   const waiting = await alice.await(SERVER.WAITING);
   check(waiting.places === 1, 'le premier arrive est seul en attente');
-  check(waiting.host === true, 'le premier arrive tient le salon');
+  check(waiting.host === true, 'celui qui cree tient le salon');
 
   bob.send({ type: CLIENT.JOIN, room: ROOM, name: 'Bob', places: 2, format: 3 });
   const guest = await bob.await(SERVER.WAITING);

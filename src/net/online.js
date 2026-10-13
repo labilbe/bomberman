@@ -89,10 +89,10 @@ export function followGrid(state, list) {
 /**
  * @param {{
  *   url: string, room: string, nickname: string,
- *   places?: number, format?: number, bots?: number[]
+ *   places?: number, format?: number, bots?: number[], host?: boolean
  * }} options
  */
-export function createOnlineTransport({ url, room, nickname, places = 2, format = 3, bots = [] }) {
+export function createOnlineTransport({ url, room, nickname, places = 2, format = 3, bots = [], host = false }) {
   const views = new Set();
   const events = new Set();
   const transitions = new Set();
@@ -218,6 +218,7 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
         // Only the host is offered the start: the relay says who it is, since it
         // is the only one that knows who opened the room.
         host: message.host === true,
+        hosted: message.hosted === true,
       });
       return;
     }
@@ -345,6 +346,11 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
         name: nickname,
         places,
         format,
+        // LAYING THE TABLE IS SAID ON ARRIVAL, and it is the only difference
+        // between creating and joining as far as the relay is concerned: the
+        // room then waits for this player's signal instead of setting off on
+        // its own once full.
+        host: host ? true : undefined,
         resume: myId ?? undefined,
       });
     });
