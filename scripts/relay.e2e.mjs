@@ -81,8 +81,14 @@ try {
   alice.send({ type: CLIENT.JOIN, room: ROOM, name: 'Alice', places: 2, format: 3 });
   const waiting = await alice.await(SERVER.WAITING);
   check(waiting.places === 1, 'le premier arrive est seul en attente');
+  check(waiting.host === true, 'le premier arrive tient le salon');
 
   bob.send({ type: CLIENT.JOIN, room: ROOM, name: 'Bob', places: 2, format: 3 });
+  const guest = await bob.await(SERVER.WAITING);
+  check(guest.host !== true, 'celui qui rejoint ne tient pas le salon');
+
+  // La partie ne part pas toute seule : c est le createur qui donne le signal.
+  alice.send({ type: CLIENT.BEGIN });
 
   const startAlice = await alice.await(SERVER.START);
   const startBob = await bob.await(SERVER.START);

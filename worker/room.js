@@ -149,6 +149,18 @@ export function createRoom({ code, now, seed = randomSeed() }) {
   let places = MIN_PLACES;
   let format = FORMATS[0];
   let counter = 0;
+  /**
+   * Who lays the table: the first to arrive, and they alone give the signal.
+   *
+   * THE ROOM BELONGS TO WHOEVER OPENED IT. They are the one who knows who is
+   * still coming, and starting as soon as the last seat is filled took that
+   * decision away from them — a friend arriving set the game off in their face.
+   *
+   * It is passed on rather than held: if the host leaves, the oldest of those
+   * left takes over, failing which a room would survive its creator with nobody
+   * able to start it.
+   */
+  let hostId = null;
 
   const outgoing = [];
   const toAll = (message) => outgoing.push({ to: null, message });
@@ -223,15 +235,32 @@ export function createRoom({ code, now, seed = randomSeed() }) {
 
   const full = () => freePlace() === null;
 
+  /** Keeps the host if they are still there, otherwise the oldest member. */
+  function passHost() {
+    if (hostId !== null && members.has(hostId)) return;
+    hostId = members.keys().next().value ?? null;
+  }
+
+  /**
+   * One waiting message PER MEMBER, where the room broadcasts everything else:
+   * each one has to be told whether it is up to them to start, and in the
+   * waiting room a client does not know its own id yet — it only learns it with
+   * the start.
+   */
   function announceWaiting() {
-    toAll({
-      type: SERVER.WAITING,
-      room: code,
-      places: humans().length + Object.keys(pilots).length,
-      min: MIN_PLACES,
-      max: places,
-      names: names(),
-    });
+    passHost();
+    const seated = humans().length + Object.keys(pilots).length;
+    for (const member of members.values()) {
+      toOne(member.id, {
+        type: SERVER.WAITING,
+        room: code,
+        places: seated,
+        min: MIN_PLACES,
+        max: places,
+        names: names(),
+        host: member.id === hostId,
+      });
+    }
   }
 
   /**
@@ -405,9 +434,9 @@ export function createRoom({ code, now, seed = randomSeed() }) {
         leftAt: null,
       });
 
+      // NOT A WORD ABOUT STARTING, even when the last seat has just been taken:
+      // it is the host who gives the signal, and an arrival is not a signal.
       announceWaiting();
-      // Room full: off we go, without waiting for anybody to press anything.
-      if (full()) start(nowMs);
       return outgoing.slice();
     },
 
@@ -420,12 +449,21 @@ export function createRoom({ code, now, seed = randomSeed() }) {
       if (message.type === CLIENT.BEGIN) {
         if (game) return outgoing.slice();
         if (humans().length < 1) return outgoing.slice();
+        // The signal belongs to the host. A guest's click is ignored in silence
+        // rather than refused: their screen does not even offer the button, so
+        // such a message is a stale page, not a mistake to report.
+        passHost();
+        if (id !== hostId) return outgoing.slice();
         start(nowMs);
         return outgoing.slice();
       }
 
       if (message.type === CLIENT.BOT) {
         if (game) return outgoing.slice();
+        // Seating the bots is laying the table, and the table is the host's: a
+        // guest cannot fill a seat somebody is on their way to.
+        passHost();
+        if (id !== hostId) return outgoing.slice();
         const wanted = Number(message.seat);
         if (!addBot(Number.isInteger(wanted) ? wanted : null)) return outgoing.slice();
         announceWaiting();

@@ -1097,7 +1097,7 @@ function playOnline({ fresh = false } = {}) {
   menu.hidden = true;
   game.hidden = false;
   adjustScale();
-  showWaiting(transport, { code, seated: 1, total: places, names: [] });
+  showWaiting(transport, { code, seated: 1, total: places, names: [], host: fresh });
   transport.onRoom((room) => showWaiting(transport, room));
 
   // A single local seat online: the other bombers are elsewhere.
@@ -1107,15 +1107,16 @@ function playOnline({ fresh = false } = {}) {
 /**
  * The waiting room: who is seated, who is missing, and what it takes to set off.
  *
- * ANY PLAYER CAN START. There is no host: waiting for the room's creator to make
- * up their mind would make the game depend on whoever least wants to play, and a
- * room of three would never start because the fourth does not come. The places
- * left empty go to bots.
+ * THE HOST ALONE STARTS, and it is the relay that says who they are. The room
+ * belongs to whoever opened it: they know who is still coming, and the game used
+ * to set off by itself the moment the last seat was taken — a friend arriving
+ * started the game in the creator's face. The places left empty go to bots, so
+ * waiting for a fourth who never comes holds nothing up.
  *
  * It redraws itself on every arrival: the banner is rebuilt rather than modified,
  * which saves keeping nodes up to date one by one for three lines of text.
  */
-function showWaiting(transport, { code, seated, total, names, error }) {
+function showWaiting(transport, { code, seated, total, names, host = false, error }) {
   // The relay has refused: this is the ONLY screen shown at that moment, hence
   // the only place to say so. Without that, you stay in front of a silent
   // waiting room, wondering why nobody arrives.
@@ -1131,21 +1132,30 @@ function showWaiting(transport, { code, seated, total, names, error }) {
   const seats = Array.from({ length: total }, (_, place) => names?.[place] || '— libre —');
   const missing = total - seated;
 
+  // What the guest is waiting for is NOT the same thing as what the host is
+  // waiting for: one waits for players, the other for a signal. Saying "le salon
+  // est complet" to somebody who has nothing to press leaves them staring at a
+  // screen that looks stuck.
+  const detail = host
+    ? missing > 0
+      ? `En attente de ${missing} joueur${missing > 1 ? 's' : ''} — partage le lien de la barre d'adresse`
+      : 'Le salon est complet'
+    : missing > 0
+      ? `En attente de ${missing} joueur${missing > 1 ? 's' : ''} et du créateur du salon`
+      : 'Le salon est complet — le créateur lance la partie';
+
+  const start = {
+    text: missing > 0 ? `Démarrer (${missing} bot${missing > 1 ? 's' : ''})` : 'Démarrer',
+    action: () => transport.begin?.(),
+  };
+
   banner.show({
     title: `Salon ${code}`,
-    detail: [
-      seats.join('   ·   '),
-      missing > 0
-        ? `En attente de ${missing} joueur${missing > 1 ? 's' : ''} — partage le lien de la barre d'adresse`
-        : 'Le salon est complet',
-    ].join('\n'),
-    buttons: [
-      {
-        text: missing > 0 ? `Démarrer (${missing} bot${missing > 1 ? 's' : ''})` : 'Démarrer',
-        action: () => transport.begin?.(),
-      },
-      { text: 'Quitter', action: stopSession },
-    ],
+    detail: [seats.join('   ·   '), detail].join('\n'),
+    // The button is not merely disabled for a guest, it is absent: a greyed-out
+    // button is something to try, and trying it is how you learn it was never
+    // yours.
+    buttons: [...(host ? [start] : []), { text: 'Quitter', action: stopSession }],
   });
 }
 

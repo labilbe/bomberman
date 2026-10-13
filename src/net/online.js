@@ -215,6 +215,9 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
         seated: message.places,
         total: message.max,
         names: message.names ?? [],
+        // Only the host is offered the start: the relay says who it is, since it
+        // is the only one that knows who opened the room.
+        host: message.host === true,
       });
       return;
     }
@@ -413,9 +416,9 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
     /**
      * Starts the game without waiting for the room to fill.
      *
-     * Any seated player can do it, and the relay fills the places left empty
-     * with bots. Waiting for a fourth who will never come is the surest way not
-     * to play.
+     * THE HOST ALONE, and the relay checks it: the room belongs to whoever
+     * opened it. The places left empty go to bots, so a fourth who never comes
+     * does not hold the game up.
      */
     begin() {
       send({ type: CLIENT.BEGIN });

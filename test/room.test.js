@@ -22,11 +22,12 @@ const of = (outgoing, type) => outgoing.filter((e) => e.message.type === type).m
 /** Who the first message of a given type goes to. */
 const to = (outgoing, type) => outgoing.find((e) => e.message.type === type)?.to;
 
-/** A room where two players have sat down, so the game has started. */
+/** A room where two players have sat down and the host has given the signal. */
 function startedRoom(now = 0) {
   const room = createRoom({ code: 'TEST', now, seed: 7 });
   room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, format: 3 }, now);
-  const outgoing = room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, now);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, now);
+  const outgoing = room.message('a', { type: CLIENT.BEGIN }, now);
   return { room, outgoing };
 }
 
@@ -51,7 +52,46 @@ test('the first to arrive is announced as waiting, not as playing', () => {
   assert.equal(room.started, false);
 });
 
-test('a full room starts by itself', () => {
+test('a full room waits for its host', () => {
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, format: 3 }, 0);
+  const onArrival = room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+
+  assert.equal(room.started, false, 'an arrival is not a signal');
+  assert.equal(of(onArrival, SERVER.START).length, 0);
+
+  // The guest's click is ignored: the room belongs to whoever opened it.
+  assert.equal(room.message('b', { type: CLIENT.BEGIN }, 0).length, 0);
+  assert.equal(room.started, false);
+
+  room.message('a', { type: CLIENT.BEGIN }, 0);
+  assert.equal(room.started, true);
+});
+
+test('each one is told whether it is up to them to start', () => {
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2 }, 0);
+  const outgoing = room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+
+  const waiting = outgoing.filter((e) => e.message.type === SERVER.WAITING);
+  assert.equal(waiting.length, 2, 'one message per member, since they differ');
+  assert.equal(waiting.find((e) => e.to === 'a').message.host, true);
+  assert.equal(waiting.find((e) => e.to === 'b').message.host, false);
+});
+
+test('the host leaving passes the room to the oldest of those left', () => {
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4 }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+  const outgoing = room.leave('a', 0, { voluntary: true });
+
+  const [waiting] = of(outgoing, SERVER.WAITING);
+  assert.equal(waiting.host, true, 'Bob inherits it');
+  room.message('b', { type: CLIENT.BEGIN }, 0);
+  assert.equal(room.started, true, 'a room must not survive its creator unstartable');
+});
+
+test('the host starts the game, and each one is sent their place', () => {
   const { room, outgoing } = startedRoom();
 
   assert.equal(room.started, true);
@@ -166,7 +206,8 @@ test('a finished match frees the room, and its code serves again', () => {
 test('the room format is set by the first to arrive', () => {
   const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
   room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, format: 7 }, 0);
-  const outgoing = room.join('b', { type: CLIENT.JOIN, name: 'Bob', places: 4, format: 3 }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob', places: 4, format: 3 }, 0);
+  const outgoing = room.message('a', { type: CLIENT.BEGIN }, 0);
 
   const [start] = of(outgoing, SERVER.START);
   assert.equal(start.places, 2, 'the second does not resize the room');

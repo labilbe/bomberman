@@ -15,7 +15,7 @@
 /** Messages from the client to the relay. */
 export const CLIENT = {
   JOIN: 'join', // { type, room, name, places, format, resume? }
-  BEGIN: 'begin', // { type } — start without waiting for the room to fill
+  BEGIN: 'begin', // { type } — the host starts without waiting for the room to fill
   BOT: 'bot', // { type, seat? } — seat an artificial opponent, there or anywhere
   INPUT: 'input', // { type, seat, seq, dir, bomb, det, hold } — intent
   RESYNC: 'resync', // { type, v } — my arena no longer matches, send it again
@@ -24,7 +24,7 @@ export const CLIENT = {
 
 /** Messages from the relay to the client. */
 export const SERVER = {
-  WAITING: 'waiting', // { type, room, places, min, max, names }
+  WAITING: 'waiting', // { type, room, places, min, max, names, host }
   START: 'start', // { type, room, myId, mine, places, format }
   ROUND: 'round', // { type, round, seed, tiles, items, v }
   STATE: 'state', // { type, t, v, j, b, f }
