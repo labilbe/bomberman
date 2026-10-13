@@ -141,6 +141,30 @@ function slideRound(state, player, v, speed) {
 }
 
 /**
+ * A BOMB THAT APPEARS UNDER A BOMBER DOES NOT LOCK IT IN.
+ *
+ * The permission to walk through a bomb used to be granted by the gesture of
+ * dropping it, to its author alone. But two bombers share a square every time
+ * they cross — they do not collide with each other — so the one who dropped
+ * walked away while the other was walled in on its own square, with nothing to
+ * do but wait for the explosion that would kill it. The same went for a bomb
+ * landing from a glove, and for the burst that lines bombs up in front.
+ *
+ * Granted on the bomber's OWN square and not on the cells its box touches: a
+ * bomber standing beside a bomb overlaps that square by a few sub-units, and
+ * granting it there would open a free passage over every bomb in the arena.
+ *
+ * It takes nothing away from anybody: the only way to find oneself on a bomb
+ * without permission is to have had it arrive there, since walking onto it is
+ * exactly what is refused.
+ */
+function adoptBombUnderfoot(state, player) {
+  if (player.onBomb !== null) return;
+  const bomb = bombDroppedAt(state, cellOnAxis(player.x), cellOnAxis(player.y));
+  if (bomb !== null) player.onBomb = bomb.id;
+}
+
+/**
  * Releases the permission to walk through one's own bomb.
  *
  * The moment of release is the trap: too early — when crossing the centre — and
@@ -213,6 +237,10 @@ function tryKick(state, player, dir) {
 export function movePlayer(state, player, input) {
   if (!player.alive) return;
   leaveOwnBomb(state, player);
+  // AFTER the release and not before: a bomber that has just stepped off its own
+  // bomb must not pick the permission straight back up, which would let it walk
+  // backwards over the bomb it has just left.
+  adoptBombUnderfoot(state, player);
 
   if (input.dir < 0) {
     player.walking = false;

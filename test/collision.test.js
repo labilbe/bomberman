@@ -195,3 +195,51 @@ test('the slide threshold is the bomber box, not a chosen value', () => {
   assert.equal(attempt(threshold), false, 'just short of the threshold: we stop');
   assert.equal(attempt(threshold + 2), true, 'just past it: we slide');
 });
+
+test("somebody else's bomb dropped underfoot does not lock you in", () => {
+  // Two bombers share a square every time they cross: they do not collide with
+  // each other. The one who dropped used to walk away leaving the other walled
+  // in on its own square, with nothing to do but wait for the explosion.
+  const state = bareArena({ places: 2 });
+  const trapped = place(state, 0, 3, 3);
+  place(state, 1, 3, 3);
+
+  step(state, input(1, { drop: true }));
+  assert.equal(state.bombs.length, 1, 'the bomb is there');
+
+  advanceBy(state, 60, input(0, { dir: RIGHT }));
+  assert.ok(cellOnAxis(trapped.x) > 3, 'it got out');
+  assert.equal(trapped.alive, true);
+});
+
+test('once off that bomb, you no longer walk back onto it', () => {
+  // The permission is the one granted on one's own bomb, and it is released the
+  // same way: at the far side of the square. Otherwise a bomb dropped under
+  // somebody would become a square they own for as long as it burns.
+  const state = bareArena({ places: 2 });
+  const other = place(state, 0, 3, 3);
+  place(state, 1, 3, 3);
+
+  step(state, input(1, { drop: true }));
+  advanceBy(state, 40, input(0, { dir: RIGHT }));
+  const away = cellOnAxis(other.x);
+  assert.ok(away > 3);
+
+  advanceBy(state, 60, input(0, { dir: LEFT }));
+  assert.equal(cellOnAxis(other.x), 4, 'it comes back as far as the bomb, no further');
+  assert.equal(other.onBomb, null, 'and keeps no permission on it');
+});
+
+test('standing beside a bomb grants nothing', () => {
+  // The bomber's box overlaps the neighbouring square by a few sub-units:
+  // granting the permission there would open a free passage over every bomb in
+  // the arena.
+  const state = bareArena({ places: 2 });
+  const walker = place(state, 0, 3, 3);
+  place(state, 1, 4, 3);
+  step(state, input(1, { drop: true }));
+
+  advanceBy(state, 60, input(0, { dir: RIGHT }));
+  assert.equal(walker.onBomb, null);
+  assert.equal(cellOnAxis(walker.x), 3, 'the bomb next door still blocks');
+});
