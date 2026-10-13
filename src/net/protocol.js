@@ -63,9 +63,9 @@ export function cleanName(raw, fallback = 'Joueur') {
  * Names offered to whoever has none.
  *
  * Towns and mountains of Japan, a nod to Hudson Soft, where Bomberman was born.
- * None of them is an artificial opponent's first name (BOT_NAMES, below): in a
+ * None of them is an artificial opponent's name (BOT_NAMES, below): in a
  * four-way scrum, a human must be tellable from an AI at a glance. The two lists
- * being disjoint is checked by test/protocole.test.js.
+ * being disjoint is checked by test/protocol.test.js.
  */
 export const HUMAN_NAMES = [
   'Fuji', 'Sapporo', 'Hakone', 'Otaru', 'Nagano', 'Aso',
@@ -89,12 +89,17 @@ export function randomName(random = Math.random) {
 }
 
 /**
- * First names of the artificial opponents.
+ * Names of the artificial opponents.
  *
- * First names rather than "Bot 1": the banner names whoever has just won, and a
- * name is recognised at a glance where a number has to be deciphered.
+ * Names rather than "Bot 1": the banner names whoever has just won, and a name
+ * is recognised at a glance where a number has to be deciphered. These are
+ * handles, chosen by the author, and they are kept spelled as they were given —
+ * lower case included, which is how a handle is written.
  */
-export const BOT_NAMES = ['Aki', 'Haru', 'Kenji', 'Mika', 'Riku', 'Sora', 'Yuki', 'Taro'];
+export const BOT_NAMES = [
+  'hicks', 'sharak', 'cyberpsycho', 'penetrator', 'littlepsylo', 'psycho',
+  'chacal', 'genghis', 'sybaris', 'zuul', 'igrec',
+];
 
 /**
  * An artificial opponent's first name, drawn at random.
