@@ -15,6 +15,7 @@ import {
   botNames,
   cleanName,
   cleanColours,
+  preferColour,
   NAME_MAX,
   MAX_PLACES,
 } from '../src/net/protocol.js';
@@ -85,4 +86,39 @@ test('a colour claimed twice goes to the first place that asked', () => {
   // The creation screen swaps rather than refuses, so this list should never
   // arrive — but it is exactly what a stale page or a hand-made client sends.
   assert.deepEqual(cleanColours([5, 5, 5], 3), [5, 0, 1]);
+});
+
+test('a colour nobody wears is simply taken', () => {
+  // Four places show four of the ten colours: the one asked for is often held
+  // by nobody at all, and there is then nothing to exchange.
+  const colours = cleanColours(null, 4);
+  assert.deepEqual(preferColour(colours, 1, 7, () => true), [0, 7, 2, 3]);
+});
+
+test('a colour a bot wears changes hands', () => {
+  // The bot does not look for itself on the board; the player does.
+  const after = preferColour([0, 1, 2, 3], 3, 1, () => false);
+  assert.deepEqual(after, [0, 3, 2, 1], 'the two places exchange, nothing is lost');
+  assert.equal(new Set(after).size, 4);
+});
+
+test('a colour a human wears stays on their back', () => {
+  // They were there first, and taking it would move the bearings of somebody
+  // who is already playing.
+  const colours = [0, 1, 2, 3];
+  const after = preferColour(colours, 3, 1, (place) => place === 1);
+  assert.deepEqual(after, colours);
+});
+
+test('asking for the colour one already wears changes nothing', () => {
+  const colours = [4, 1, 2, 3];
+  assert.equal(preferColour(colours, 0, 4, () => false), colours);
+});
+
+test('a colour that does not exist is ignored', () => {
+  // It comes off the wire: -1, 42 and "rouge" must leave the room as it was.
+  const colours = [0, 1, 2, 3];
+  for (const wanted of [-1, 42, 1.5, 'rouge', null, undefined, NaN]) {
+    assert.equal(preferColour(colours, 2, wanted, () => false), colours, String(wanted));
+  }
 });

@@ -450,3 +450,49 @@ test('coming back finds the same colours', () => {
   const back = room.join('a2', { type: CLIENT.JOIN, name: 'Alice', resume: 'a' }, 2000);
   assert.deepEqual(of(back, SERVER.START)[0].colours, [6, 2]);
 });
+
+test('whoever joins gets the colour they prefer, when nobody wears it', () => {
+  // The room is laid out for four, two seats await a human: the colour of a
+  // free place is nobody's, so it changes hands without a word.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, colours: [0, 1, 2, 3], host: true }, 0);
+  const outgoing = room.join('b', { type: CLIENT.JOIN, name: 'Bob', colour: 3 }, 0);
+
+  const waiting = of(outgoing, SERVER.WAITING)[0];
+  assert.deepEqual(waiting.colours, [0, 3, 2, 1], 'Bob takes his colour, place 3 takes his');
+  assert.equal(new Set(waiting.colours).size, 4, 'and nobody ends up doubled');
+});
+
+test('a colour a human already wears stays on their back', () => {
+  // Alice laid the table and sits in red: Bob, who prefers red, keeps his own.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, colours: [2, 1, 0, 3], host: true }, 0);
+  const outgoing = room.join('b', { type: CLIENT.JOIN, name: 'Bob', colour: 2 }, 0);
+
+  assert.deepEqual(of(outgoing, SERVER.WAITING)[0].colours, [2, 1, 0, 3]);
+});
+
+test('a colour a bot wears changes hands', () => {
+  // The host seats a bot at place 1, in blue; Bob arrives preferring blue and
+  // lands at place 2. The bot gives way — it does not look for itself.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, colours: [0, 1, 2, 3], host: true }, 0);
+  room.message('a', { type: CLIENT.BOT, seat: 1 }, 0);
+  const outgoing = room.join('b', { type: CLIENT.JOIN, name: 'Bob', colour: 1 }, 0);
+
+  const waiting = of(outgoing, SERVER.WAITING)[0];
+  assert.deepEqual(waiting.colours, [0, 2, 1, 3], 'Bob sits at place 2, the bot takes his colour');
+});
+
+test('coming back after a cut does not play the preference again', () => {
+  // The seat is held, the colours are settled: a reconnection asks for nothing,
+  // otherwise a cut would reshuffle the arena under the other players' eyes.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, colours: [4, 5], host: true }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+  room.message('a', { type: CLIENT.BEGIN }, 0);
+
+  room.leave('b', 1000);
+  const back = room.join('b2', { type: CLIENT.JOIN, name: 'Bob', resume: 'b', colour: 4 }, 2000);
+  assert.deepEqual(of(back, SERVER.START)[0].colours, [4, 5]);
+});

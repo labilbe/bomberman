@@ -33,6 +33,7 @@ import {
   MIN_PLACES,
   MAX_PLACES,
   cleanColours,
+  preferColour,
 } from './net/protocol.js';
 
 const menu = document.querySelector('#menu');
@@ -44,6 +45,7 @@ const roomInput = document.querySelector('#room');
 const playersSelect = document.querySelector('#players');
 const seatsList = document.querySelector('#seats');
 const formatSelect = document.querySelector('#format');
+const colourSelect = document.querySelector('#colour');
 const defaultRoomInput = document.querySelector('#default-room');
 const netPlayersSelect = document.querySelector('#net-players');
 const netSeatsList = document.querySelector('#net-seats');
@@ -62,6 +64,7 @@ const PREF_PLAYERS = 'bomberman.players';
 const PREF_SEATS = 'bomberman.seats';
 const PREF_FORMAT = 'bomberman.format';
 const PREF_NET_SEATS = 'bomberman.netSeats';
+const PREF_COLOUR = 'bomberman.colour';
 
 /**
  * The keys this page used to write, when the code was in French.
@@ -624,10 +627,20 @@ function buildSeats() {
     return 0;
   };
 
+  // THE FIRST ROW IS YOURS, and it wears the colour chosen in the options. It
+  // is claimed BEFORE the others are handed out, so the row that had it falls
+  // back on the next free colour rather than the other way round.
+  //
+  // A standing choice beats what the screen remembers, exactly as the default
+  // room beats the code typed for one evening: an option that only took effect
+  // on a fresh profile would look dead — which is how it was reported of the
+  // room.
+  assign(preferredColour());
+
   seatsList.textContent = '';
   for (let place = 0; place < count; place += 1) {
     const old = previous[place] ?? {};
-    const rowTint = assign(old.colour ?? place);
+    const rowTint = place === 0 ? preferredColour() : assign(old.colour ?? place);
     const row = document.createElement('li');
     row.className = 'seat';
 
@@ -748,6 +761,19 @@ function colourPicker({ list, dot, start, remember }) {
   return colour;
 }
 
+/**
+ * The colour one prefers to play, as the options hold it.
+ *
+ * It dresses the FIRST ROW of the two screens that lay out an arena, and is
+ * asked of the relay when one joins somebody else's. White failing anything —
+ * the first colour of the game's own list, which is what the first place wore
+ * before the option existed.
+ */
+function preferredColour() {
+  const colour = Number(readPref(PREF_COLOUR, '0'));
+  return Number.isInteger(colour) && colour >= 0 && colour < PLACES.length ? colour : 0;
+}
+
 /** A field dressed in its label, like those of the options. */
 function wrap(title, control) {
   const label = document.createElement('label');
@@ -811,8 +837,12 @@ function buildNetSeats() {
   const previous = readNetSeats();
   // The defaults, and the repair of a remembered list that no longer fits —
   // the same rule as the relay's, from the same function: every place gets a
-  // colour, and no two get the same one.
-  const tints = cleanColours(previous.map((seat) => seat.colour), count);
+  // colour, and no two get the same one. The first place is yours, so it wears
+  // the colour from the options, and the others move aside for it.
+  const tints = cleanColours(
+    [preferredColour(), ...previous.slice(1).map((seat) => seat.colour)],
+    count,
+  );
 
   netSeatsList.textContent = '';
   for (let place = 0; place < count; place += 1) {
@@ -1224,6 +1254,9 @@ function playOnline({ fresh = false } = {}) {
     format,
     bots,
     colours,
+    // Creating already carries the colour of the options in its list, on the
+    // first row; joining has no list to carry, so it asks for it.
+    colour: fresh ? null : preferredColour(),
     // ONLY "CRÉER" LAYS A TABLE. Whoever comes through "Rejoindre" answers an
     // invitation, even when they turn out to be the first to arrive: they are
     // not offered the start, and the room falls back on setting off by itself
@@ -1419,6 +1452,23 @@ function initialise() {
   proposeRooms();
   nicknameInput.value = cleanName(readPref(PREF_NICKNAME, ''), randomName());
   formatSelect.value = readPref(PREF_FORMAT, '3');
+
+  // THE COLOUR ONE PREFERS, in the game's own order so that the list reads like
+  // the one on the launch screen.
+  for (const [index, tint] of PLACES.entries()) {
+    const option = document.createElement('option');
+    option.value = String(index);
+    option.textContent = tint.name;
+    colourSelect.append(option);
+  }
+  colourSelect.value = String(preferredColour());
+  colourSelect.addEventListener('change', () => {
+    writePref(PREF_COLOUR, colourSelect.value);
+    // The two screens that lay out an arena follow AT ONCE, as the default room
+    // does: a choice that only showed after a reload would look ignored.
+    buildSeats();
+    buildNetSeats();
+  });
   defaultRoomInput.addEventListener('change', () => {
     defaultRoomInput.value = cleanRoom(defaultRoomInput.value);
     writePref(PREF_ROOM, defaultRoomInput.value);

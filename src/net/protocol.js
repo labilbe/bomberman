@@ -14,7 +14,7 @@
 
 /** Messages from the client to the relay. */
 export const CLIENT = {
-  JOIN: 'join', // { type, room, name, places, format, colours?, host?, resume? }
+  JOIN: 'join', // { type, room, name, places, format, colours?, colour?, host?, resume? }
   BEGIN: 'begin', // { type } — the host starts without waiting for the room to fill
   BOT: 'bot', // { type, seat? } — seat an artificial opponent, there or anywhere
   INPUT: 'input', // { type, seat, seq, dir, bomb, det, hold } — intent
@@ -137,6 +137,20 @@ export const MIN_PLACES = 2;
 export const MAX_PLACES = 10;
 
 /**
+ * A colour index, or null when it is anything else.
+ *
+ * STRICTLY A NUMBER, and that is the whole point of the function: `Number(null)`
+ * is zero, so a missing colour read as a formal claim to white — the first of
+ * the list — instead of falling back on a free one. A remembered row with no
+ * colour and a client sending `null` both went through that door.
+ */
+function asColour(value) {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < MAX_PLACES
+    ? value
+    : null;
+}
+
+/**
  * The colours of a room, cleaned up: one colour index per place.
  *
  * Whoever lays the table chooses them, and that choice travels over the wire —
@@ -160,9 +174,8 @@ export function cleanColours(raw, places) {
   const wanted = Array.isArray(raw) ? raw : [];
   const taken = new Set();
   const table = Array.from({ length: places }, (_, place) => {
-    const colour = Number(wanted[place]);
-    if (!Number.isInteger(colour) || colour < 0 || colour >= MAX_PLACES) return null;
-    if (taken.has(colour)) return null;
+    const colour = asColour(wanted[place]);
+    if (colour === null || taken.has(colour)) return null;
     taken.add(colour);
     return colour;
   });
@@ -176,6 +189,52 @@ export function cleanColours(raw, places) {
     taken.add(spare);
   }
   return table;
+}
+
+/**
+ * Gives a place the colour its player prefers, when it can be had.
+ *
+ * A COLOUR IS A HABIT. Someone who always plays red looks for red in the scrum,
+ * and the options let them say so once instead of setting it before every game.
+ * But a room has one list of colours for everybody — that is what keeps two
+ * screens showing the same arena — so a preference is a REQUEST, granted or
+ * not, and never a private setting.
+ *
+ * It is granted by EXCHANGE: the two places swap, so the list stays without a
+ * duplicate and without a hole. And it is refused flat when a human already
+ * wears the colour: they were there first, they have their own habits, and
+ * taking it from them would move the bearings of somebody who is already
+ * playing. A bot holding it, on the other hand, gives way without a word — it
+ * does not look for itself on the board.
+ *
+ * Pure, and shared with the relay, which is the only one entitled to apply it:
+ * what a client prefers it asks for, it does not decide.
+ *
+ * @param {number[]} colours the room's colours, one per place
+ * @param {number} place the place that is asking
+ * @param {unknown} wanted the colour index asked for, straight off the wire
+ * @param {(place: number) => boolean} human says whether a place is held by a
+ *   player — a bot, or nobody yet, gives way
+ * @returns {number[]} the colours after the exchange, or the very same list
+ */
+export function preferColour(colours, place, wanted, human) {
+  const colour = asColour(wanted);
+  if (colour === null) return colours;
+  if (!Number.isInteger(place) || place < 0 || place >= colours.length) return colours;
+  if (colours[place] === colour) return colours;
+
+  const holder = colours.indexOf(colour);
+  const next = colours.slice();
+  // Nobody in this room wears it — a room of four does not show the ten
+  // colours — so there is nothing to exchange: the place simply changes colour.
+  if (holder === -1) {
+    next[place] = colour;
+    return next;
+  }
+  if (human(holder)) return colours;
+  next[holder] = colours[place];
+  next[place] = colour;
+  return next;
 }
 
 /**

@@ -89,11 +89,12 @@ export function followGrid(state, list) {
 /**
  * @param {{
  *   url: string, room: string, nickname: string, places?: number, format?: number,
- *   bots?: number[], colours?: number[] | null, host?: boolean
+ *   bots?: number[], colours?: number[] | null, colour?: number | null, host?: boolean
  * }} options
  */
 export function createOnlineTransport({
-  url, room, nickname, places = 2, format = 3, bots = [], colours = null, host = false,
+  url, room, nickname, places = 2, format = 3, bots = [], colours = null, colour = null,
+  host = false,
 }) {
   const views = new Set();
   const events = new Set();
@@ -361,6 +362,11 @@ export function createOnlineTransport({
         // relay only listens to the first arrival, and ignores them from a guest
         // — who sends none anyway.
         colours: colours ?? undefined,
+        // The colour one PREFERS, which is not the same thing as the list
+        // above: a guest lays out nothing, they ask the room for a colour. The
+        // relay grants it by exchange, or refuses it to leave another player
+        // their bearings.
+        colour: colour ?? undefined,
         // LAYING THE TABLE IS SAID ON ARRIVAL, and it is the only difference
         // between creating and joining as far as the relay is concerned: the
         // room then waits for this player's signal instead of setting off on

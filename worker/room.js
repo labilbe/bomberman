@@ -36,6 +36,7 @@ import {
   RESUME_MS,
   cleanName,
   cleanColours,
+  preferColour,
   botNames,
 } from '../src/net/protocol.js';
 
@@ -460,6 +461,18 @@ export function createRoom({ code, now, seed = randomSeed() }) {
         present: true,
         leftAt: null,
       });
+
+      // THE COLOUR ONE PREFERS IS ASKED FOR HERE, once seated and not before:
+      // the exchange needs to know which place one is exchanging from. It is
+      // refused in silence when a human already wears it — the arrival learns
+      // which colour is theirs from the waiting room either way, and a refusal
+      // to announce would be a message about something that did not happen.
+      colours = preferColour(
+        colours,
+        place,
+        message.colour,
+        (other) => humans().some((member) => member.place === other),
+      );
 
       // WHOEVER LAYS THE TABLE SAYS SO ON ARRIVING, and only the first one to
       // say it is heard: a second "create" on the same code is somebody who

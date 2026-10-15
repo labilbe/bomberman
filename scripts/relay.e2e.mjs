@@ -89,10 +89,13 @@ try {
   check(JSON.stringify(waiting.colours) === '[4,7]', 'le salon porte les couleurs choisies');
 
   // Bob en propose d autres : le salon est pose, son avis n est pas entendu.
-  bob.send({ type: CLIENT.JOIN, room: ROOM, name: 'Bob', places: 2, format: 3, colours: [1, 2] });
+  // Il demande aussi la couleur qu il prefere : le 4, celle d Alice. Refuse,
+  // puisqu une humaine la porte — on ne deplace pas les reperes de quelqu un
+  // qui joue deja.
+  bob.send({ type: CLIENT.JOIN, room: ROOM, name: 'Bob', places: 2, format: 3, colours: [1, 2], colour: 4 });
   const guest = await bob.await(SERVER.WAITING);
   check(guest.host !== true, 'celui qui rejoint ne tient pas le salon');
-  check(JSON.stringify(guest.colours) === '[4,7]', 'celui qui rejoint prend les couleurs du salon');
+  check(JSON.stringify(guest.colours) === '[4,7]', 'la couleur d une humaine lui reste');
 
   // La partie ne part pas toute seule : c est le createur qui donne le signal.
   alice.send({ type: CLIENT.BEGIN });
