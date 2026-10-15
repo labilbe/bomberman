@@ -24,7 +24,7 @@ export const CLIENT = {
 
 /** Messages from the relay to the client. */
 export const SERVER = {
-  WAITING: 'waiting', // { type, room, places, min, max, names, colours, host, hosted }
+  WAITING: 'waiting', // { type, room, myId, places, min, max, names, colours, host, hosted }
   START: 'start', // { type, room, myId, mine, places, format, names, colours }
   ROUND: 'round', // { type, round, seed, tiles, items, v }
   STATE: 'state', // { type, t, v, j, b, f }

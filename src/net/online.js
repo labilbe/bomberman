@@ -35,6 +35,41 @@ const CODE_BY_NAME = Object.fromEntries(
   Object.entries(BONUS_NAMES).map(([code, name]) => [name, Number(code)]),
 );
 
+/**
+ * Where a seat is noted down, so that a RELOAD comes back to it.
+ *
+ * The relay holds a disconnected player's place for thirty seconds, and the
+ * transport asks for it back by `resume` — but it only knew its own id for as
+ * long as the page lived. Pressing F5 therefore came back as a STRANGER: you
+ * sat down next to your own ghost, in the next seat and the next colour, and
+ * the room you had opened stayed with the ghost, so you were no longer the one
+ * who could start it.
+ *
+ * `sessionStorage` and not `localStorage`: a seat belongs to a tab. Two tabs on
+ * the same room are two players, and that must remain true.
+ *
+ * @param {string} room
+ */
+const seatKey = (room) => `bomberman.seat.${room}`;
+
+/** Reading storage never throws here: a private window refuses it outright. */
+function readSeat(room) {
+  try {
+    return sessionStorage.getItem(seatKey(room)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSeat(room, id) {
+  try {
+    if (id === null) sessionStorage.removeItem(seatKey(room));
+    else sessionStorage.setItem(seatKey(room), id);
+  } catch {
+    // No storage: a reload will open a new seat, as it always did.
+  }
+}
+
 /** Past this, we stop reconnecting: the relay is not coming back. */
 const MAX_RECONNECTS = 6;
 
@@ -117,6 +152,31 @@ export function createOnlineTransport({
   let version = -1;
   /** True once the bots asked for at creation have been requested. */
   let botsSeated = false;
+
+  /**
+   * A PAGE THAT GOES AWAY HANGS UP.
+   *
+   * Reloading or closing the tab tells the relay nothing by itself: the
+   * connection stays open as far as it is concerned, and the seat stays held by
+   * somebody who is no longer there — six seconds later it was still held. So
+   * coming back sat you down NEXT TO YOUR OWN GHOST: two Alices, the second one
+   * in the next seat and the next colour, and the room still belonging to the
+   * first, so there was no starting it either.
+   *
+   * It hangs up WITHOUT saying `leave`, and that difference is the whole point:
+   * a departure announced eliminates on the spot, where a connection going down
+   * leaves the thirty seconds the relay grants to come back. Before the start it
+   * frees the seat at once, which is what clears the ghost; during a game the
+   * bomber waits, and the seat noted down above is what the reloaded page comes
+   * back with.
+   *
+   * `pagehide` and not `beforeunload`: the latter is ignored on a telephone,
+   * where closing a tab is exactly what people do.
+   */
+  const hangUp = () => {
+    if (socket && socket.readyState === WebSocket.OPEN) socket.close();
+  };
+  window.addEventListener('pagehide', hangUp);
 
   let resolveStart = null;
   let started = false;
@@ -203,6 +263,12 @@ export function createOnlineTransport({
 
   function receive(message) {
     if (message.type === SERVER.WAITING) {
+      // The seat is noted down as soon as it is held, and not only at the
+      // start: most reloads happen while waiting for the others.
+      if (message.myId) {
+        myId = message.myId;
+        writeSeat(room, myId);
+      }
       // THE BOTS ARE SEATED HERE, and only on the first waiting message: it is
       // the relay's acknowledgement that our own seat is taken, and asking for a
       // bot before that would seat it in our place. Every later message —
@@ -232,6 +298,7 @@ export function createOnlineTransport({
 
     if (message.type === SERVER.START) {
       myId = message.myId;
+      writeSeat(room, myId);
       mine = message.mine ?? [];
       state = createState({ seed: 1, places: message.places });
       match = createMatch({ places: message.places, total: message.format });
@@ -372,7 +439,9 @@ export function createOnlineTransport({
         // room then waits for this player's signal instead of setting off on
         // its own once full.
         host: host ? true : undefined,
-        resume: myId ?? undefined,
+        // The seat we hold, if we hold one: the id from this session, or the
+        // one noted down before a reload.
+        resume: myId ?? readSeat(room) ?? undefined,
       });
     });
 
@@ -482,6 +551,12 @@ export function createOnlineTransport({
 
     close() {
       closed = true;
+      window.removeEventListener('pagehide', hangUp);
+      // LEAVING IS NOT DROPPING OUT: the seat is given up, so it must not be
+      // asked for again on the next arrival — the relay would refuse it anyway,
+      // having just removed us, but we would be asking to come back to a game
+      // we chose to leave.
+      writeSeat(room, null);
       send({ type: CLIENT.LEAVE });
       if (socket) socket.close();
       views.clear();

@@ -235,6 +235,38 @@ export function createRoom({ code, now, seed = randomSeed() }) {
     return true;
   }
 
+  /**
+   * Lays the table: how many places, what format, and what colour each wears.
+   *
+   * IT IS NOT THE FIRST ARRIVAL'S DOING, and that is what this repairs. The
+   * room used to take its layout from whoever came through the door first: a
+   * friend clicking the invitation while the creator was still picking colours
+   * laid the table without choosing anything — and the creator then found their
+   * own arena in the place order's colours, in a seat they had not picked. The
+   * same thing happened to a creator coming back to a room their own dropped
+   * connection was still holding.
+   *
+   * So WHOEVER LAYS THE TABLE LAYS IT WHENEVER THEY ARRIVE, as long as the game
+   * has not started. Nobody is moved: the seats already taken stay taken, and
+   * the room only grows — shrinking it would throw out a guest who is already
+   * sitting down.
+   *
+   * And THE HOST'S OWN COLOUR FOLLOWS THE HOST. The creation screen says "the
+   * first row is you", so that row's colour goes to their place, whichever one
+   * they ended up in — by the same exchange as a preference, but without the
+   * refusal: the table is theirs.
+   */
+  function layTable(place, message) {
+    const seated = [...humans().map((m) => m.place), ...Object.keys(pilots).map(Number)];
+    places = Math.min(
+      MAX_PLACES,
+      Math.max(MIN_PLACES, Number(message.places) || MIN_PLACES, ...seated.map((p) => p + 1)),
+    );
+    if (FORMATS.includes(Number(message.format))) format = Number(message.format);
+    const table = cleanColours(message.colours, places);
+    colours = preferColour(table, place, table[0], () => false);
+  }
+
   /** The places already held, by a human or by a bot. */
   function taken() {
     return new Set([...humans().map((m) => m.place), ...Object.keys(pilots).map(Number)]);
@@ -267,6 +299,10 @@ export function createRoom({ code, now, seed = randomSeed() }) {
       toOne(member.id, {
         type: SERVER.WAITING,
         room: code,
+        // ITS OWN ID, from the waiting room on. It used to come only with the
+        // start, and a page reloaded while waiting therefore had nothing to ask
+        // its seat back with: it came back a stranger, next to its own ghost.
+        myId: member.id,
         places: seated,
         min: MIN_PLACES,
         max: places,
@@ -398,11 +434,21 @@ export function createRoom({ code, now, seed = randomSeed() }) {
       // A resume: the player comes back to their place, the game has not moved.
       const resumed = message.resume ? members.get(String(message.resume)) : null;
       if (resumed && !resumed.present) {
+        const was = resumed.id;
         resumed.present = true;
         resumed.leftAt = null;
-        members.delete(resumed.id);
+        members.delete(was);
         resumed.id = id;
         members.set(id, resumed);
+        // THE ROOM FOLLOWS ITS OWNER BACK. A reconnection gives the member a new
+        // id, and the host was named by the old one: without this line
+        // `passHost` found a host who was no longer in the room and dropped the
+        // role — a creator who lost their Wi-Fi for two seconds came back as a
+        // guest, with no way of starting their own game.
+        if (hostId === was) hostId = id;
+        // Back before the start, the host lays the table again: their screen may
+        // have changed colours in the meantime, and it is still theirs to set.
+        if (!game && id === hostId) layTable(resumed.place, message);
         toAll({ type: SERVER.BACK, place: resumed.place });
         if (game) {
           toOne(id, {
@@ -477,7 +523,22 @@ export function createRoom({ code, now, seed = randomSeed() }) {
       // WHOEVER LAYS THE TABLE SAYS SO ON ARRIVING, and only the first one to
       // say it is heard: a second "create" on the same code is somebody who
       // dialled a code already in use, and the room is not theirs to start.
-      if (hostId === null && message.host === true) hostId = id;
+      //
+      // Being the first to SPEAK is not being the first to ARRIVE, though: the
+      // table is laid here and not above, so that a creator who gets in after
+      // the friend they invited still lays out their own room.
+      //
+      // A ROOM NOBODY IS IN BELONGS TO NOBODY, and that is checked HERE and not
+      // only when the waiting room is announced: the last player to leave takes
+      // the announcement with them — there is nobody left to announce it to — so
+      // the role stayed pinned to an id that had gone. Whoever opened the room
+      // again, themselves included after a reload, then found it held by a
+      // ghost and could not start it.
+      passHost();
+      if (hostId === null && message.host === true) {
+        hostId = id;
+        layTable(place, message);
+      }
 
       announceWaiting();
       // A room NOBODY laid out sets off by itself once full: two players who

@@ -496,3 +496,81 @@ test('coming back after a cut does not play the preference again', () => {
   const back = room.join('b2', { type: CLIENT.JOIN, name: 'Bob', resume: 'b', colour: 4 }, 2000);
   assert.deepEqual(of(back, SERVER.START)[0].colours, [4, 5]);
 });
+
+test('the creator lays the table even when a guest got in first', () => {
+  // The friend clicked the invitation while the creator was still picking
+  // colours. The guest chose nothing: they took a seat, they did not lay out
+  // the room — and the creator must not find their own arena in the place
+  // order's colours.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob', places: 2 }, 0);
+  const outgoing = room.join('a', {
+    type: CLIENT.JOIN, name: 'Alice', places: 4, format: 5, colours: [7, 1, 2, 3], host: true,
+  }, 0);
+
+  const mine = of(outgoing, SERVER.WAITING).find(() => true);
+  assert.ok(mine, 'the room answers');
+  assert.equal(mine.max, 4, 'the room is the size the creator asked for');
+  // Alice sits at place 1, Bob having taken place 0: her own row's colour
+  // follows her there, and Bob takes the one she had laid for that seat.
+  assert.deepEqual(mine.colours, [1, 7, 2, 3]);
+  assert.equal(outgoing.find((e) => e.to === 'a').message.host, true);
+});
+
+test('the room is never shrunk under the players already seated', () => {
+  // The creator wants a duel, three players are already sitting down: throwing
+  // one out to honour the layout would be worse than a room of three.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob', places: 4 }, 0);
+  room.join('c', { type: CLIENT.JOIN, name: 'Carol' }, 0);
+  const outgoing = room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, host: true }, 0);
+
+  assert.equal(of(outgoing, SERVER.WAITING)[0].max, 3);
+});
+
+test('the room follows its owner back after a cut', () => {
+  // A creator who loses their Wi-Fi for two seconds used to come back as a
+  // guest: the host was named by the id they no longer had, and the role was
+  // dropped as soon as it was looked for.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, colours: [5, 1, 2, 3], host: true }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+  room.leave('a', 1000);
+
+  const back = room.join('a2', { type: CLIENT.JOIN, name: 'Alice', resume: 'a', host: true }, 2000);
+  const mine = back.find((e) => e.to === 'a2' && e.message.type === SERVER.WAITING);
+  assert.ok(mine, 'the waiting room is announced again');
+  assert.equal(mine.message.host, true, 'and the room is still theirs');
+
+  room.message('a2', { type: CLIENT.BEGIN }, 2000);
+  assert.equal(room.started, true, 'so they can start it');
+});
+
+test('the waiting room tells each one its own seat', () => {
+  // Without it a page reloaded while waiting cannot ask for its seat back, and
+  // sits down next to its own ghost.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, host: true }, 0);
+  const outgoing = room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+
+  for (const sent of outgoing.filter((e) => e.message.type === SERVER.WAITING)) {
+    assert.equal(sent.message.myId, sent.to);
+  }
+});
+
+test('a room nobody is in belongs to nobody, and can be opened again', () => {
+  // The last to leave takes the announcement with them — nobody is left to
+  // announce to — so the host role used to stay pinned to an id that had gone,
+  // and the creator coming back found their own room held by a ghost.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, colours: [7, 1], host: true }, 0);
+  room.leave('a', 1000);
+
+  const again = room.join('a2', {
+    type: CLIENT.JOIN, name: 'Alice', places: 2, colours: [4, 1], host: true,
+  }, 2000);
+  const waiting = of(again, SERVER.WAITING)[0];
+  assert.equal(waiting.places, 1, 'and nobody is sitting next to them');
+  assert.equal(waiting.host, true, 'the room is theirs again');
+  assert.deepEqual(waiting.colours, [4, 1], 'laid out as they say now');
+});
