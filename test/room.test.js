@@ -574,3 +574,15 @@ test('a room nobody is in belongs to nobody, and can be opened again', () => {
   assert.equal(waiting.host, true, 'the room is theirs again');
   assert.deepEqual(waiting.colours, [4, 1], 'laid out as they say now');
 });
+
+test('a frame sent to keep the line open does nothing at all', () => {
+  // The waiting room says nothing for minutes on end, and an idle connection is
+  // closed from the outside — the page therefore sends a ping. The room has
+  // nothing to do with it: receiving it is the whole point.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, host: true }, 0);
+
+  const outgoing = room.message('a', { type: CLIENT.PING }, 0);
+  assert.deepEqual(outgoing, [], 'not a word in reply');
+  assert.equal(room.started, false, 'and nothing set off');
+});

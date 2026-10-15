@@ -20,6 +20,15 @@ export const CLIENT = {
   INPUT: 'input', // { type, seat, seq, dir, bomb, det, hold } — intent
   RESYNC: 'resync', // { type, v } — my arena no longer matches, send it again
   LEAVE: 'leave', // { type } — voluntary surrender
+  // A frame for nothing, to keep the line open.
+  //
+  // THE WAITING ROOM IS SILENT: no beat, no intent, not a byte in either
+  // direction while the host waits for their friends. An idle WebSocket does
+  // not survive that long in front of a proxy — it is closed after a minute or
+  // two — and the page, which has no reason to suspect it, went on showing a
+  // waiting room whose "Démarrer" went nowhere. The relay has nothing to do
+  // with this message; receiving it is the whole point.
+  PING: 'ping', // { type }
 };
 
 /** Messages from the relay to the client. */

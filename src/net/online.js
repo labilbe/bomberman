@@ -150,8 +150,15 @@ export function createOnlineTransport({
   let last = null;
   /** Version number of the grid, to spot that it has drifted. */
   let version = -1;
-  /** True once the bots asked for at creation have been requested. */
-  let botsSeated = false;
+  /**
+   * A start asked for while the line was down, to be sent once it is back.
+   *
+   * The waiting room is the one place where a click can land on a closed
+   * socket: nothing travels there, so that is where the connection dies. The
+   * press is kept rather than dropped — the player pressed, and nothing on
+   * their screen says the relay did not hear it.
+   */
+  let beginWanted = false;
 
   /**
    * A PAGE THAT GOES AWAY HANGS UP.
@@ -191,8 +198,23 @@ export function createOnlineTransport({
 
   /** Sends if the socket is open; otherwise drops it, the next one says all. */
   function send(message) {
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
     socket.send(encode(message));
+    return true;
+  }
+
+  /**
+   * Keeps the line open.
+   *
+   * Nothing is said in a waiting room, and a connection that says nothing is
+   * closed from the outside — by the proxy, or by a telephone putting the page
+   * to sleep. Twenty-five seconds is well under the minute or so that is
+   * usually granted, and one frame of fifteen bytes is nothing at all.
+   */
+  let pulse = null;
+  function keepAlive() {
+    if (pulse !== null) clearInterval(pulse);
+    pulse = setInterval(() => send({ type: CLIENT.PING }), 25000);
   }
 
   /**
@@ -269,13 +291,19 @@ export function createOnlineTransport({
         myId = message.myId;
         writeSeat(room, myId);
       }
-      // THE BOTS ARE SEATED HERE, and only on the first waiting message: it is
-      // the relay's acknowledgement that our own seat is taken, and asking for a
-      // bot before that would seat it in our place. Every later message —
-      // somebody else arriving — must leave the room alone, hence the flag.
-      if (!botsSeated) {
-        botsSeated = true;
-        for (const seat of bots) send({ type: CLIENT.BOT, seat });
+      // THE BOTS ARE ASKED FOR HERE, once the relay has acknowledged our own
+      // seat: asking before that would seat one in our place.
+      //
+      // And asked for AGAIN on every waiting message, for the seats that are
+      // STILL FREE — the names say which. A flag set once was lost with the
+      // room itself: a connection that drops in the waiting room empties it, and
+      // the page came back to a room with no bots, whose seats it no longer
+      // thought to ask for. Reading the free seats makes the request
+      // idempotent, where asking blindly would pile a second bot onto a taken
+      // seat, the relay seating it wherever it could.
+      const seated = message.names ?? [];
+      for (const seat of bots) {
+        if (seat < seated.length && seated[seat] === null) send({ type: CLIENT.BOT, seat });
       }
       // The waiting room needs the LIST, not a sentence: who is already here,
       // and how many seats are still empty.
@@ -299,6 +327,9 @@ export function createOnlineTransport({
     if (message.type === SERVER.START) {
       myId = message.myId;
       writeSeat(room, myId);
+      // It has started: the press has been heard, and must not go out again on
+      // the next reconnection.
+      beginWanted = false;
       mine = message.mine ?? [];
       state = createState({ seed: 1, places: message.places });
       match = createMatch({ places: message.places, total: message.format });
@@ -416,9 +447,14 @@ export function createOnlineTransport({
 
     socket.addEventListener('open', () => {
       attempts = 0;
+      keepAlive();
       // The relay no longer knows what we wanted: the next intent must go out
       // even if it has not changed since the cut.
       last = null;
+      // A start pressed while the line was down goes out again below, right
+      // after the JOIN that gives us back our seat and the room — in that order,
+      // which the socket guarantees.
+      const pending = beginWanted;
       send({
         type: CLIENT.JOIN,
         room,
@@ -443,6 +479,7 @@ export function createOnlineTransport({
         // one noted down before a reload.
         resume: myId ?? readSeat(room) ?? undefined,
       });
+      if (pending) send({ type: CLIENT.BEGIN });
     });
 
     socket.addEventListener('message', (event) => {
@@ -517,7 +554,10 @@ export function createOnlineTransport({
      * does not hold the game up.
      */
     begin() {
-      send({ type: CLIENT.BEGIN });
+      // Kept if it could not go out: the socket dies in the waiting room, where
+      // nothing is ever said, and a press lost there looks like a button that
+      // does nothing.
+      beginWanted = !send({ type: CLIENT.BEGIN });
     },
 
     /** Time belongs to the relay: the page simulates nothing. */
@@ -551,6 +591,7 @@ export function createOnlineTransport({
 
     close() {
       closed = true;
+      if (pulse !== null) clearInterval(pulse);
       window.removeEventListener('pagehide', hangUp);
       // LEAVING IS NOT DROPPING OUT: the seat is given up, so it must not be
       // asked for again on the next arrival — the relay would refuse it anyway,
