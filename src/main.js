@@ -627,20 +627,17 @@ function buildSeats() {
     return 0;
   };
 
-  // THE FIRST ROW IS YOURS, and it wears the colour chosen in the options. It
-  // is claimed BEFORE the others are handed out, so the row that had it falls
-  // back on the next free colour rather than the other way round.
-  //
-  // A standing choice beats what the screen remembers, exactly as the default
-  // room beats the code typed for one evening: an option that only took effect
-  // on a fresh profile would look dead — which is how it was reported of the
-  // room.
-  assign(preferredColour());
+  // THE FIRST ROW IS YOURS. It wears what you picked on it, or failing that the
+  // colour from the options. Claimed BEFORE the others are handed out, so the
+  // row that had it falls back on the next free colour rather than the other
+  // way round.
+  const mine = firstRowColour('local', previous[0]?.colour);
+  assign(mine);
 
   seatsList.textContent = '';
   for (let place = 0; place < count; place += 1) {
     const old = previous[place] ?? {};
-    const rowTint = place === 0 ? preferredColour() : assign(old.colour ?? place);
+    const rowTint = place === 0 ? mine : assign(old.colour ?? place);
     const row = document.createElement('li');
     row.className = 'seat';
 
@@ -774,6 +771,44 @@ function preferredColour() {
   return Number.isInteger(colour) && colour >= 0 && colour < PLACES.length ? colour : 0;
 }
 
+/**
+ * The preferred colour as each seat screen last offered it: 'local' for the
+ * launch screen, 'net' for the creation screen.
+ *
+ * It starts at the option's own value, because LOADING THE PAGE IS NOT CHANGING
+ * THE OPTION: the rows remember what the player last chose — the option
+ * included, since choosing it writes the rows down — so taking them over again
+ * on every load would undo, one refresh later, the very choice this rule is
+ * there to protect.
+ */
+const offered = { local: preferredColour(), net: preferredColour() };
+
+/**
+ * What the first row — yours — should wear.
+ *
+ * THE OPTION IS A DEFAULT, NOT AN ORDER, and that is the difference with the
+ * default room, whose rule this followed at first. A room code is typed on
+ * another screen and is a one-off; a colour is picked on the very list that is
+ * about to be played, row by row, deliberately. Forcing the option back onto
+ * the first row at every rebuild took that choice away — changing the number of
+ * players was enough to lose it, and the game then started in a colour nobody
+ * had asked for.
+ *
+ * So the option takes the row as long as nobody has moved it, AND AGAIN the
+ * moment it is changed in the options, since it then differs from what was last
+ * offered. That is what makes the option visibly alive without it overruling a
+ * choice made two seconds earlier on the row itself.
+ *
+ * @param {'local' | 'net'} screen
+ * @param {number | null | undefined} chosen the colour that row already wears
+ */
+function firstRowColour(screen, chosen) {
+  const wanted = preferredColour();
+  if (offered[screen] === wanted && typeof chosen === 'number') return chosen;
+  offered[screen] = wanted;
+  return wanted;
+}
+
 /** A field dressed in its label, like those of the options. */
 function wrap(title, control) {
   const label = document.createElement('label');
@@ -837,10 +872,10 @@ function buildNetSeats() {
   const previous = readNetSeats();
   // The defaults, and the repair of a remembered list that no longer fits —
   // the same rule as the relay's, from the same function: every place gets a
-  // colour, and no two get the same one. The first place is yours, so it wears
-  // the colour from the options, and the others move aside for it.
+  // colour, and no two get the same one. The first place is yours, and the
+  // others move aside for it.
   const tints = cleanColours(
-    [preferredColour(), ...previous.slice(1).map((seat) => seat.colour)],
+    [firstRowColour('net', previous[0]?.colour), ...previous.slice(1).map((seat) => seat.colour)],
     count,
   );
 
@@ -1466,8 +1501,15 @@ function initialise() {
     writePref(PREF_COLOUR, colourSelect.value);
     // The two screens that lay out an arena follow AT ONCE, as the default room
     // does: a choice that only showed after a reload would look ignored.
+    //
+    // And what they now show is WRITTEN DOWN, since the rows are what the next
+    // load reads back: without it the new colour held until the page was
+    // reloaded, and the seats then put the old one back — the option undone by
+    // a refresh.
     buildSeats();
+    rememberSeats();
     buildNetSeats();
+    rememberNetSeats();
   });
   defaultRoomInput.addEventListener('change', () => {
     defaultRoomInput.value = cleanRoom(defaultRoomInput.value);
