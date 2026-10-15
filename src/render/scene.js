@@ -47,8 +47,13 @@ import { BACKGROUND, BONUS_COLOURS } from './palette.js';
  * It fixes the previous setting, invented out of nothing: it ended at
  * sixty-seven frames a second, above the screen's refresh rate, so frames were
  * skipped and the bomb flickered instead of beating.
+ *
+ * Exported because the menu's bomb beats to it too: it shows the same object,
+ * and two definitions of one rhythm is one too many — the day this number
+ * changes, the home screen must follow the arena without anybody remembering to
+ * go and change it.
  */
-const START_SLOWNESS = 1.5;
+export const START_SLOWNESS = 1.5;
 
 /**
  * How long a brick takes to fall, in milliseconds.

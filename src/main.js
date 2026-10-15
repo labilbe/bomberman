@@ -8,7 +8,7 @@
  * in.
  */
 
-import { createScene } from './render/scene.js';
+import { createScene, START_SLOWNESS } from './render/scene.js';
 import { loadVectors } from './render/vectors.js';
 import { fromDrawings, fromVectors } from './render/spriteSet.js';
 import { createKeyboard, KEYS } from './input/keyboard.js';
@@ -169,7 +169,54 @@ const CONTROLS = [
 const controlOf = (code) => CONTROLS.find((choice) => choice.code === code) ?? null;
 
 /**
- * THE MENU'S BOMB BEATS, like the game's.
+ * A run of sprites redrawn on ONE canvas size, each frame kept on its anchor.
+ *
+ * THE BOMB SWELLS, and that swelling IS the animation: its frames go from 22 to
+ * 37 pixels as it breathes in. In the arena the sprite is drawn at its own size,
+ * standing on its anchor, so it is seen to grow. In the menu it is a CSS
+ * background fitted with `contain`, which brings EVERY frame back to the same
+ * box: the growth was divided straight out, and what was left was a wobble —
+ * worse, the fattest frames, being shrunk the most, read as the smallest. That
+ * is the difference with the game that was reported, and no change of rate could
+ * have fixed it, since it is not a matter of timing.
+ *
+ * So each frame is laid on the box the whole run needs, placed BY ITS ANCHOR,
+ * which for a bomb is its bottom centre — exactly where the scene puts it. Every
+ * frame then carries the same scale, and `contain` has nothing left to correct.
+ *
+ * @param {{ canvas: HTMLCanvasElement, anchorX?: number, anchorY?: number }[]} run
+ * @returns {HTMLCanvasElement[]}
+ */
+function onOneCanvas(run) {
+  if (run.length === 0) return [];
+  // The anchor, or the bottom centre: the sprites drawn in code carry one too,
+  // but a provider that did not would still be laid the right way up.
+  const anchorX = (sprite) => sprite.anchorX ?? sprite.canvas.width / 2;
+  const anchorY = (sprite) => sprite.anchorY ?? sprite.canvas.height;
+  const most = (measure) => Math.max(...run.map(measure));
+  const left = most(anchorX);
+  const right = most((sprite) => sprite.canvas.width - anchorX(sprite));
+  const top = most(anchorY);
+  const bottom = most((sprite) => sprite.canvas.height - anchorY(sprite));
+
+  return run.map((sprite) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(left + right);
+    canvas.height = Math.ceil(top + bottom);
+    // Rounded: the frames are pixel art, enlarged by the page with
+    // `image-rendering: pixelated`, and half a pixel of offset blurs a whole
+    // edge.
+    canvas.getContext('2d').drawImage(
+      sprite.canvas,
+      Math.round(left - anchorX(sprite)),
+      Math.round(top - anchorY(sprite)),
+    );
+    return canvas;
+  });
+}
+
+/**
+ * THE MENU'S BOMB BEATS EXACTLY LIKE THE ONE YOU DROP.
  *
  * It is the trigger bomb — the one carrying "BOOM" across it — and these are its
  * own frames, the ones the scene draws in the arena: the menu and the game
@@ -177,37 +224,59 @@ const controlOf = (code) => CONTROLS.find((choice) => choice.code === code) ?? n
  * screen: it is the colour in the file, the one before the per-player
  * recolouring.
  *
+ * THE BEAT IS THE SCENE'S, down to the formula: the frame is READ OFF THE CLOCK
+ * — `bombCycle` for a whole run, a run and a half at the start of a fuse — and
+ * not advanced one step per timer tick. That is what the arena does for a bomb
+ * with no fuse, and the two are now in phase: the bomb of the row you are on
+ * shows the frame a bomb dropped at that instant would show.
+ *
+ * It used to run on a `setInterval` of its own, clamped to sixty milliseconds a
+ * frame: eighteen frames at that pace made a beat of 1080 ms, where the game's
+ * is 810 — the home screen's bomb lagged a third behind the one you drop, and
+ * that is what was reported. The clamp was there to keep the timer from
+ * outrunning the screen; reading the clock makes it pointless, since a frame
+ * drawn twice is a frame drawn twice and not a beat lost.
+ *
+ * A bomb with a fuse ACCELERATES as it burns down, and this one does not: it
+ * never goes off, and looping an acceleration would make it stall every run.
+ * The arena answers the same question the same way for the trigger bomb.
+ *
  * The frames go through a CSS variable rather than through an animated element:
  * the marker is a pseudo-element laid on EVERY row, and a variable set once on
  * the root serves them all at a stroke, visible or not.
  *
- * The beat stops during a game: nothing is watching it, and a timer running for
- * nobody is one timer too many.
+ * The beat stops during a game: nothing is watching it, and a loop running for
+ * nobody is one loop too many.
  */
 function animateMenuBomb() {
   const run =
     spriteSet.menuBomb ?? spriteSet.bombTrigger?.[0] ?? spriteSet.bomb?.[0] ?? [];
-  const frames = run.map((sprite) => `url(${sprite.canvas.toDataURL()})`);
+  const frames = onOneCanvas(run).map((canvas) => `url(${canvas.toDataURL()})`);
   if (frames.length === 0) return;
 
-  const rate = Math.max(60, (spriteSet.bombCycle ?? 900) / frames.length);
-  let frame = 0;
-  let timer = null;
+  const duration = (spriteSet.bombCycle ?? 660) * START_SLOWNESS;
+  let beating = false;
+  /** The frame on screen: setting the variable again for nothing costs a repaint. */
+  let shown = -1;
 
-  const beat = () => {
-    document.documentElement.style.setProperty('--bomb', frames[frame]);
-    frame = (frame + 1) % frames.length;
+  const beat = (time) => {
+    if (!beating) return;
+    const frame = Math.floor((time / duration) * frames.length) % frames.length;
+    if (frame !== shown) {
+      shown = frame;
+      document.documentElement.style.setProperty('--bomb', frames[frame]);
+    }
+    requestAnimationFrame(beat);
   };
 
   const follow = () => {
     const onMenu = !menu.hidden;
-    if (onMenu && timer === null) {
-      beat();
-      timer = setInterval(beat, rate);
-    } else if (!onMenu && timer !== null) {
-      clearInterval(timer);
-      timer = null;
-    }
+    if (onMenu === beating) return;
+    beating = onMenu;
+    // The same clock as the render loop's, which is handed `requestAnimationFrame`'s
+    // own stamp: that is what puts the menu and the arena in phase rather than
+    // merely at the same pace.
+    if (beating) requestAnimationFrame(beat);
   };
 
   follow();
