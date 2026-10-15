@@ -24,8 +24,9 @@ export function createHud(root) {
    * @param {number} places
    * @param {string[]} names
    * @param {number[] | null} colours colour index per place, when the players
-   *   have chosen one. Without it, the place gives the colour, as online where
-   *   everyone is handed theirs on arrival.
+   *   have chosen one — on the launch screen in solo play, on the creation
+   *   screen online, where the relay then hands the same list to everybody.
+   *   Without it, the place gives the colour.
    */
   function build(places, names, colours = null) {
     root.textContent = '';

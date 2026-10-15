@@ -555,8 +555,9 @@ export function createScene(canvas, set = fromDrawings()) {
      * Sets the colour of each place for the game about to start.
      *
      * @param {number[] | null} table colour index per place, or null to go back
-     *   to "the place gives the colour", which is what the online game does: the
-     *   relay does not know everyone's choices.
+     *   to "the place gives the colour". Online the table comes from the relay,
+     *   which settled it from the creation screen's choices: one list for every
+     *   screen, otherwise two players would not see the same arena.
      */
     colours(table) {
       tints = table ?? null;

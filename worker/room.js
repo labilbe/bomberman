@@ -35,6 +35,7 @@ import {
   MAX_PLACES,
   RESUME_MS,
   cleanName,
+  cleanColours,
   botNames,
 } from '../src/net/protocol.js';
 
@@ -148,6 +149,16 @@ export function createRoom({ code, now, seed = randomSeed() }) {
   let clock = null;
   let places = MIN_PLACES;
   let format = FORMATS[0];
+  /**
+   * The colour each place wears, as whoever laid the table chose them.
+   *
+   * THE ROOM DECIDES, not each screen: a colour is how you find your bomber
+   * among ten, and two players who had each picked their own would be playing
+   * two different games — one would aim at the green bomber the other sees as
+   * red. So the choice is made once, on the creation screen, travels with the
+   * arrival that opens the room, and is announced to everybody.
+   */
+  let colours = cleanColours(null, places);
   let counter = 0;
   /**
    * Who lays the table, when somebody did: whoever said so on arriving.
@@ -259,6 +270,10 @@ export function createRoom({ code, now, seed = randomSeed() }) {
         min: MIN_PLACES,
         max: places,
         names: names(),
+        // The colours go out WITH THE WAITING LIST: whoever joins has chosen
+        // nothing, and the only way for them to know which bomber is theirs is
+        // for the room to say so before the game starts.
+        colours: colours.slice(),
         host: member.id === hostId,
         // Whether ANYBODY holds the room, which is not the same question: a
         // guest has to know if they are waiting for a signal or for the last
@@ -295,6 +310,7 @@ export function createRoom({ code, now, seed = randomSeed() }) {
         places,
         format: game.format,
         names: names(),
+        colours: colours.slice(),
       });
     }
     toAll({ type: SERVER.ROUND, round: game.round, seed: game.state.seed, wait: game.start, ...gridOf(game.state) });
@@ -396,6 +412,7 @@ export function createRoom({ code, now, seed = randomSeed() }) {
             places,
             format: game.format,
             names: names(),
+            colours: colours.slice(),
           });
           toOne(id, {
             type: SERVER.ROUND,
@@ -423,6 +440,11 @@ export function createRoom({ code, now, seed = randomSeed() }) {
       if (members.size === 0) {
         places = Math.min(MAX_PLACES, Math.max(MIN_PLACES, Number(message.places) || MIN_PLACES));
         format = FORMATS.includes(Number(message.format)) ? Number(message.format) : FORMATS[0];
+        // And its colours, by the same rule and for the same reason. A guest who
+        // happens to arrive first in a room nobody laid out has chosen nothing:
+        // `cleanColours` then gives back the place order, which is what such a
+        // room has always looked like.
+        colours = cleanColours(message.colours, places);
       }
 
       const place = freePlace();

@@ -78,14 +78,21 @@ try {
   await Promise.all([alice.open, bob.open]);
   console.log('deux clients connectes');
 
-  alice.send({ type: CLIENT.JOIN, room: ROOM, name: 'Alice', places: 2, format: 3, host: true });
+  // Les couleurs partent avec la creation du salon : c est la table qui les
+  // decide, et le relais les annonce a tout le monde.
+  alice.send({
+    type: CLIENT.JOIN, room: ROOM, name: 'Alice', places: 2, format: 3, colours: [4, 7], host: true,
+  });
   const waiting = await alice.await(SERVER.WAITING);
   check(waiting.places === 1, 'le premier arrive est seul en attente');
   check(waiting.host === true, 'celui qui cree tient le salon');
+  check(JSON.stringify(waiting.colours) === '[4,7]', 'le salon porte les couleurs choisies');
 
-  bob.send({ type: CLIENT.JOIN, room: ROOM, name: 'Bob', places: 2, format: 3 });
+  // Bob en propose d autres : le salon est pose, son avis n est pas entendu.
+  bob.send({ type: CLIENT.JOIN, room: ROOM, name: 'Bob', places: 2, format: 3, colours: [1, 2] });
   const guest = await bob.await(SERVER.WAITING);
   check(guest.host !== true, 'celui qui rejoint ne tient pas le salon');
+  check(JSON.stringify(guest.colours) === '[4,7]', 'celui qui rejoint prend les couleurs du salon');
 
   // La partie ne part pas toute seule : c est le createur qui donne le signal.
   alice.send({ type: CLIENT.BEGIN });
@@ -101,6 +108,11 @@ try {
     startAlice.names.includes('Alice') && startAlice.names.includes('Bob'),
     'chacun voit le nom de l autre',
   );
+  check(
+    JSON.stringify(startAlice.colours) === JSON.stringify(startBob.colours),
+    'les deux ecrans dessinent la meme arene',
+  );
+  check(JSON.stringify(startAlice.colours) === '[4,7]', 'et ce sont les couleurs posees');
 
   const roundAlice = await alice.await(SERVER.ROUND);
   const roundBob = await bob.await(SERVER.ROUND);

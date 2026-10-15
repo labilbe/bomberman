@@ -14,7 +14,7 @@
 
 /** Messages from the client to the relay. */
 export const CLIENT = {
-  JOIN: 'join', // { type, room, name, places, format, host?, resume? }
+  JOIN: 'join', // { type, room, name, places, format, colours?, host?, resume? }
   BEGIN: 'begin', // { type } — the host starts without waiting for the room to fill
   BOT: 'bot', // { type, seat? } — seat an artificial opponent, there or anywhere
   INPUT: 'input', // { type, seat, seq, dir, bomb, det, hold } — intent
@@ -24,8 +24,8 @@ export const CLIENT = {
 
 /** Messages from the relay to the client. */
 export const SERVER = {
-  WAITING: 'waiting', // { type, room, places, min, max, names, host, hosted }
-  START: 'start', // { type, room, myId, mine, places, format }
+  WAITING: 'waiting', // { type, room, places, min, max, names, colours, host, hosted }
+  START: 'start', // { type, room, myId, mine, places, format, names, colours }
   ROUND: 'round', // { type, round, seed, tiles, items, v }
   STATE: 'state', // { type, t, v, j, b, f }
   ARENA: 'arena', // { type, v, tiles, items } — answer to RESYNC
@@ -135,6 +135,48 @@ export function botNames(count, offset = 0) {
  */
 export const MIN_PLACES = 2;
 export const MAX_PLACES = 10;
+
+/**
+ * The colours of a room, cleaned up: one colour index per place.
+ *
+ * Whoever lays the table chooses them, and that choice travels over the wire —
+ * so it comes from a stranger. A list of ten `-1`, one colour named twice, a
+ * length that does not match the number of places: each of those would hand two
+ * bombers the same skin, and two identical bombers in a scrum is not a game.
+ *
+ * So we keep whatever is a real colour nobody else has, and fill the rest with
+ * the ones left over, in their own order. With nothing at all to go on it gives
+ * back exactly `[0, 1, 2…]` — the place gives the colour, which is how a room
+ * worked before anybody could choose.
+ *
+ * It lives here and not in the page because BOTH SIDES need it: the page offers
+ * the choice, the relay is the one that must not take its word for it.
+ *
+ * @param {unknown} raw the colours asked for, or nothing
+ * @param {number} places how many bombers the arena seats
+ * @returns {number[]} one colour index per place, all different
+ */
+export function cleanColours(raw, places) {
+  const wanted = Array.isArray(raw) ? raw : [];
+  const taken = new Set();
+  const table = Array.from({ length: places }, (_, place) => {
+    const colour = Number(wanted[place]);
+    if (!Number.isInteger(colour) || colour < 0 || colour >= MAX_PLACES) return null;
+    if (taken.has(colour)) return null;
+    taken.add(colour);
+    return colour;
+  });
+
+  // The places left without a colour take those nobody asked for, in order.
+  let spare = 0;
+  for (let place = 0; place < places; place += 1) {
+    if (table[place] !== null) continue;
+    while (taken.has(spare)) spare += 1;
+    table[place] = spare;
+    taken.add(spare);
+  }
+  return table;
+}
 
 /**
  * Alphabet of the room codes.

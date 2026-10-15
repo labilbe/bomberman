@@ -9,7 +9,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { HUMAN_NAMES, BOT_NAMES, botNames, cleanName, NAME_MAX } from '../src/net/protocol.js';
+import {
+  HUMAN_NAMES,
+  BOT_NAMES,
+  botNames,
+  cleanName,
+  cleanColours,
+  NAME_MAX,
+  MAX_PLACES,
+} from '../src/net/protocol.js';
 
 test('no name is both a human and a bot', () => {
   // In a four-way scrum you have to tell at a glance who is driven by somebody.
@@ -39,4 +47,42 @@ test('an arena of four bots has four different names', () => {
     const drawn = botNames(4, offset);
     assert.equal(new Set(drawn).size, 4, `offset ${offset} repeats a name`);
   }
+});
+
+test('the colours of a room are all different, whatever is asked for', () => {
+  // They come off the wire: a list from a stranger must never hand two bombers
+  // the same skin, since two identical bombers cannot be told apart in play.
+  for (const asked of [
+    null,
+    'rouge',
+    [],
+    [3],
+    [2, 2, 2, 2],
+    [0, 0, 1, 9],
+    [-1, 42, 1.5, 3],
+    [9, 8, 7, 6],
+  ]) {
+    const colours = cleanColours(asked, 4);
+    assert.equal(colours.length, 4);
+    assert.equal(new Set(colours).size, 4, `${JSON.stringify(asked)} gave a duplicate`);
+    for (const colour of colours) {
+      assert.ok(Number.isInteger(colour) && colour >= 0 && colour < MAX_PLACES);
+    }
+  }
+});
+
+test('a choice everybody can have is kept as it was made', () => {
+  assert.deepEqual(cleanColours([4, 2, 9, 0], 4), [4, 2, 9, 0]);
+});
+
+test('with nothing asked for, the place gives the colour', () => {
+  // That is how a room worked before anybody could choose, and a room nobody
+  // laid out still works that way.
+  assert.deepEqual(cleanColours(null, 4), [0, 1, 2, 3]);
+});
+
+test('a colour claimed twice goes to the first place that asked', () => {
+  // The creation screen swaps rather than refuses, so this list should never
+  // arrive — but it is exactly what a stale page or a hand-made client sends.
+  assert.deepEqual(cleanColours([5, 5, 5], 3), [5, 0, 1]);
 });

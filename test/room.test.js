@@ -404,3 +404,49 @@ test('the snapshot carries the glove and the date of the punch', () => {
   assert.equal(seen.n, 1, 'the glove is announced');
   assert.equal(seen.u, player.punchedAt, 'and the step of its punch');
 });
+
+test('the colours of whoever laid the table are announced to everybody', () => {
+  // A colour is how you find your bomber among ten: the room settles it once,
+  // and every screen is handed the same list. A guest who drew their own would
+  // be aiming at a green bomber the host sees as red.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, colours: [4, 7], host: true }, 0);
+  const onArrival = room.join('b', { type: CLIENT.JOIN, name: 'Bob', colours: [1, 2] }, 0);
+
+  const waiting = of(onArrival, SERVER.WAITING);
+  assert.equal(waiting.length, 2, 'one message per member');
+  for (const message of waiting) {
+    assert.deepEqual(message.colours, [4, 7], 'the guest does not get a say');
+  }
+});
+
+test('the start hands out the colours too', () => {
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, colours: [9, 3], host: true }, 0);
+  const outgoing = room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+  assert.equal(of(outgoing, SERVER.START).length, 0);
+
+  const starting = room.message('a', { type: CLIENT.BEGIN }, 0);
+  const starts = of(starting, SERVER.START);
+  assert.equal(starts.length, 2, 'one per human');
+  for (const start of starts) assert.deepEqual(start.colours, [9, 3]);
+});
+
+test('a room nobody laid out wears the colours of its places', () => {
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  const alone = room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 3 }, 0);
+  assert.deepEqual(of(alone, SERVER.WAITING)[0].colours, [0, 1, 2]);
+});
+
+test('coming back finds the same colours', () => {
+  // The grace period hands the seat back, and the colours with it: a bomber that
+  // changed colour on reconnecting would have to be looked for all over again.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, colours: [6, 2], host: true }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+  room.message('a', { type: CLIENT.BEGIN }, 0);
+
+  room.leave('a', 1000);
+  const back = room.join('a2', { type: CLIENT.JOIN, name: 'Alice', resume: 'a' }, 2000);
+  assert.deepEqual(of(back, SERVER.START)[0].colours, [6, 2]);
+});

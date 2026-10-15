@@ -88,11 +88,13 @@ export function followGrid(state, list) {
 
 /**
  * @param {{
- *   url: string, room: string, nickname: string,
- *   places?: number, format?: number, bots?: number[], host?: boolean
+ *   url: string, room: string, nickname: string, places?: number, format?: number,
+ *   bots?: number[], colours?: number[] | null, host?: boolean
  * }} options
  */
-export function createOnlineTransport({ url, room, nickname, places = 2, format = 3, bots = [], host = false }) {
+export function createOnlineTransport({
+  url, room, nickname, places = 2, format = 3, bots = [], colours = null, host = false,
+}) {
   const views = new Set();
   const events = new Set();
   const transitions = new Set();
@@ -215,6 +217,10 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
         seated: message.places,
         total: message.max,
         names: message.names ?? [],
+        // The colours of the room, as the relay settled them. The waiting room
+        // shows them: whoever joins chose nothing, and they would otherwise
+        // discover which bomber is theirs at the first round.
+        colours: message.colours ?? null,
         // Only the host is offered the start: the relay says who it is, since it
         // is the only one that knows who opened the room.
         host: message.host === true,
@@ -236,6 +242,11 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
           format: message.format,
           mine,
           names: message.names ?? null,
+          // THE RELAY'S COLOURS AND NOT OURS, even for the host who picked
+          // them: it is the room that holds the table, it has cleaned up the
+          // list, and a guest has nothing else to go on. One source, so all the
+          // screens draw the same arena.
+          colours: message.colours ?? null,
         });
       }
       return;
@@ -346,6 +357,10 @@ export function createOnlineTransport({ url, room, nickname, places = 2, format 
         name: nickname,
         places,
         format,
+        // The colours are part of laying the table, so they travel with it. The
+        // relay only listens to the first arrival, and ignores them from a guest
+        // — who sends none anyway.
+        colours: colours ?? undefined,
         // LAYING THE TABLE IS SAID ON ARRIVAL, and it is the only difference
         // between creating and joining as far as the relay is concerned: the
         // room then waits for this player's signal instead of setting off on

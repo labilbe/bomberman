@@ -32,6 +32,7 @@ import {
   NAME_MAX,
   MIN_PLACES,
   MAX_PLACES,
+  cleanColours,
 } from './net/protocol.js';
 
 const menu = document.querySelector('#menu');
@@ -593,15 +594,7 @@ function buildSeats() {
       rememberSeats();
     });
 
-    const colour = document.createElement('select');
-    colour.className = 'colour';
-    PLACES.forEach((tint, index) => {
-      const option = document.createElement('option');
-      option.value = String(index);
-      option.textContent = tint.name;
-      colour.append(option);
-    });
-    colour.value = String(rowTint);
+    const colour = colourPicker({ list: seatsList, dot, start: rowTint, remember: rememberSeats });
 
     const control = document.createElement('select');
     control.className = 'control';
@@ -616,36 +609,6 @@ function buildSeats() {
     }
     control.value = controls[place];
 
-    const paint = () => {
-      dot.style.background = placeColour(Number(colour.value)).vivid;
-    };
-    paint();
-
-    // Two bombers of the same colour cannot be told apart in play. Rather than
-    // refusing the choice, we SWAP with whoever had it: that is what the game's
-    // selection screen does, and nobody has a mistake to correct.
-    //
-    // The colour handed back is the one this row carried AT THAT INSTANT, kept up
-    // to date here: reading it back from the preferences gave a THIRD colour,
-    // the one from before the last game, and the swap was no longer one.
-    let held = rowTint;
-    colour.addEventListener('change', () => {
-      const chosen = Number(colour.value);
-      for (const other of seatsList.querySelectorAll('.colour')) {
-        if (other === colour || Number(other.value) !== chosen) continue;
-        other.value = String(held);
-        other.dispatchEvent(new Event('swap'));
-      }
-      held = chosen;
-      paint();
-      rememberSeats();
-    });
-    // The swap repaints the yielding row without restarting the search, which
-    // would bounce from one row to the next.
-    colour.addEventListener('swap', () => {
-      held = Number(colour.value);
-      paint();
-    });
     // Changing the control changes who is a human and who is a bot, therefore
     // the names offered: a row that becomes a bot takes a bot's first name.
     control.addEventListener('change', () => {
@@ -659,6 +622,61 @@ function buildSeats() {
 
   // After the rows, since the proposal of one depends on the controls of all.
   refreshProposals();
+}
+
+/**
+ * The colour selector of one row, tied to its dot and to its neighbours.
+ *
+ * Shared by the two screens that lay out an arena — the local launch and the
+ * network creation — because they ask exactly the same question, and the swap
+ * below is a rule, not a decoration.
+ *
+ * Two bombers of the same colour cannot be told apart in play. Rather than
+ * refusing the choice, we SWAP with whoever had it: that is what the game's own
+ * selection screen does, and nobody has a mistake to correct.
+ *
+ * The colour handed back is the one this row carried AT THAT INSTANT, kept up to
+ * date in `held`: reading it back from the preferences gave a THIRD colour, the
+ * one from before the last game, and the swap was no longer one.
+ *
+ * @param {{ list: HTMLElement, dot: HTMLElement, start: number, remember: () => void }} options
+ */
+function colourPicker({ list, dot, start, remember }) {
+  const colour = document.createElement('select');
+  colour.className = 'colour';
+  PLACES.forEach((tint, index) => {
+    const option = document.createElement('option');
+    option.value = String(index);
+    option.textContent = tint.name;
+    colour.append(option);
+  });
+  colour.value = String(start);
+
+  const paint = () => {
+    dot.style.background = placeColour(Number(colour.value)).vivid;
+  };
+  paint();
+
+  let held = start;
+  colour.addEventListener('change', () => {
+    const chosen = Number(colour.value);
+    for (const other of list.querySelectorAll('.colour')) {
+      if (other === colour || Number(other.value) !== chosen) continue;
+      other.value = String(held);
+      other.dispatchEvent(new Event('swap'));
+    }
+    held = chosen;
+    paint();
+    remember();
+  });
+  // The swap repaints the yielding row without restarting the search, which
+  // would bounce from one row to the next.
+  colour.addEventListener('swap', () => {
+    held = Number(colour.value);
+    paint();
+  });
+
+  return colour;
 }
 
 /** A field dressed in its label, like those of the options. */
@@ -700,20 +718,32 @@ function rememberSeats() {
 }
 
 /**
- * The seats of a room being created: who waits for a human, who is a bot.
+ * The seats of a room being created: what colour each place wears, who waits for
+ * a human and who is a bot.
  *
- * ONLY TWO CHOICES PER ROW, and no colour: online, the colour comes with the
- * place, because the relay hands the seats out and does not know what anybody
- * picked. Showing a colour selector here would promise a choice that the other
- * players' screens would not honour.
+ * THE COLOURS ARE SETTLED HERE, BEFORE THE ROOM EXISTS, and that is why they can
+ * be chosen at all: they leave with the arrival that opens the room, the relay
+ * cleans them up and announces them, and every screen then draws the same
+ * arena. Offering the choice later — on each player's own screen, in the waiting
+ * room — would have let two players swap colours between themselves, and one
+ * would be aiming at a green bomber the other sees as red.
  *
- * The first row is you, and it is not a choice either: whoever lays the table
+ * Whoever joins therefore chooses nothing: they take the colour of the seat they
+ * are given, and the waiting room tells them which one it is. That is the price
+ * of a single arena, and it is the same price the original game paid — the
+ * colours belong to the table, not to the guests.
+ *
+ * The first row is you, and that much is not a choice: whoever lays the table
  * sits at it. It is shown all the same, so that the list reads as the arena will
  * look — four rows, four corners, four colours.
  */
 function buildNetSeats() {
   const count = Math.max(MIN_PLACES, Math.min(MAX_PLACES, Number(netPlayersSelect.value) || MIN_PLACES));
   const previous = readNetSeats();
+  // The defaults, and the repair of a remembered list that no longer fits —
+  // the same rule as the relay's, from the same function: every place gets a
+  // colour, and no two get the same one.
+  const tints = cleanColours(previous.map((seat) => seat.colour), count);
 
   netSeatsList.textContent = '';
   for (let place = 0; place < count; place += 1) {
@@ -722,13 +752,19 @@ function buildNetSeats() {
 
     const dot = document.createElement('span');
     dot.className = 'dot';
-    dot.style.background = placeColour(place).vivid;
 
     const label = document.createElement('span');
     label.className = 'seat-name';
     label.textContent = `Joueur ${place + 1}`;
 
-    row.append(dot, label);
+    const colour = colourPicker({
+      list: netSeatsList,
+      dot,
+      start: tints[place],
+      remember: rememberNetSeats,
+    });
+
+    row.append(dot, label, wrap('Couleur', colour));
 
     if (place === 0) {
       const mine = document.createElement('span');
@@ -753,24 +789,51 @@ function buildNetSeats() {
   }
 }
 
-/** What the creation screen says, row by row: 'human' or 'bot'. */
+/**
+ * What the creation screen says, row by row: its colour, and whether the seat
+ * waits for a human or is a bot.
+ *
+ * @returns {{ control: 'human' | 'bot', colour: number }[]}
+ */
 function readNetSeats() {
   const rows = [...netSeatsList.querySelectorAll('.seat')];
   if (rows.length === 0) {
-    // Before the first build — the join screen asks too — the remembered list
-    // stands in. Failing that, a room for two: the smallest thing that is a game.
+    // Before the first build — the join screen asks too, for the number of
+    // places — the remembered list stands in. Failing that, a room for two: the
+    // smallest thing that is a game.
     try {
       const remembered = JSON.parse(readPref(PREF_NET_SEATS, '[]'));
-      if (Array.isArray(remembered) && remembered.length >= MIN_PLACES) return remembered;
+      if (Array.isArray(remembered) && remembered.length >= MIN_PLACES) {
+        return remembered.map(netSeat);
+      }
     } catch {
       // Unreadable preference: the default below is just as good.
     }
-    return ['human', 'human'];
+    return [netSeat('human'), netSeat('human')];
   }
-  return rows.map((row, place) => {
-    if (place === 0) return 'human';
-    return row.querySelector('.control')?.value === 'bot' ? 'bot' : 'human';
-  });
+  return rows.map((row, place) => ({
+    // The first row is the host's, and it is never a bot: whoever lays the table
+    // sits at it.
+    control: place > 0 && row.querySelector('.control')?.value === 'bot' ? 'bot' : 'human',
+    colour: Number(row.querySelector('.colour').value),
+  }));
+}
+
+/**
+ * One remembered row, whatever shape it was written in.
+ *
+ * The preference used to be a plain list of 'human' and 'bot', before the
+ * colours could be chosen: a profile that has not played since still holds one,
+ * and reading it as an object gave a screen of undefined colours. A string is
+ * therefore still understood — the colour then comes from the place, which is
+ * exactly what that version did.
+ */
+function netSeat(remembered) {
+  const control = (typeof remembered === 'string' ? remembered : remembered?.control) === 'bot'
+    ? 'bot'
+    : 'human';
+  const colour = Number(remembered?.colour);
+  return { control, colour: Number.isInteger(colour) ? colour : null };
 }
 
 function rememberNetSeats() {
@@ -854,15 +917,20 @@ async function startSession(transport, { humans = 1, places, names, sources = nu
   }
 
   const count = start.places ?? places;
+  // ONLINE, THE COLOURS COME BACK FROM THE RELAY: the creation screen chose
+  // them, the room cleaned them up, and everybody — host and guests alike —
+  // draws the list it announces. In solo play nothing comes back, and the screen's
+  // own choice stands.
+  const tints = start.colours ?? colours;
   const labels = Array.from({ length: count }, (_, place) =>
-    nameOf(place, humans, start.names ?? names, colours),
+    nameOf(place, humans, start.names ?? names, tints),
   );
 
   // The colours chosen apply to the rendering AND to the dashboard: a blue
   // bomber must have a blue row, otherwise you hunt for yours at every glance.
-  scene.colours(colours);
-  warmUpColours(colours ?? Array.from({ length: count }, (_, place) => place));
-  hud.build(count, labels, colours);
+  scene.colours(tints);
+  warmUpColours(tints ?? Array.from({ length: count }, (_, place) => place));
+  hud.build(count, labels, tints);
   menu.hidden = true;
   game.hidden = false;
   // The waiting room has done its job: the game is starting. We close it here
@@ -1071,7 +1139,11 @@ function playOnline({ fresh = false } = {}) {
   const places = fresh
     ? seats.length
     : Math.max(MIN_PLACES, Math.min(MAX_PLACES, readNetSeats().length));
-  const bots = seats.flatMap((seat, place) => (seat === 'bot' ? [place] : []));
+  const bots = seats.flatMap((seat, place) => (seat.control === 'bot' ? [place] : []));
+  // The colours of the table being laid, and nothing when one is only joining:
+  // the room already has its own, and sending ours would be an opinion the relay
+  // is right to ignore.
+  const colours = fresh ? cleanColours(seats.map((seat) => seat.colour), places) : null;
   const format = Number(formatSelect.value) || 3;
   const url = new URLSearchParams(location.search).get('relais') || RELAY;
 
@@ -1082,6 +1154,7 @@ function playOnline({ fresh = false } = {}) {
     places,
     format,
     bots,
+    colours,
     // ONLY "CRÉER" LAYS A TABLE. Whoever comes through "Rejoindre" answers an
     // invitation, even when they turn out to be the first to arrive: they are
     // not offered the start, and the room falls back on setting off by itself
@@ -1102,7 +1175,15 @@ function playOnline({ fresh = false } = {}) {
   menu.hidden = true;
   game.hidden = false;
   adjustScale();
-  showWaiting(transport, { code, seated: 1, total: places, names: [], host: fresh, hosted: fresh });
+  showWaiting(transport, {
+    code,
+    seated: 1,
+    total: places,
+    names: [],
+    colours,
+    host: fresh,
+    hosted: fresh,
+  });
   transport.onRoom((room) => showWaiting(transport, room));
 
   // A single local seat online: the other bombers are elsewhere.
@@ -1121,7 +1202,7 @@ function playOnline({ fresh = false } = {}) {
  * It redraws itself on every arrival: the banner is rebuilt rather than modified,
  * which saves keeping nodes up to date one by one for three lines of text.
  */
-function showWaiting(transport, { code, seated, total, names, host = false, hosted = false, error }) {
+function showWaiting(transport, { code, seated, total, names, colours = null, host = false, hosted = false, error }) {
   // The relay has refused: this is the ONLY screen shown at that moment, hence
   // the only place to say so. Without that, you stay in front of a silent
   // waiting room, wondering why nobody arrives.
@@ -1134,7 +1215,14 @@ function showWaiting(transport, { code, seated, total, names, host = false, host
     return;
   }
 
-  const seats = Array.from({ length: total }, (_, place) => names?.[place] || '— libre —');
+  // THE COLOUR IS SAID WITH THE NAME, and that is new: it used to come with the
+  // place, so there was nothing to announce. Now that whoever lays the table
+  // picks them, a guest has no other way of learning which bomber is theirs
+  // before the first round starts.
+  const seats = Array.from({ length: total }, (_, place) => {
+    const tint = placeColour(colours?.[place] ?? place).name;
+    return `${names?.[place] || '— libre —'} (${tint})`;
+  });
   const missing = total - seated;
 
   // What the guest is waiting for is NOT the same thing as what the host is
