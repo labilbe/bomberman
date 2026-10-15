@@ -113,7 +113,13 @@ body {
  * taken out of the frame, not removed.
  */
 .masthead {
-  height: clamp(140px, 22vw, 250px);
+  /*
+   * Its height follows the width — it is a crop of an image — but never takes
+   * more than a third of the screen: on a laptop in landscape, a banner sized
+   * on the width alone ate the room the menu needed, and the home screen
+   * scrolled to show six entries.
+   */
+  height: min(clamp(140px, 22vw, 250px), 30vh);
   /* 190 %: the word takes the top third of the title screen, and it is the word
      we want in the frame — not the grass. */
   background: url('assets/game/home.png') no-repeat top center / auto 190%;
@@ -147,13 +153,54 @@ body {
   display: grid;
   grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1fr);
   gap: 0 20px;
-  align-items: center;
+  /*
+   * THE LIST HANGS FROM THE TOP, it is not centred on the bomber.
+   *
+   * Centred, its position was decided by the bomber's height — and the bomber is
+   * as tall as its column is wide, that is some six hundred pixels on a desktop.
+   * The entries were pushed down towards the middle of the page, far below the
+   * banner they follow on from, and the longest screens then ran off the bottom.
+   *
+   * Hung from the top with a margin of its own, the list sits where it is put,
+   * whatever the image beside it does.
+   */
+  align-items: start;
+}
+
+/*
+ * How far below the banner the entries start. In `vw` between two bounds, like
+ * the type: the gap has to keep its proportion to a banner that is itself
+ * sized that way.
+ */
+.menu-scene {
+  /* Capped by the HEIGHT as well, like the banner: on a 1366 × 768 laptop the
+     width alone asked for forty pixels the screen did not have. */
+  margin-top: min(clamp(16px, 3vw, 44px), 4vh);
 }
 
 .bomber {
   background: url('assets/game/bomber.png') no-repeat center bottom / contain;
   aspect-ratio: 310 / 440;
   min-height: 300px;
+  /*
+   * AND NO TALLER THAN THE SCREEN HAS LEFT.
+   *
+   * Its height came from its width alone — a column of 470 pixels gave a bomber
+   * of 665 — and it is the tallest thing on the page: it alone decided that the
+   * home screen scrolled, banner, menu and all. The image is laid `contain`, so
+   * capping the box only makes it smaller; nothing is cut.
+   *
+   * The cap is WHAT THE SCREEN HAS LEFT — its height, less the banner, the gaps
+   * and the page's own margins — and not a fraction of it: the bomber then fills
+   * the bottom of the page exactly, instead of leaving a void under it on a tall
+   * screen and still overflowing on a short one.
+   *
+   * `svh` and not `vh`: on a telephone, `vh` counts the screen with the address
+   * bar rolled away, which is precisely the height one does not have. The `vh`
+   * line above it serves the browsers that do not know the unit.
+   */
+  max-height: calc(100vh - 340px);
+  max-height: calc(100svh - 340px);
   image-rendering: pixelated;
   animation: float 7s ease-in-out infinite;
 }
@@ -248,7 +295,17 @@ body {
   background: none;
   border: 0;
   border-radius: 0;
-  padding: 1px 0;
+  /*
+   * THE ROWS BREATHE. One pixel above and below packed the entries into a block
+   * of text, where the game's menu lets each one stand on its own line; and a
+   * row is a target as well as a label — a click or a thumb needs more than the
+   * height of the letters.
+   *
+   * In `em` and not in pixels, like the letter-spacing above: the type scales
+   * with the viewport, and a fixed padding would be airy on a phone and tight on
+   * a wide screen, which is the opposite of what is wanted.
+   */
+  padding: 0.25em 0;
   cursor: pointer;
   list-style: none;
   /*
