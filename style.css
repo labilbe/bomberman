@@ -440,6 +440,12 @@ body {
   max-width: 7em;
 }
 
+/* As wide as its longest entry, no wider: a select stretched across the panel
+   promises a long text where there are three words. */
+.field-format {
+  max-width: 13em;
+}
+
 .panel.fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));

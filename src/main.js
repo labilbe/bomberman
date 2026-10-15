@@ -50,6 +50,7 @@ const defaultRoomInput = document.querySelector('#default-room');
 const netPlayersSelect = document.querySelector('#net-players');
 const netSeatsList = document.querySelector('#net-seats');
 const createRoomInput = document.querySelector('#create-room');
+const netFormatSelect = document.querySelector('#net-format');
 const playLocalButton = document.querySelector('#play-local');
 const playOnlineButton = document.querySelector('#play-online');
 const createOnlineButton = document.querySelector('#play-create');
@@ -371,6 +372,7 @@ function openScreen(name) {
   const target = document.querySelector(`#screen-${name}`);
   if (!target) return;
   if (name === 'join' || name === 'create') proposeRooms();
+  if (name === 'create') proposeFormat();
   // The nickname may have been changed in the options since the rows were built:
   // the first row wears it, so it is re-read here rather than at the start.
   if (name === 'game') refreshProposals();
@@ -1235,6 +1237,25 @@ function proposeRooms() {
 }
 
 /**
+ * The number of rounds the creation screen proposes: the one set in the options.
+ *
+ * Proposed AGAIN each time the screen opens, like the room code and for the same
+ * reason: the options hold the standing choice, and a format set for one evening
+ * must not quietly become it.
+ *
+ * A format CHANGED ON THE SCREEN holds its ground, though — the same rule as the
+ * first row's colour, and for the same reason: it is picked on the very screen
+ * that is about to open the room, two clicks before opening it.
+ */
+function proposeFormat() {
+  const touched = proposed.has(netFormatSelect)
+    && netFormatSelect.value !== proposed.get(netFormatSelect);
+  if (touched) return;
+  netFormatSelect.value = formatSelect.value;
+  proposed.set(netFormatSelect, netFormatSelect.value);
+}
+
+/**
  * Address of the relay.
  *
  * It is written here rather than guessed: the page is served by GitHub Pages and
@@ -1278,7 +1299,9 @@ function playOnline({ fresh = false } = {}) {
   // the room already has its own, and sending ours would be an opinion the relay
   // is right to ignore.
   const colours = fresh ? cleanColours(seats.map((seat) => seat.colour), places) : null;
-  const format = Number(formatSelect.value) || 3;
+  // Creating says how many rounds ITS room plays; joining says nothing — the
+  // room was laid out by whoever opened it, format included.
+  const format = Number((fresh ? netFormatSelect : formatSelect).value) || 3;
   const url = new URLSearchParams(location.search).get('relais') || RELAY;
 
   const transport = createOnlineTransport({
@@ -1487,6 +1510,14 @@ function initialise() {
   proposeRooms();
   nicknameInput.value = cleanName(readPref(PREF_NICKNAME, ''), randomName());
   formatSelect.value = readPref(PREF_FORMAT, '3');
+  // WRITTEN DOWN WHEN IT CHANGES, and not only when a game is launched from the
+  // launch screen: somebody who only ever plays online would have set it at
+  // every session without it ever being kept.
+  formatSelect.addEventListener('change', () => {
+    writePref(PREF_FORMAT, formatSelect.value);
+    proposeFormat();
+  });
+  proposeFormat();
 
   // THE COLOUR ONE PREFERS, in the game's own order so that the list reads like
   // the one on the launch screen.
