@@ -1,8 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Bombe">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Tête de bomber">
   <rect width="32" height="32" rx="6" fill="#120f1c" />
-  <path d="M19 7h2v3h-2z" fill="#c9a227" />
-  <path d="M21 5h2v3h-2z" fill="#c9a227" />
-  <circle cx="24" cy="5" r="2" fill="#ffd45e" />
-  <circle cx="14" cy="19" r="9" fill="#1b1b2a" stroke="#3a3a52" stroke-width="1.5" />
-  <circle cx="10.5" cy="15.5" r="2" fill="#9aa4bd" />
+  <!-- The aerial and its bead. Kept from the bomb that was here before: it is
+       the one shape that still reads at 16 pixels, and it is a bomber's too. -->
+  <path d="M15 4h2v5h-2z" fill="#9aa4bd" />
+  <circle cx="16" cy="4" r="2.2" fill="#ffd45e" />
+  <!-- The helmet: a dome on a flat jaw, the silhouette of the bomber on the
+       home screen. -->
+  <path d="M5 19a11 11 0 0 1 22 0v4H5z" fill="#e8edf5" />
+  <path d="M5 19a11 11 0 0 1 22 0v1H5z" fill="#ffffff" />
+  <circle cx="4.5" cy="19.5" r="2.4" fill="#9aa4bd" />
+  <circle cx="27.5" cy="19.5" r="2.4" fill="#9aa4bd" />
+  <!-- The visor, and the two eyes in it. Two white marks on a dark band is the
+       whole face: at favicon size nothing finer survives. -->
+  <rect x="8" y="14" width="16" height="8" rx="3.5" fill="#15152a" />
+  <rect x="11" y="16" width="3.5" height="4.5" rx="1.5" fill="#f6f9ff" />
+  <rect x="17.5" y="16" width="3.5" height="4.5" rx="1.5" fill="#f6f9ff" />
+  <!-- The green of the suit, under the jaw: it is the colour of the bomber the
+       game shows on its own title screen. -->
+  <path d="M8 23h16v3a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2z" fill="#2fa84f" />
+  <path d="M14 23h4v5h-4z" fill="#f6f9ff" />
 </svg>
