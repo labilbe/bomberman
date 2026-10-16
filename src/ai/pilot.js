@@ -243,7 +243,16 @@ function chooseMove(state, place, memory, options, player) {
   // suicidal — as long as the reaction delay applied to danger too, lengthening
   // it to calm the to-and-fro pushed deaths on one's own bomb back up to 17 %,
   // the bot no longer being allowed to react at the moment it should have.
-  if (!threatened && state.step - memory.since < REFLEX_STEPS) {
+  //
+  // A DECISION DATED IN THE FUTURE is a decision from the previous round: the
+  // round restarts the clock at zero while the pilot keeps its memory, so the
+  // bot still standing at the end of a round arrived in the next one with a
+  // `since` in the thousands. The difference stayed negative from one end of
+  // the round to the other, and it held its last direction without ever
+  // deciding again — stuck against a wall, or walking straight on, dropping
+  // nothing, until a blast finally reached its cell and rule 1 woke it up.
+  const age = state.step - memory.since;
+  if (!threatened && age >= 0 && age < REFLEX_STEPS) {
     return {
       input: { dir: memory.dir, drop: false, detonate: false },
       memory,

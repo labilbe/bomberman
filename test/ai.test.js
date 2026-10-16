@@ -293,3 +293,18 @@ test('a bot almost never dies of its own bomb', () => {
   const share = suicides / deaths;
   assert.ok(share < 0.08, `${suicides} deaths on one's own bomb out of ${deaths} (${Math.round(share * 100)} %)`);
 });
+
+test('a memory kept from the previous round does not freeze the bot', () => {
+  // The round restarts `state.step` at zero while the pilot keeps its memory
+  // from one round to the next: the survivor of a round arrived in the next one
+  // with a `since` in the thousands, and `step - since` stayed negative for the
+  // whole round. It held its last direction, dropped nothing, and only woke up
+  // when a blast finally reached its cell.
+  const state = bareArena();
+  brick(state, 4, 3);
+  place(state, 0, 3, 3);
+  const stale = { dir: -1, drop: false, since: 2000 };
+
+  const { input: intent } = decide(state, 0, stale);
+  assert.ok(intent.drop || intent.dir >= 0, 'the bot must decide, not hold a dead course');
+});
