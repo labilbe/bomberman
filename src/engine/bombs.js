@@ -26,6 +26,7 @@ import {
 import { cellAt, isFree, cellOnAxis, centreOnAxis, boxOnCell, wrap, index } from './grid.js';
 import { isVisible } from './bonus.js';
 import { record } from './state.js';
+import { fuseOf, rangeOf } from './disease.js';
 
 /**
  * The bomb on this cell, or null.
@@ -136,8 +137,8 @@ function dropOn(state, player, cx, cy) {
     cx,
     cy,
     place: player.place,
-    range: player.range,
-    fuse: delayed ? null : FUSE_STEPS,
+    range: rangeOf(player, state.step),
+    fuse: delayed ? null : fuseOf(player, state.step),
     slide: null,
     // THE JELLY IS A PROPERTY OF THE BOMB, taken on the drop, and not of the
     // player who pushes it. That is what makes a bomb stay mad when the one who
@@ -161,10 +162,10 @@ function dropOn(state, player, cx, cy) {
 /**
  * THE BURST: lines up every bomb left in front of oneself.
  *
- * Triggered by a DOUBLE TAP on the bomb button. The first press drops under the
- * feet as always; the second, if it follows closely, empties the magazine in a
- * queue in the direction being faced — cell after cell, until bombs run out or
- * something gets in the way.
+ * Triggered by a DOUBLE TAP on the bomb button, BY WHOEVER HAS THE SPOOGER. The
+ * first press drops under the feet as always; the second, if it follows closely,
+ * empties the magazine in a queue in the direction being faced — cell after
+ * cell, until bombs run out or something gets in the way.
  *
  * It is the gesture that gives a big stock of bombs a point. With eight bombs
  * and only one pair of hands you could drop just one per cell walked, hence

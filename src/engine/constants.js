@@ -151,6 +151,35 @@ export const RANGE_AT_START = 2;
 export const TRIGGERS_PER_BONUS = 5;
 
 /**
+ * How long an illness lasts: 15 seconds.
+ *
+ * Long enough to lose the round because of it, short enough that the loser is
+ * not out of the game. It is also the whole reason the skull can be PASSED ON:
+ * fifteen seconds is long enough to want to go and hand it to somebody else.
+ */
+export const DISEASE_STEPS = 900;
+
+/**
+ * The short fuse: 0.6 s instead of 2.4.
+ *
+ * Not zero: a bomb that went off on the spot would kill at the press, and the
+ * illness would be a death sentence rather than a handicap. At 0.6 s you can
+ * still get out, but only if you were not already in a corner.
+ */
+export const SHORT_FUSE_STEPS = 36;
+
+/** The tiny flame: the blast falls back to one cell, whatever was picked up. */
+export const TINY_RANGE = 1;
+
+/**
+ * Leaden legs: a little over half the basic pace.
+ *
+ * Slower than a bomber who has picked up nothing, which is the point — the
+ * illness has to be felt by somebody who had no skates either.
+ */
+export const SICK_SPEED = 52;
+
+/**
  * The boxing glove: how many cells a punched bomb flies over AT LEAST, and how
  * long it takes per cell.
  *
@@ -238,4 +267,8 @@ export const BONUS = {
   GLOVE: 'punch',
   JELLY: 'jelly',
   GRAB: 'grab',
+  SPOOGER: 'spooger',
+  GOLDFLAME: 'goldflame',
+  RANDOM: 'random',
+  DISEASE: 'disease',
 };

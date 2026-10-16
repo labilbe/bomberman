@@ -19,6 +19,7 @@
  */
 
 import { ROUND_END_STEPS, DOUBLE_TAP_STEPS } from './constants.js';
+import { dropsByItself, expireIllnesses, spreadIllnesses } from './disease.js';
 import { EMPTY_INPUT } from './inputs.js';
 import { record } from './state.js';
 import {
@@ -105,6 +106,11 @@ export function step(state, inputs = []) {
   if (state.phase === 'verdict') return state;
   state.step += 1;
 
+  // Illnesses run out at the TOP of the step, so that everything below reads the
+  // same bomber: a skull ending on this step must not slow the legs and then
+  // shorten the fuse of the bomb dropped on the same step.
+  expireIllnesses(state);
+
   for (const player of state.players) {
     const input = inputOf(inputs, player.place);
 
@@ -121,8 +127,10 @@ export function step(state, inputs = []) {
     const liftable = liftableUnder(state, player);
 
     if (input.drop && !liftable) {
-      // DOUBLE TAP = BURST. The first drops under the feet; the second, if it
-      // follows closely, lines up everything left in front.
+      // DOUBLE TAP = BURST, FOR WHOEVER HAS THE SPOOGER. The first press drops
+      // under the feet; the second, if it follows closely, lines up everything
+      // left in front. Without the bonus the second press is an ordinary drop,
+      // which the cell underfoot refuses: the gesture simply does not exist.
       //
       // ONLY A SUCCESSFUL DROP ARMS THE GESTURE. A press that gives nothing — no
       // bombs left in reserve, or one already underfoot — is common: you hammer
@@ -133,13 +141,25 @@ export function step(state, inputs = []) {
       // Hands full, no drop: you are holding the bomb you would be dropping.
       const carrying = carriedBy(state, player.place) !== null;
       const double = player.droppedAt !== null && state.step - player.droppedAt <= DOUBLE_TAP_STEPS;
+      const burst = double && player.spooger;
       const dropped = carrying
         ? null
-        : (double ? (lineUp(state, player) > 0 ? state.bombs.at(-1) : null) : drop(state, player));
+        : (burst ? (lineUp(state, player) > 0 ? state.bombs.at(-1) : null) : drop(state, player));
       if (dropped) {
         player.droppedAt = state.step;
         player.holdDropped = dropped.id;
       }
+    }
+
+    // THE RUNS press the button in your place, at every step, and the engine
+    // refuses what it cannot do — one bomb per cell, and only as many as the
+    // magazine holds. It goes STRAIGHT to `drop` and leaves `droppedAt` alone:
+    // the burst is a double TAP, and this is not a press at all. Arming it would
+    // have emptied the whole magazine ahead of a spooger carrier on the step
+    // they caught the skull.
+    if (dropsByItself(player, state.step) && !liftable
+        && carriedBy(state, player.place) === null) {
+      drop(state, player);
     }
 
     if (input.hold) {
@@ -184,6 +204,10 @@ export function step(state, inputs = []) {
   advanceSlides(state);
   advanceFlights(state);
   movePlayers(state, inputs);
+  // Contagion once everybody has moved, and never before: deciding who touches
+  // whom on last step's positions handed the skull over through a gap that had
+  // already closed.
+  spreadIllnesses(state);
   // The carried bombs follow AFTER their carriers have moved: a bomb left on the
   // cell behind would burn the one square its owner has just left.
   advanceCarried(state);

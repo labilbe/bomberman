@@ -15,7 +15,7 @@
 import { COLS, ROWS, EMPTY, SOLID, BRICK } from './constants.js';
 import { index } from './grid.js';
 import { nextRandom } from './rng.js';
-import { HIDDEN, BONUS_TABLE } from './bonus.js';
+import { HIDDEN, fromTable } from './bonus.js';
 
 /** Share of bricks among the free cells. */
 const BRICK_DENSITY = 0.78;
@@ -106,14 +106,8 @@ export function clearings(start) {
  * @returns {{ rng: { seed: number }, bonus: number }}
  */
 export function drawBonus(rng) {
-  const total = BONUS_TABLE.reduce((sum, [, weight]) => sum + weight, 0);
   const roll = nextRandom(rng);
-  let left = roll.value * total;
-  for (const [code, weight] of BONUS_TABLE) {
-    left -= weight;
-    if (left < 0) return { rng: roll.rng, bonus: code };
-  }
-  return { rng: roll.rng, bonus: BONUS_TABLE[BONUS_TABLE.length - 1][0] };
+  return { rng: roll.rng, bonus: fromTable(roll.value) };
 }
 
 /**

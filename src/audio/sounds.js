@@ -125,6 +125,14 @@ export function createSounds() {
       note('square', 880, 880, 0.06, 0.45, 0.06);
       note('square', 1240, 1240, 0.1, 0.45, 0.12);
     },
+    // The skull: the pickup sound upside down — three notes going DOWN, on a
+    // sawtooth. It plays on top of 'pick', because the pack really was picked
+    // up; what the ear has to catch is that this one went wrong.
+    sick: () => {
+      note('sawtooth', 500, 500, 0.08, 0.4);
+      note('sawtooth', 330, 330, 0.08, 0.4, 0.08);
+      note('sawtooth', 180, 110, 0.26, 0.45, 0.16);
+    },
     itemgone: () => note('sine', 300, 120, 0.12, 0.3),
     kick: () => note('sawtooth', 240, 520, 0.12, 0.35),
     // The jelly's bounce: the kick backwards, shorter and higher. A mad bomb

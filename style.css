@@ -721,6 +721,24 @@ body:has(#game:not([hidden])) .masthead {
   color: #70e000;
 }
 
+/* The illness: the only bad news of the row, hence the only one in red. It
+   pulses, because the question it asks — how long is left — is a countdown. */
+.player .powers .ill {
+  color: #ff5d5d;
+  animation: ill-pulse 1s steps(2, end) infinite;
+}
+
+@keyframes ill-pulse {
+  from { opacity: 1; }
+  to { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player .powers .ill {
+    animation: none;
+  }
+}
+
 .arena {
   position: relative;
   line-height: 0;

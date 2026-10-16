@@ -94,4 +94,21 @@ export const BONUS_COLOURS = {
   // The jelly: the purple of Interplay's own 'jelly', which looks like no other
   // bonus — that is all you ask of sixteen pixels.
   jelly: { background: '#9d4edd', glyph: '#2d0a45', glow: '#e0aaff' },
+  // The spooger: a warm yellow, the only one of the lot, so that the pack that
+  // changes the bomb key is not read as one more flame.
+  spooger: { background: '#ffd60a', glyph: '#4a3500', glow: '#fff3b0' },
+  // The gold flame: gold, obviously, and the only pack whose glow is brighter
+  // than its ground — it has to look like it is lit from inside, because it is
+  // the one pack that settles a round.
+  goldflame: { background: '#f4a300', glyph: '#5a2d00', glow: '#ffe9a8' },
+  // The random pack: Interplay's own question-mark purple-blue, deliberately
+  // unlike every other pack — it must not be mistaken for what it might give.
+  random: { background: '#5a67d8', glyph: '#1a1f4a', glow: '#c3cafe' },
+  // The skull: a sick green nobody would call a reward. Everything else in the
+  // arena is warm or bright; this one is meant to be read as 'do not touch'.
+  //
+  // It is the only entry with an `ink`: everywhere else the pack's shadow and
+  // its drawing are the same dark colour, but a skull has to be BONE on a dark
+  // ground, and the shadow cannot be bone.
+  disease: { background: '#5f8a3a', glyph: '#24380f', glow: '#9ccc65', ink: '#f2f5e8' },
 };

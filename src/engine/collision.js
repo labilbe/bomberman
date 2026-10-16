@@ -23,6 +23,7 @@
 import { VECTORS, HALF_BOMBER, UNITS } from './constants.js';
 import { cellAt, isFree, touchedCells, cellOnAxis, centreOnAxis, boxOnCell } from './grid.js';
 import { bombDroppedAt, bombById, pushBomb } from './bombs.js';
+import { speedOf } from './disease.js';
 
 /**
  * Can the bomber occupy this cell?
@@ -249,7 +250,7 @@ export function movePlayer(state, player, input) {
 
   player.dir = input.dir;
   const v = VECTORS[input.dir];
-  const speed = player.speed;
+  const speed = speedOf(player, state.step);
 
   if (v.dx !== 0) {
     const aimed = player.x + v.dx * speed;

@@ -248,6 +248,10 @@ export function createOnlineTransport({
       player.glove = j.n === 1;
       player.jelly = j.l === 1;
       player.grab = j.r === 1;
+      player.spooger = j.q === 1;
+      player.goldflame = j.w === 1;
+      player.illness = j.c ?? null;
+      player.illnessUntil = j.h ?? 0;
       player.punchedAt = j.u ?? null;
     }
 

@@ -31,11 +31,17 @@ pour frapper. La première manette pilote le joueur 1, la seconde le joueur 2.
 **Bonus** — une bombe de plus, une flamme plus longue, de la vitesse, le coup de
 pied, le détonateur, le gant rouge (renvoie une bombe par-dessus les murs), le
 gant bleu (garde la touche enfoncée pour soulever la bombe et la promener), la
-goutte (les bombes shootées rebondissent). Un bomber qui meurt lâche tout ce
-qu'il avait ramassé.
+goutte (les bombes shootées rebondissent), la rafale, la flamme d'or (toute la
+portée d'un coup) et le paquet mystère. Un bomber qui meurt lâche tout ce qu'il
+avait ramassé.
 
-Un double appui sur la touche des bombes les aligne toutes devant soi, jusqu'au
-premier mur.
+**Le crâne**, lui, ne se ramasse pas : il s'attrape. Colique, mèche courte,
+flamme rabougrie, jambes de plomb ou jambes folles, quinze secondes durant. Il
+ne touche à aucun bonus — tout revient intact — et surtout il se REFILE : entrez
+dans un adversaire et c'est lui qui l'a.
+
+Avec la rafale, un double appui sur la touche des bombes les aligne toutes devant
+soi, jusqu'au premier mur. Sans le bonus, le second appui ne pose rien.
 
 ## Le réseau
 

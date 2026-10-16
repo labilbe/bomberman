@@ -11,7 +11,8 @@
  */
 
 import { placeColour } from '../render/palette.js';
-import { MAX_BOMBS, MAX_RANGE, BASE_SPEED, SPEED_STEP } from '../engine/constants.js';
+import { MAX_BOMBS, MAX_RANGE, BASE_SPEED, SPEED_STEP, STEP_HZ } from '../engine/constants.js';
+import { ILLNESSES, isIll } from '../engine/disease.js';
 
 /**
  * @param {HTMLElement} root
@@ -54,8 +55,23 @@ export function createHud(root) {
     }
   }
 
+  /**
+   * The illnesses, as the player reads them.
+   *
+   * Named after what they DO and not after the organ: 'Colique' says more at a
+   * glance than the skull's own name, and the player has at most a second to
+   * understand why their bombs are going off early.
+   */
+  const ILLNESS_LABELS = {
+    [ILLNESSES.COLIC]: 'Colique',
+    [ILLNESSES.SHORT]: 'Mèche courte',
+    [ILLNESSES.TINY]: 'Flamme rabougrie',
+    [ILLNESSES.SLOW]: 'Jambes de plomb',
+    [ILLNESSES.RUSH]: 'Jambes folles',
+  };
+
   /** A bomber's powers, on one line legible at a glance. */
-  function powersOf(player) {
+  function powersOf(player, step) {
     const speed = 1 + Math.round((player.speed - BASE_SPEED) / SPEED_STEP);
     const parts = [
       `<span>Bombes <b>${player.bombs}${player.bombs >= MAX_BOMBS ? ' max' : ''}</b></span>`,
@@ -69,12 +85,25 @@ export function createHud(root) {
     if (player.glove) parts.push('<span class="on">Gant rouge</span>');
     if (player.grab) parts.push('<span class="on">Gant bleu</span>');
     if (player.jelly) parts.push('<span class="on">Goutte</span>');
+    // 'Rafale' and not 'spooger': the pack is Interplay's, the gesture is the
+    // player's, and what they read is what the double tap does.
+    if (player.spooger) parts.push('<span class="on">Rafale</span>');
+    if (player.goldflame) parts.push('<span class="on">Flamme d\'or</span>');
     // The trigger is a reserve, not a state: we show what is left of it. The
     // count is that of the DELAYED BOMBS left to drop, since the charge is taken
     // on the drop — without it, you drop one more than expected and discover at
     // the worst moment that it has a fuse.
     if (player.triggers) {
       parts.push(`<span class="on">Détonateur <b>${player.triggers}</b></span>`);
+    }
+    // The illness LAST and on its own class: it is the only line of this row
+    // that is bad news, and it must not be read as one more power. The seconds
+    // left are shown because they are the whole question — do I go and hand it
+    // to somebody, or do I sit it out.
+    if (isIll(player, step)) {
+      const left = Math.ceil((player.illnessUntil - step) / STEP_HZ);
+      const label = ILLNESS_LABELS[player.illness] ?? 'Maladie';
+      parts.push(`<span class="ill">${label} <b>${left} s</b></span>`);
     }
     return parts.join('');
   }
@@ -95,7 +124,7 @@ export function createHud(root) {
         const toWin = match?.toWin ?? 0;
         row.rounds.textContent =
           toWin > 0 ? '★'.repeat(won) + '·'.repeat(Math.max(0, toWin - won)) : '';
-        row.powers.innerHTML = powersOf(player);
+        row.powers.innerHTML = powersOf(player, state.step);
       }
     },
   };

@@ -29,8 +29,8 @@ test('you never drop more bombs than your quota', () => {
   assert.equal(state.bombs.length, 1);
 
   // Second drop: you have to have changed cell, one bomb per cell. We also let
-  // the double-tap window pass, failing which the second press would mean burst
-  // and would drop ahead instead of underfoot.
+  // the double-tap window pass: it only means burst to a bomber holding the
+  // spooger, and this test has no reason to depend on that bonus.
   advanceBy(state, DOUBLE_TAP_STEPS + 1, input(0, { dir: RIGHT }));
   step(state, input(0, { drop: true, dir: RIGHT }));
   assert.equal(state.bombs.length, 2);
@@ -47,7 +47,8 @@ test('two bombs do not fit on the same cell', () => {
   const player = place(state, 0, 3, 3);
   player.bombs = 4;
   step(state, input(0, { drop: true }));
-  // Spaced out, so that these really are three drops and not a burst.
+  // Spaced out, so that these stay three drops whether or not the dropper has
+  // the spooger.
   advanceBy(state, DOUBLE_TAP_STEPS + 1, input(0, {}));
   step(state, input(0, { drop: true }));
   advanceBy(state, DOUBLE_TAP_STEPS + 1, input(0, {}));
@@ -811,11 +812,29 @@ test('a waiting bomb pushed against another does not light itself', () => {
   assert.equal(state.bombs.length, 2);
 });
 
-test('the double tap lines up every bomb in front of you', () => {
+test('without the spooger, the double tap lines nothing up', () => {
+  // The burst is a bonus, not a reflex everybody owns. Without it the second
+  // press falls back on an ordinary drop, which the bomb underfoot refuses:
+  // the magazine stays full and nothing goes out in front.
   const state = bareArena();
   const player = place(state, 0, 2, 5);
   player.bombs = 4;
   player.dir = RIGHT;
+
+  step(state, input(0, { drop: true }));
+  step(state, input(0, { drop: true }));
+
+  assert.equal(state.bombs.length, 1, 'the one underfoot, and that is all');
+  assert.equal(bombAt(state, 3, 5), null, 'nothing is lined up in front');
+  assert.equal(player.dropped, 1, 'the magazine is untouched');
+});
+
+test('with the spooger, the double tap lines up every bomb in front of you', () => {
+  const state = bareArena();
+  const player = place(state, 0, 2, 5);
+  player.bombs = 4;
+  player.dir = RIGHT;
+  apply(player, BONUS_CODES.SPOOGER);
 
   // First press: underfoot, as always.
   step(state, input(0, { drop: true }));
@@ -838,6 +857,7 @@ test('the burst stops at the first obstacle', () => {
   const player = place(state, 0, 2, 5);
   player.bombs = 8;
   player.dir = RIGHT;
+  apply(player, BONUS_CODES.SPOOGER);
 
   step(state, input(0, { drop: true }));
   step(state, input(0, { drop: true }));

@@ -404,6 +404,7 @@ test('a corpse drops everything it had picked up', () => {
   rich.kick = true;    // one
   rich.glove = true;   // one
   rich.jelly = true;   // one
+  rich.spooger = true; // one
   rich.triggers = 3;   // a part-used pack
 
   const killer = place(state, 1, 7, 5);
@@ -416,13 +417,15 @@ test('a corpse drops everything it had picked up', () => {
 
   assert.equal(rich.alive, false, 'it has to die');
   const sown = events(state, 'item');
-  assert.equal(sown.length, 8, 'two bombs, two flames, kick, glove, jelly, trigger');
+  assert.equal(sown.length, 9, 'two bombs, two flames, kick, glove, jelly, spooger, trigger');
   const names = sown.map((event) => event[3]).sort();
-  assert.deepEqual(names, ['bomb', 'bomb', 'flame', 'flame', 'jelly', 'kick', 'punch', 'trigger']);
+  assert.deepEqual(names, [
+    'bomb', 'bomb', 'flame', 'flame', 'jelly', 'kick', 'punch', 'spooger', 'trigger',
+  ]);
 
   // And each one is laid on the grid, on a cell of its own.
   const cells = new Set(sown.map((event) => `${event[1]},${event[2]}`));
-  assert.equal(cells.size, 8, 'one bonus per cell, never stacked');
+  assert.equal(cells.size, 9, 'one bonus per cell, never stacked');
 });
 
 test('the bonuses dropped do not fall into the flames', () => {

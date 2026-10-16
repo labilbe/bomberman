@@ -33,7 +33,7 @@ import { cellAt, setCell, index, isFree, boxOnCell, cellOnAxis } from './grid.js
 import { record } from './state.js';
 import { draw } from './rng.js';
 import { bombAt, restoreFuses, carriedBy } from './bombs.js';
-import { isHidden, isVisible, codeOf, apply, BONUS_NAMES, BONUS_CODES } from './bonus.js';
+import { isHidden, isVisible, codeOf, grant, BONUS_NAMES, BONUS_CODES } from './bonus.js';
 
 /** Causes of death, as they go out on the network. */
 export const BY_FLAME = 0;
@@ -305,12 +305,19 @@ function loot(player) {
     for (let i = 0; i < count; i += 1) codes.push(code);
   };
   add(BONUS_CODES.BOMB, player.bombs - BOMBS_AT_START);
-  add(BONUS_CODES.FLAME, player.range - RANGE_AT_START);
+  // The gold flame is given back as ITSELF, plus the ordinary flames owned
+  // before it. Reading the gap from the starting kit, as everything else here
+  // does, would have turned one pack into six.
+  add(BONUS_CODES.FLAME, (player.goldflame ? player.goldflameFrom : player.range) - RANGE_AT_START);
+  if (player.goldflame) add(BONUS_CODES.GOLDFLAME, 1);
   add(BONUS_CODES.SPEED, Math.round((player.speed - BASE_SPEED) / SPEED_STEP));
   if (player.kick) add(BONUS_CODES.KICK, 1);
   if (player.glove) add(BONUS_CODES.GLOVE, 1);
   if (player.jelly) add(BONUS_CODES.JELLY, 1);
   if (player.grab) add(BONUS_CODES.GRAB, 1);
+  if (player.spooger) add(BONUS_CODES.SPOOGER, 1);
+  // The illness is NOT part of the loot: it is not a thing one owns, it runs out
+  // on its own, and a corpse sowing skulls would punish whoever came to collect.
   // One pack per part-used pack: three charges out of five left is still a
   // trigger, and giving it back whole is better than losing it.
   add(BONUS_CODES.TRIGGER, Math.ceil(player.triggers / TRIGGERS_PER_BONUS));
@@ -411,7 +418,12 @@ export function pickBonuses(state) {
     if (!isVisible(value)) continue;
     state.items[i] = 0;
     record(state, ['pick', cx, cy, player.place, BONUS_NAMES[value]]);
-    apply(player, value);
+    const granted = grant(state, player, value);
+    // A SECOND event, and not another name for the first: it is 'pick' that
+    // tells a client to clear the cell, and renaming it left the pack drawn on
+    // the ground for ever. This one is there for the ear alone — and it is also
+    // how a random pack that turned into a skull makes itself heard.
+    if (granted === BONUS_CODES.DISEASE) record(state, ['sick', cx, cy, player.place]);
   }
 }
 

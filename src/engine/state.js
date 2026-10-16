@@ -37,6 +37,8 @@ import { STARTS, generateArena } from './arena.js';
  *   dir: number, walking: boolean,
  *   speed: number, bombs: number, range: number,
  *   kick: boolean, triggers: number, glove: boolean, jelly: boolean, grab: boolean,
+ *   spooger: boolean, goldflame: boolean, goldflameFrom: number,
+ *   illness: string | null, illnessUntil: number,
  *   punchedAt: number | null, droppedAt: number | null, holdDropped: number | null,
  *   dropped: number, onBomb: number | null, diedAt: number | null
  * }} Player
@@ -91,6 +93,20 @@ export function createPlayer(place) {
     jelly: false,
     /** The blue glove: it picks a bomb up and carries it rather than kicking it. */
     grab: false,
+    /** The spooger: the double tap empties the magazine in front instead of doing nothing. */
+    spooger: false,
+    /** The gold flame, and the range it was picked up on: see `apply` in bonus.js. */
+    goldflame: false,
+    goldflameFrom: RANGE_AT_START,
+    /**
+     * The illness in progress and the step it runs out on, or null.
+     *
+     * It sits beside the powers and never inside them: `disease.js` reads both
+     * and returns what the bomber is actually worth right now, so that
+     * recovering gives back exactly what was picked up.
+     */
+    illness: null,
+    illnessUntil: 0,
     /**
      * The step of the last punch, or null. It has no effect on the rules: the
      * renderer uses it to play the gesture.

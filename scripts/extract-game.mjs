@@ -89,6 +89,14 @@ const rolesOf = (terrain) => ({
   bonusJelly: ['POWERS.ANI', 'power jelly'],
   // The blue glove, which picks a bomb up: 'grab' at Interplay.
   bonusGrab: ['POWERS.ANI', 'power grab'],
+  // The spooger, which lines the magazine up in front: 'spooger' at Interplay.
+  bonusSpooger: ['POWERS.ANI', 'power spooger'],
+  // The last three. Their sequence names are our best guess at Interplay's own:
+  // a miss is reported and the renderer draws its own pack, which is why no
+  // extraction has to be redone for these.
+  bonusGoldflame: ['POWERS.ANI', 'power goldflame'],
+  bonusRandom: ['POWERS.ANI', 'power random'],
+  bonusDisease: ['POWERS.ANI', 'power disease'],
 });
 
 const argv = process.argv.slice(2);

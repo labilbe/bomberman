@@ -90,6 +90,20 @@ function snapshot(state, away) {
       l: player.jelly ? 1 : 0,
       // The blue glove, for the HUD — what it carries is read off the bomb.
       r: player.grab ? 1 : 0,
+      // The spooger. Like the jelly it changes nothing in the drawing, but
+      // without it the HUD stays silent on a bonus that changes what the bomb
+      // key does — and a player who does not know they have it never uses it.
+      q: player.spooger ? 1 : 0,
+      // The gold flame, for the HUD alone: the range already travels in `f`.
+      // Without it the HUD would read 'Flamme 8 max' and say nothing of the pack
+      // that got there in one go.
+      w: player.goldflame ? 1 : 0,
+      // THE ILLNESS AND THE STEP IT ENDS ON, rather than the seconds left: the
+      // client already follows the relay's step, so a date needs no refreshing,
+      // while a countdown would have to be resent on every snapshot and would
+      // still be wrong between two of them.
+      c: player.illness,
+      h: player.illnessUntil,
       // And the STEP of its last punch, as for the death: the renderer plays the
       // gesture from that date.
       u: player.punchedAt,

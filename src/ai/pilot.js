@@ -26,7 +26,7 @@
 
 import { COLS, VECTORS, FUSE_STEPS, FLAME_STEPS, DOUBLE_TAP_STEPS } from '../engine/constants.js';
 import { index, cellAt, isFree, isBrick, cellOnAxis, touchedCells } from '../engine/grid.js';
-import { isVisible } from '../engine/bonus.js';
+import { isVisible, codeOf, BONUS_CODES } from '../engine/bonus.js';
 import { EMPTY_INPUT } from '../engine/inputs.js';
 import {
   dangerMap,
@@ -106,10 +106,15 @@ function opponentInRange(state, player) {
   return false;
 }
 
-/** Appeal of a cell: a bonus beats a brick, which beats nothing. */
+/** Appeal of a cell: a bonus beats a brick, which beats nothing — a skull repels. */
 function appeal(state, player, i, level) {
   let value = 0;
-  if (isVisible(state.items[i])) value += 60;
+  // THE SKULL IS WORTH LESS THAN NOTHING, and by more than a bonus is worth: a
+  // bot that merely preferred other cells would still walk onto it to reach a
+  // brick behind. It is the one cell on the board it has to go round.
+  if (isVisible(state.items[i])) {
+    value += codeOf(state.items[i]) === BONUS_CODES.DISEASE ? -140 : 60;
+  }
 
   const cx = i % COLS;
   const cy = Math.floor(i / COLS);
@@ -260,12 +265,15 @@ function chooseMove(state, place, memory, options, player) {
   // long as it stands on it. Requiring centring prevented any drop in practice,
   // the bot being almost always in transit at the moment it decides.
   //
-  // Two drops close together mean BURST to the engine: a bot dropping again
-  // straight away would empty its magazine ahead of itself instead of sowing its
-  // bombs one by one. So it lets the double-tap window pass — a handful of steps
-  // — before asking for another one.
+  // Two drops close together mean BURST to a bomber HOLDING THE SPOOGER: a bot
+  // dropping again straight away would empty its magazine ahead of itself
+  // instead of sowing its bombs one by one. So it lets the double-tap window
+  // pass — a handful of steps — before asking for another one. Without the
+  // bonus there is no gesture to avoid, and waiting would only cost it bombs.
   const justDropped =
-    player.droppedAt !== null && state.step - player.droppedAt <= DOUBLE_TAP_STEPS;
+    player.spooger
+    && player.droppedAt !== null
+    && state.step - player.droppedAt <= DOUBLE_TAP_STEPS;
   if (!justDropped && (opponentInRange(state, player) || brickInRange(state, player))) {
     if (wayOutAfterDrop(state, player, danger)) {
       const projected = dangerWithBomb(state, player, danger, FUSE_STEPS);

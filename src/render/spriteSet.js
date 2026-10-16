@@ -13,7 +13,18 @@
  * in the scene.
  */
 
-import { buildSprites, paintGlove, paintGrabGlove, paintJelly, SIDE, WALK_FRAMES } from './sprites.js';
+import {
+  buildSprites,
+  paintGlove,
+  paintGoldflame,
+  paintGrabGlove,
+  paintJelly,
+  paintRandom,
+  paintSkull,
+  paintSpooger,
+  SIDE,
+  WALK_FRAMES,
+} from './sprites.js';
 import { PLACES } from './palette.js';
 
 /** Number of frames in the walk cycle, for both providers. */
@@ -375,6 +386,22 @@ export function fromVectors(loaded, places = PLACES.length) {
       grab: roles.bonusGrab
         ? one('bonusGrab')
         : tileSprite(paintGrabGlove(tile.width, tile.height), tile),
+      // And the spooger, the last one added: same story again.
+      spooger: roles.bonusSpooger
+        ? one('bonusSpooger')
+        : tileSprite(paintSpooger(tile.width, tile.height), tile),
+      // The gold flame, the random pack and the skull: same story again, and
+      // their sequence names in POWERS.ANI are the likeliest guess rather than
+      // something read off a file — all the more reason to keep the fallback.
+      goldflame: roles.bonusGoldflame
+        ? one('bonusGoldflame')
+        : tileSprite(paintGoldflame(tile.width, tile.height), tile),
+      random: roles.bonusRandom
+        ? one('bonusRandom')
+        : tileSprite(paintRandom(tile.width, tile.height), tile),
+      disease: roles.bonusDisease
+        ? one('bonusDisease')
+        : tileSprite(paintSkull(tile.width, tile.height), tile),
     },
     bomb: lazyPerPlace(places, (p) => roles.bomb[p % roles.bomb.length]),
     bombTrigger: lazyPerPlace(places, (p) => runWithBand(roles.bomb[p % roles.bomb.length])),

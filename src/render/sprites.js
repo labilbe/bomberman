@@ -328,10 +328,158 @@ export function buildSprites(places = 4) {
       punch: paintGlove(),
       grab: paintGrabGlove(),
       jelly: paintBonus('jelly'),
+      spooger: paintSpooger(),
+      goldflame: paintGoldflame(),
+      random: paintRandom(),
+      disease: paintSkull(),
     },
     bombers,
     dead,
   };
+}
+
+/**
+ * The frame every code-drawn pack shares: outline, ground, highlight, shadow.
+ *
+ * Pulled out when the skull, the gold flame and the random pack arrived: four
+ * painters were repeating the same four rectangles, and the day the pack's look
+ * changes it must change for all of them at once.
+ */
+function packFrame(ctx, width, height, colours, u, v) {
+  block(ctx, u(0.06), v(0.06), width - u(0.12), height - v(0.12), OUTLINE);
+  block(ctx, u(0.12), v(0.12), width - u(0.24), height - v(0.24), colours.background);
+  block(ctx, u(0.12), v(0.12), width - u(0.24), v(0.14), colours.glow);
+  block(ctx, u(0.12), height - v(0.26), width - u(0.24), v(0.14), colours.glyph);
+}
+
+/**
+ * The gold flame's pack: the flame of the ordinary pack, taller and gilded.
+ *
+ * On purpose the SAME silhouette as the flame bonus. The two do the same thing,
+ * one by degrees and one in a single step, and a player who has learnt to run
+ * for a flame must recognise this one without being taught: it is the gold that
+ * says 'all of it at once', not a different shape.
+ */
+export function paintGoldflame(width = SIDE, height = width) {
+  const { canvas, ctx } = surface(width, height);
+  const colours = BONUS_COLOURS.goldflame;
+  const u = (f) => Math.round(f * width);
+  const v = (f) => Math.round(f * height);
+  packFrame(ctx, width, height, colours, u, v);
+
+  // A tongue of fire: it widens as it goes down, in steps of a tenth of the
+  // side, with its heart lit.
+  const cx = Math.round(width / 2);
+  const rows = 6;
+  for (let i = 0; i < rows; i += 1) {
+    const half = Math.max(1, u(0.04) + Math.round((i / rows) * u(0.16)));
+    block(ctx, cx - half, v(0.3) + Math.round((i / rows) * v(0.4)), half * 2, v(0.08), colours.glyph);
+  }
+  // The heart, a narrow upright bar and not a disc — exactly as the ordinary
+  // flame pack draws it. A round heart turned the whole thing into a sun over a
+  // hill, and the kinship between the two packs was lost.
+  block(ctx, cx - Math.max(1, u(0.04)), v(0.5), Math.max(2, u(0.08)), v(0.2), colours.glow);
+
+  return canvas;
+}
+
+/**
+ * The random pack: a question mark.
+ *
+ * Drawn in blocks rather than written with a font. A glyph would have been
+ * antialiased, hence blurred the moment the tile is scaled up, and at 16 pixels
+ * a blurred question mark is a smudge. Five rectangles say it cleanly.
+ */
+export function paintRandom(width = SIDE, height = width) {
+  const { canvas, ctx } = surface(width, height);
+  const colours = BONUS_COLOURS.random;
+  const u = (f) => Math.round(f * width);
+  const v = (f) => Math.round(f * height);
+  packFrame(ctx, width, height, colours, u, v);
+
+  const t = Math.max(1, u(0.09));
+  const left = u(0.34);
+  const right = u(0.58);
+  // The hook: top bar, right-hand descent, the turn back to the middle, then the
+  // stem — and the dot, detached, which is what makes it a question and not a 7.
+  block(ctx, left, v(0.24), right - left + t, t, colours.glyph);
+  block(ctx, right, v(0.24), t, v(0.16), colours.glyph);
+  block(ctx, Math.round((left + right) / 2), v(0.38), right - Math.round((left + right) / 2) + t, t, colours.glyph);
+  block(ctx, Math.round((left + right) / 2), v(0.44), t, v(0.14), colours.glyph);
+  block(ctx, Math.round((left + right) / 2), v(0.64), t, t, colours.glow);
+
+  return canvas;
+}
+
+/**
+ * The skull's pack: bone on a sick green.
+ *
+ * The only pack whose drawing is LIGHT on a dark ground, and that is the point.
+ * Every other pack is a dark glyph on a bright colour; this one reads as the
+ * negative of the others before any shape is recognised, which is the half
+ * second a player has to decide not to walk onto it.
+ */
+export function paintSkull(width = SIDE, height = width) {
+  const { canvas, ctx } = surface(width, height);
+  const colours = BONUS_COLOURS.disease;
+  const u = (f) => Math.round(f * width);
+  const v = (f) => Math.round(f * height);
+  packFrame(ctx, width, height, colours, u, v);
+
+  const bone = colours.ink;
+  const cx = Math.round(width / 2);
+  const cy = height - v(0.52);
+  // The cranium, then the jaw under it, narrower: two shapes, because a single
+  // disc reads as a ball and not as a head.
+  disc(ctx, cx, cy, Math.max(2, u(0.17)), bone);
+  block(ctx, cx - u(0.1), cy + u(0.12), u(0.2), v(0.1), bone);
+  // The eye sockets, in the pack's own shadow colour: the only two holes, and at
+  // 16 pixels they are one pixel each — which is enough, because nothing else in
+  // the arena has holes.
+  const eye = Math.max(1, u(0.06));
+  block(ctx, cx - u(0.1), cy - u(0.04), eye, eye, colours.glyph);
+  block(ctx, cx + u(0.04), cy - u(0.04), eye, eye, colours.glyph);
+
+  return canvas;
+}
+
+/**
+ * The spooger's pack, at whatever size is asked for.
+ *
+ * Same reason to exist as `paintGlove`: `power spooger` is missing from
+ * extractions made before that bonus, and something has to be shown. Its
+ * measurements are fractions of the side, so that it draws as well on 16 pixels
+ * as on the 40 of an Atomic Bomberman tile.
+ *
+ * Three bombs on one line, which is exactly what the gesture lays down: the one
+ * under your feet, fuse lit, and the queue going out in front of it. Two would
+ * have read as a pair, and at this size four are a smear.
+ */
+export function paintSpooger(width = SIDE, height = width) {
+  const { canvas, ctx } = surface(width, height);
+  const colours = BONUS_COLOURS.spooger;
+  const u = (f) => Math.round(f * width);
+  const v = (f) => Math.round(f * height);
+
+  block(ctx, u(0.06), v(0.06), width - u(0.12), height - v(0.12), OUTLINE);
+  block(ctx, u(0.12), v(0.12), width - u(0.24), height - v(0.24), colours.background);
+  block(ctx, u(0.12), v(0.12), width - u(0.24), v(0.14), colours.glow);
+  block(ctx, u(0.12), height - v(0.26), width - u(0.24), v(0.14), colours.glyph);
+
+  // A quarter of the side between two bombs, and a radius of 0.085 of it. Those
+  // two numbers go together: a bigger radius merges the three discs into one bar
+  // at 16 pixels — `disc` rounds outwards — and the glyph stops saying 'several',
+  // which is the only thing it has to say.
+  const r = Math.max(1.2, u(0.085));
+  const cy = height - v(0.42);
+  const xs = [u(0.25), Math.round(width / 2), u(0.75)];
+  for (const cx of xs) disc(ctx, cx, cy, r, colours.glyph);
+  // The lit fuse on the FIRST one: it is the bomb already underfoot, and the two
+  // others are what the second press adds. No highlight on the discs: at 16
+  // pixels one is 2 by 2, and a glow would simply repaint it.
+  block(ctx, xs[0], Math.round(cy - r - v(0.14)), Math.max(1, u(0.05)), v(0.14), FUSE);
+
+  return canvas;
 }
 
 /**
