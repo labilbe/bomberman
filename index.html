@@ -72,6 +72,19 @@
                           <option value="10">10</option>
                         </select>
                       </label>
+                      <label class="field">
+                        <!--
+                          Le nombre de manches de CETTE partie. Il arrive sur
+                          celui des options — le choix permanent — et on en
+                          change ici pour une soirée sans toucher au réglage.
+                        -->
+                        <span>Manches</span>
+                        <select id="local-format" class="field-format">
+                          <option value="3">Au meilleur des 3</option>
+                          <option value="5">Au meilleur des 5</option>
+                          <option value="7">Au meilleur des 7</option>
+                        </select>
+                      </label>
                       <ol id="seats" class="seats"></ol>
                       <button id="play-local" type="button" class="row small">Lancer</button>
                   </div>

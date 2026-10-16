@@ -44,6 +44,7 @@ const nicknameInput = document.querySelector('#nickname');
 const roomInput = document.querySelector('#room');
 const playersSelect = document.querySelector('#players');
 const seatsList = document.querySelector('#seats');
+const localFormatSelect = document.querySelector('#local-format');
 const formatSelect = document.querySelector('#format');
 const colourSelect = document.querySelector('#colour');
 const defaultRoomInput = document.querySelector('#default-room');
@@ -372,7 +373,8 @@ function openScreen(name) {
   const target = document.querySelector(`#screen-${name}`);
   if (!target) return;
   if (name === 'join' || name === 'create') proposeRooms();
-  if (name === 'create') proposeFormat();
+  if (name === 'create') proposeFormat(netFormatSelect);
+  if (name === 'game') proposeFormat(localFormatSelect);
   // The nickname may have been changed in the options since the rows were built:
   // the first row wears it, so it is re-read here rather than at the start.
   if (name === 'game') refreshProposals();
@@ -988,9 +990,11 @@ function playLocal() {
 
   const seats = readSeats();
   const places = seats.length;
-  const format = Number(formatSelect.value) || 3;
+  // THE FORMAT OF THIS GAME, read from the launch screen and not written back:
+  // the standing choice lives in the options, and an evening played in seven
+  // rounds must not quietly become the setting.
+  const format = Number(localFormatSelect.value) || 3;
   rememberSeats();
-  writePref(PREF_FORMAT, String(format));
   writePref(PREF_NICKNAME, cleanName(nicknameInput.value, nicknameInput.value));
 
   const levels = ['quiet', 'normal', 'nasty'];
@@ -1237,7 +1241,8 @@ function proposeRooms() {
 }
 
 /**
- * The number of rounds the creation screen proposes: the one set in the options.
+ * The number of rounds the launch and creation screens propose: the one set in
+ * the options.
  *
  * Proposed AGAIN each time the screen opens, like the room code and for the same
  * reason: the options hold the standing choice, and a format set for one evening
@@ -1245,14 +1250,15 @@ function proposeRooms() {
  *
  * A format CHANGED ON THE SCREEN holds its ground, though — the same rule as the
  * first row's colour, and for the same reason: it is picked on the very screen
- * that is about to open the room, two clicks before opening it.
+ * that is about to start the game, two clicks before starting it.
+ *
+ * @param {HTMLSelectElement} select
  */
-function proposeFormat() {
-  const touched = proposed.has(netFormatSelect)
-    && netFormatSelect.value !== proposed.get(netFormatSelect);
+function proposeFormat(select) {
+  const touched = proposed.has(select) && select.value !== proposed.get(select);
   if (touched) return;
-  netFormatSelect.value = formatSelect.value;
-  proposed.set(netFormatSelect, netFormatSelect.value);
+  select.value = formatSelect.value;
+  proposed.set(select, select.value);
 }
 
 /**
@@ -1515,9 +1521,11 @@ function initialise() {
   // every session without it ever being kept.
   formatSelect.addEventListener('change', () => {
     writePref(PREF_FORMAT, formatSelect.value);
-    proposeFormat();
+    proposeFormat(localFormatSelect);
+    proposeFormat(netFormatSelect);
   });
-  proposeFormat();
+  proposeFormat(localFormatSelect);
+  proposeFormat(netFormatSelect);
 
   // THE COLOUR ONE PREFERS, in the game's own order so that the list reads like
   // the one on the launch screen.
