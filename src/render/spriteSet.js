@@ -290,6 +290,16 @@ const DEFAULT_BOMB_CYCLE = 660;
 const DEFAULT_WALK_CYCLE = 450;
 
 /**
+ * Duration of one turn of the random pack, in milliseconds.
+ *
+ * Atomic Bomberman's own: twelve frames of 30 ms. The pack does not have a
+ * drawing of its own in the game — it SHOWS THE OTHER PACKS, one after another,
+ * which is how it says 'any of these'. Ours, drawn in code, is a question mark
+ * and a single frame, and this value is then never used.
+ */
+const DEFAULT_RANDOM_CYCLE = 360;
+
+/**
  * Sprite set painted in code.
  *
  * The drawn sprites are all 16 x 16 and stand on their bottom centre, so the
@@ -309,6 +319,7 @@ export function fromDrawings(places = PLACES.length) {
     background: null,
     bombCycle: DEFAULT_BOMB_CYCLE,
     walkCycle: DEFAULT_WALK_CYCLE,
+    randomCycle: DEFAULT_RANDOM_CYCLE,
     ground: raw.ground.map(sprite),
     wall: sprite(raw.hardWall),
     brick: sprite(raw.brick),
@@ -361,6 +372,7 @@ export function fromVectors(loaded, places = PLACES.length) {
     // The pulse rate comes from the original game, not from a setting of ours.
     bombCycle: cycles?.bomb ?? DEFAULT_BOMB_CYCLE,
     walkCycle: cycles?.walk0 ?? DEFAULT_WALK_CYCLE,
+    randomCycle: cycles?.bonusRandom ?? DEFAULT_RANDOM_CYCLE,
     ground: [one('ground'), one('ground')],
     wall: one('wall'),
     brick: one('brick'),
@@ -396,9 +408,12 @@ export function fromVectors(loaded, places = PLACES.length) {
       goldflame: roles.bonusGoldflame
         ? one('bonusGoldflame')
         : tileSprite(paintGoldflame(tile.width, tile.height), tile),
-      random: roles.bonusRandom
-        ? one('bonusRandom')
-        : tileSprite(paintRandom(tile.width, tile.height), tile),
+      // THE WHOLE RUN and not its first frame: the random pack of the game is a
+      // cycle through every other pack, and its first frame happens to be the
+      // SKULL. Keeping one frame would have drawn a skull on a pack that is not
+      // one, and a player who reads packs before walking on them would have
+      // learnt to avoid it.
+      random: roles.bonusRandom ?? tileSprite(paintRandom(tile.width, tile.height), tile),
       disease: roles.bonusDisease
         ? one('bonusDisease')
         : tileSprite(paintSkull(tile.width, tile.height), tile),

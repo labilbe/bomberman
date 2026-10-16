@@ -181,8 +181,13 @@ export function createScene(canvas, set = fromDrawings()) {
       for (let x = 0; x < COLS; x += 1) {
         const value = view.items[index(x, y)];
         if (!isVisible(value)) continue;
-        const sprite = set.bonus[BONUS_NAMES[value]];
-        if (!sprite) continue;
+        const entry = set.bonus[BONUS_NAMES[value]];
+        if (!entry) continue;
+        // A run of frames, for the random pack alone: it flips through the other
+        // packs rather than having a drawing of its own.
+        const sprite = Array.isArray(entry)
+          ? entry[Math.floor(time / ((set.randomCycle ?? 360) / entry.length)) % entry.length]
+          : entry;
         // A slight float: a motionless bonus blends into the scenery.
         const float = Math.round(Math.sin(time / 220 + x + y) * 1.5);
         const [ax, ay] = cellAnchor(x, y);

@@ -90,12 +90,15 @@ const rolesOf = (terrain) => ({
   // The blue glove, which picks a bomb up: 'grab' at Interplay.
   bonusGrab: ['POWERS.ANI', 'power grab'],
   // The spooger, which lines the magazine up in front: 'spooger' at Interplay.
-  bonusSpooger: ['POWERS.ANI', 'power spooger'],
-  // The last three. Their sequence names are our best guess at Interplay's own:
-  // a miss is reported and the renderer draws its own pack, which is why no
-  // extraction has to be redone for these.
+  // 'spooge' and not 'spooger': the POWER is a spooger in the game's manual, and
+  // that is the name the engine and the wire use, but the SEQUENCE is spelled
+  // 'power spooge' in POWERS.ANI. The file is the one that has to be matched.
+  bonusSpooger: ['POWERS.ANI', 'power spooge'],
   bonusGoldflame: ['POWERS.ANI', 'power goldflame'],
+  // Twelve frames, the only animated pack of the lot: the question mark turns.
   bonusRandom: ['POWERS.ANI', 'power random'],
+  // POWERS.ANI also holds 'power disease3' and 'power clog', two more skulls we
+  // do not use: the engine has one skull and draws its five illnesses from it.
   bonusDisease: ['POWERS.ANI', 'power disease'],
 });
 

@@ -2015,6 +2015,34 @@
       "height": 36,
       "anchorX": 20,
       "anchorY": 35
+    },
+    {
+      "file": "276.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "277.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "278.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "279.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     }
   ],
   "roles": {
@@ -3515,6 +3543,74 @@
     "bonusGrab": [
       {
         "image": 275,
+        "duration": 30
+      }
+    ],
+    "bonusSpooger": [
+      {
+        "image": 276,
+        "duration": 30
+      }
+    ],
+    "bonusGoldflame": [
+      {
+        "image": 277,
+        "duration": 30
+      }
+    ],
+    "bonusRandom": [
+      {
+        "image": 278,
+        "duration": 30
+      },
+      {
+        "image": 271,
+        "duration": 30
+      },
+      {
+        "image": 269,
+        "duration": 30
+      },
+      {
+        "image": 273,
+        "duration": 30
+      },
+      {
+        "image": 270,
+        "duration": 30
+      },
+      {
+        "image": 268,
+        "duration": 30
+      },
+      {
+        "image": 274,
+        "duration": 30
+      },
+      {
+        "image": 275,
+        "duration": 30
+      },
+      {
+        "image": 276,
+        "duration": 30
+      },
+      {
+        "image": 277,
+        "duration": 30
+      },
+      {
+        "image": 279,
+        "duration": 30
+      },
+      {
+        "image": 272,
+        "duration": 30
+      }
+    ],
+    "bonusDisease": [
+      {
+        "image": 278,
         "duration": 30
       }
     ]
