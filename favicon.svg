@@ -5,18 +5,21 @@
   <path d="M15 4h2v5h-2z" fill="#9aa4bd" />
   <circle cx="16" cy="4" r="2.2" fill="#ffd45e" />
   <!-- The helmet: a dome on a flat jaw, the silhouette of the bomber on the
-       home screen. -->
-  <path d="M5 19a11 11 0 0 1 22 0v4H5z" fill="#e8edf5" />
-  <path d="M5 19a11 11 0 0 1 22 0v1H5z" fill="#ffffff" />
-  <circle cx="4.5" cy="19.5" r="2.4" fill="#9aa4bd" />
-  <circle cx="27.5" cy="19.5" r="2.4" fill="#9aa4bd" />
+       home screen — and its green, which is the colour that bomber wears.
+       The lighter band along the top is what keeps the dome from reading as a
+       flat disc once the icon is down to sixteen pixels. -->
+  <path d="M5 19a11 11 0 0 1 22 0v4H5z" fill="#2fa84f" />
+  <path d="M5 19a11 11 0 0 1 22 0v1H5z" fill="#6fd98a" />
+  <circle cx="4.5" cy="19.5" r="2.4" fill="#e8edf5" />
+  <circle cx="27.5" cy="19.5" r="2.4" fill="#e8edf5" />
   <!-- The visor, and the two eyes in it. Two white marks on a dark band is the
        whole face: at favicon size nothing finer survives. -->
   <rect x="8" y="14" width="16" height="8" rx="3.5" fill="#15152a" />
   <rect x="11" y="16" width="3.5" height="4.5" rx="1.5" fill="#f6f9ff" />
   <rect x="17.5" y="16" width="3.5" height="4.5" rx="1.5" fill="#f6f9ff" />
-  <!-- The green of the suit, under the jaw: it is the colour of the bomber the
-       game shows on its own title screen. -->
-  <path d="M8 23h16v3a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2z" fill="#2fa84f" />
+  <!-- The suit, under the jaw. A DARKER green than the helmet, and not the same
+       one: with a single green the head and the shoulders merged into one blob
+       at small sizes, and the face lost its chin. -->
+  <path d="M8 23h16v3a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2z" fill="#19703a" />
   <path d="M14 23h4v5h-4z" fill="#f6f9ff" />
 </svg>
