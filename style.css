@@ -409,11 +409,14 @@ body {
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.18);
 }
 
+/* Wide enough for « Joueur 10 », so the fields of every row line up — and no
+   wider: what is left of the row has to hold the control select at its full
+   width (see below), gamepads included. */
 .seat-name {
   font-family: var(--display);
   font-size: 19px;
   color: var(--steel);
-  min-width: 5.5em;
+  min-width: 4.2em;
   margin-bottom: 2px;
 }
 
@@ -425,6 +428,21 @@ body {
    whole first name rather than half of one. */
 .seat .nick {
   width: 7.5em;
+}
+
+/*
+ * THE CONTROL SELECT KEEPS ITS WIDTH WHATEVER IT HOLDS. A gamepad woken up in
+ * the middle of the menu adds « Manette 1 » to the list, which is wider than
+ * « Clavier 1 »: left to size itself on its entries, the select grew by nine
+ * pixels, the row no longer fitted on one line and every seat broke in two.
+ * The width is that of the longest label — nine characters — plus the 6px and
+ * 28px the field keeps for its padding and its chevron.
+ *
+ * The launch screen only: the creation screen offers « Joueur en réseau » on
+ * the same kind of select, and that one needs every pixel of its own text.
+ */
+#seats .control {
+  width: calc(9ch + 34px);
 }
 
 /* The seat of whoever lays the table: a statement, not a choice. */
