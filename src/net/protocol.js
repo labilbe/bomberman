@@ -161,10 +161,18 @@ export const TERRAINS = 11;
  *
  * Null is a real answer and not a failure: it is the new-game screen's default,
  * the "Random Each Game" of the original game's own options.
+ *
+ * STRICTLY A NUMBER, exactly as `asColour` above and for exactly the same
+ * reason, which this function learnt the hard way: `Number('')` and
+ * `Number(null)` are both ZERO. Written with a `Number()` cast, it read the
+ * empty value of the "Au hasard" entry — and the null a guest sends when
+ * joining — as a formal claim to board 0, so "au hasard" played Green Acres
+ * every single time. The draw is never reached by an accident of coercion.
  */
-export function cleanTerrain(raw) {
-  const terrain = Number(raw);
-  return Number.isInteger(terrain) && terrain >= 0 && terrain < TERRAINS ? terrain : null;
+export function cleanTerrain(value) {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < TERRAINS
+    ? value
+    : null;
 }
 
 /**

@@ -15,9 +15,12 @@ import {
   botNames,
   cleanName,
   cleanColours,
+  cleanTerrain,
+  randomTerrain,
   preferColour,
   NAME_MAX,
   MAX_PLACES,
+  TERRAINS,
 } from '../src/net/protocol.js';
 
 test('no name is both a human and a bot', () => {
@@ -121,4 +124,39 @@ test('a colour that does not exist is ignored', () => {
   for (const wanted of [-1, 42, 1.5, 'rouge', null, undefined, NaN]) {
     assert.equal(preferColour(colours, 2, wanted, () => false), colours, String(wanted));
   }
+});
+
+test('"au hasard" is never read as board zero', () => {
+  // THE BUG AS IT WAS REPORTED: "Au hasard" played Green Acres every single
+  // time. The entry carries the EMPTY value, a guest joining sends null, and
+  // `Number('')` and `Number(null)` are both zero — so a cast read either as a
+  // formal claim to the first board, and the draw was never reached.
+  for (const nothing of ['', null, undefined, '  ', 'x', NaN, false, [], {}]) {
+    assert.equal(cleanTerrain(nothing), null, `${JSON.stringify(nothing)} is not a board`);
+  }
+  // A board named as text is not one either: the wire carries numbers, and the
+  // screen converts before asking.
+  assert.equal(cleanTerrain('3'), null);
+  assert.equal(cleanTerrain(3), 3, 'a real index still comes through');
+  assert.equal(cleanTerrain(0), 0, 'and zero is a board like the others');
+});
+
+test('a board outside the eleven is left to chance', () => {
+  // The number comes off the wire, so it comes from a stranger.
+  assert.equal(cleanTerrain(TERRAINS), null);
+  assert.equal(cleanTerrain(-1), null);
+  assert.equal(cleanTerrain(2.5), null);
+});
+
+test('the draw reaches every board, and never leaves the eleven', () => {
+  // A draw that never showed the last board would be a board nobody ever plays.
+  const seen = new Set();
+  for (let i = 0; i < TERRAINS; i += 1) {
+    // One fixed point per board, taken in the middle of its slice.
+    seen.add(randomTerrain(() => (i + 0.5) / TERRAINS));
+  }
+  assert.equal(seen.size, TERRAINS, 'the eleven are all reachable');
+  // And the edges, where a rounding mistake would step outside.
+  assert.equal(randomTerrain(() => 0), 0);
+  assert.equal(randomTerrain(() => 0.999999), TERRAINS - 1);
 });

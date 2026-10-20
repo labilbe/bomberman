@@ -926,7 +926,12 @@ function rememberSeats() {
  * eleven boards under a "Random Each Game" that comes first.
  */
 function chosenTerrain() {
-  return cleanTerrain(terrainSelect.value);
+  // A select only ever holds TEXT, and the "Au hasard" entry holds the empty
+  // one. It is turned into a number HERE, and the empty case named before any
+  // arithmetic can call it zero — which is precisely how "au hasard" came to
+  // play Green Acres every time.
+  const chosen = terrainSelect.value;
+  return chosen === '' ? null : cleanTerrain(Number(chosen));
 }
 
 /**
