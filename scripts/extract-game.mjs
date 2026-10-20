@@ -29,6 +29,7 @@
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { readAnimation } from '../src/extraction/animation.js';
 import { vectorise } from '../src/extraction/vector.js';
@@ -414,6 +415,13 @@ function open(file) {
 
 const images = [];
 const indexBySource = new Map();
+/**
+ * Where each image came from, in index order: "BOMBS.ANI#4", "TILES0.ANI#2".
+ *
+ * Kept only to stamp the manifest (see `version` below). It is what a file
+ * number MEANS, and the whole point is to notice when that meaning changes.
+ */
+const sources = [];
 const missing = [];
 
 /**
@@ -464,6 +472,7 @@ function extract(table, what) {
           anchorX: image.anchorX,
           anchorY: image.anchorY,
         });
+        sources.push(key);
         indexBySource.set(key, index);
       }
       return { image: index, duration: frame.duration };
@@ -526,6 +535,27 @@ function writeMenuBomb() {
   return { file: 'bomb.png', width: image.width, height: image.height };
 }
 
+/**
+ * A short print of WHAT EACH FILE NUMBER MEANS, stamped on every asset URL.
+ *
+ * THE FILE NAMES ARE POSITIONS — 000.svg, 001.svg — and a re-extraction
+ * renumbers them: adding the eleven boards moved `power bomb` from 268 to 256,
+ * and 268 became the rock of Green Acres. The names did not move. A browser
+ * holding the old 268.svg therefore answered the new manifest with the old
+ * drawing, and the arena came up walled with bomb packs and brick packs — which
+ * is exactly how it was reported, and which no amount of correct files on the
+ * server could fix.
+ *
+ * So the loader asks for `268.svg?v=<this>`, and the print changes the moment a
+ * number changes meaning. A stale manifest then asks for stale URLs — and gets
+ * its own stale files, which agree with it; a fresh manifest asks for URLs
+ * nothing has cached. The two can no longer be mixed, which was the whole bug.
+ *
+ * Hashed on the SOURCES and not on the pixels: re-running the extraction on the
+ * same files must not invalidate anybody's cache for nothing.
+ */
+const version = createHash('sha256').update(sources.join('\n')).digest('hex').slice(0, 10);
+
 const page = Object.fromEntries(
   Object.entries(PAGE).map(([name, [res, box, cutout]]) => [name, cut(res, `${name}.png`, box, cutout)]),
 );
@@ -533,6 +563,7 @@ page.bomb = writeMenuBomb();
 // The ten player colours, read from the game's tables.
 const playerColours = readPlayerColours(join(source, '..', '..'));
 writeFileSync(join(out, 'manifest.json'), `${JSON.stringify({
+  version,
   tile: { width: tile.width, height: tile.height },
   terrains,
   home,
@@ -543,6 +574,7 @@ writeFileSync(join(out, 'manifest.json'), `${JSON.stringify({
 }, null, 2)}\n`);
 
 console.log(`${Object.keys(roles).length} roles communs, ${images.length} images uniques, vers ${out}/`);
+console.log(`empreinte des images : ${version} — elle change quand un numero change de sens`);
 console.log(`${terrains.length} terrains : ${terrains.map((t) => `${t.terrain} ${t.name}`).join(', ')}`);
 console.log(`${playerColours.length} couleurs de joueur lues dans COLOR.PAL et les .RMP`);
 console.log(`morceaux de la page d accueil : ${Object.entries(page).filter(([, v]) => v).map(([k]) => k).join(', ') || 'aucun'}`);

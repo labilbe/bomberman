@@ -197,8 +197,23 @@ export async function loadVectors({ folder = FOLDER, scale = 1 } = {}) {
     return null;
   }
 
+  /**
+   * The address of one extracted file, stamped with the manifest's print.
+   *
+   * THE NAMES ARE POSITIONS — 000.svg, 001.svg — and a re-extraction renumbers
+   * them without renaming anything: a browser holding the previous 268.svg
+   * answered the new manifest with the old drawing, and the arena came up walled
+   * with bonus packs. The stamp makes the two inseparable — a manifest only ever
+   * reaches the files it was written against.
+   *
+   * Absent from manifests extracted before the stamp existed: those are served
+   * unstamped, exactly as the page used to ask for them, so nothing changes for
+   * an extraction that has not been redone.
+   */
+  const url = (file) => (manifest.version ? `${folder}/${file}?v=${manifest.version}` : `${folder}/${file}`);
+
   const canvases = await Promise.all(
-    manifest.images.map((im) => rasterise(`${folder}/${im.file}`, im.width, im.height, scale)),
+    manifest.images.map((im) => rasterise(url(im.file), im.width, im.height, scale)),
   );
 
   /**
@@ -214,7 +229,7 @@ export async function loadVectors({ folder = FOLDER, scale = 1 } = {}) {
     let ready = null;
     return () => {
       if (!ready) {
-        ready = rasterise(`${folder}/${entry.file}`, entry.width, entry.height, scale).then((canvas) => ({
+        ready = rasterise(url(entry.file), entry.width, entry.height, scale).then((canvas) => ({
           canvas,
           width: Math.round(entry.width * scale),
           height: Math.round(entry.height * scale),
