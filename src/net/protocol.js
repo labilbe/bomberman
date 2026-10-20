@@ -14,7 +14,7 @@
 
 /** Messages from the client to the relay. */
 export const CLIENT = {
-  JOIN: 'join', // { type, room, name, places, format, colours?, colour?, host?, resume? }
+  JOIN: 'join', // { type, room, name, places, format, terrain?, colours?, colour?, host?, resume? }
   BEGIN: 'begin', // { type } — the host starts without waiting for the room to fill
   BOT: 'bot', // { type, seat? } — seat an artificial opponent, there or anywhere
   INPUT: 'input', // { type, seat, seq, dir, bomb, det, hold } — intent
@@ -34,7 +34,7 @@ export const CLIENT = {
 /** Messages from the relay to the client. */
 export const SERVER = {
   WAITING: 'waiting', // { type, room, myId, places, min, max, names, colours, host, hosted }
-  START: 'start', // { type, room, myId, mine, places, format, names, colours }
+  START: 'start', // { type, room, myId, mine, places, format, terrain, names, colours }
   ROUND: 'round', // { type, round, seed, tiles, items, v }
   STATE: 'state', // { type, t, v, j, b, f }
   ARENA: 'arena', // { type, v, tiles, items } — answer to RESYNC
@@ -108,6 +108,7 @@ export function randomName(random = Math.random) {
 export const BOT_NAMES = [
   'hicks', 'sharak', 'cyberpsycho', 'penetrator', 'littlepsylo', 'psycho',
   'chacal', 'genghis', 'sybaris', 'zuul', 'igrec', 'kakaruto',
+  'roots', 'toto', 'dbz', 'angus',
 ];
 
 /**
@@ -144,6 +145,41 @@ export function botNames(count, offset = 0) {
  */
 export const MIN_PLACES = 2;
 export const MAX_PLACES = 10;
+
+/**
+ * How many boards Atomic Bomberman has: eleven, numbered 0 to 10.
+ *
+ * It is a fact about the original game — TILES0 to TILES10 — and not about our
+ * assets, which is why the number lives here rather than in the renderer: the
+ * relay settles the board of a room, and it has no sprites at all. A page whose
+ * extraction is short of a board simply falls back on the one it has.
+ */
+export const TERRAINS = 11;
+
+/**
+ * A board index, or null for "whichever one chance picks".
+ *
+ * Null is a real answer and not a failure: it is the new-game screen's default,
+ * the "Random Each Game" of the original game's own options.
+ */
+export function cleanTerrain(raw) {
+  const terrain = Number(raw);
+  return Number.isInteger(terrain) && terrain >= 0 && terrain < TERRAINS ? terrain : null;
+}
+
+/**
+ * A board drawn at random.
+ *
+ * Drawn ONCE PER GAME and never per round: a match whose scenery changed between
+ * manche 2 and manche 3 would be two matches. The relay draws it for everybody,
+ * since a board chosen by each screen would have two players looking at
+ * different walls.
+ *
+ * @param {() => number} random source of randomness, injectable for the tests
+ */
+export function randomTerrain(random = Math.random) {
+  return Math.min(TERRAINS - 1, Math.max(0, Math.floor(random() * TERRAINS)));
+}
 
 /**
  * A colour index, or null when it is anything else.

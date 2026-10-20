@@ -36,6 +36,8 @@ import {
   RESUME_MS,
   cleanName,
   cleanColours,
+  cleanTerrain,
+  randomTerrain,
   preferColour,
   botNames,
 } from '../src/net/protocol.js';
@@ -174,6 +176,17 @@ export function createRoom({ code, now, seed = randomSeed() }) {
    * arrival that opens the room, and is announced to everybody.
    */
   let colours = cleanColours(null, places);
+  /**
+   * The board this room plays on, or null for "whichever one chance picks".
+   *
+   * Settled here for the same reason as the colours: two screens drawing
+   * different scenery would be two games. Whoever lays the table says which
+   * board, or says nothing — and the draw is then made at the start, once, and
+   * announced to everybody.
+   */
+  let terrain = null;
+  /** The board the match in progress is played on, once the draw is made. */
+  let board = null;
   let counter = 0;
   /**
    * Who lays the table, when somebody did: whoever said so on arriving.
@@ -231,17 +244,26 @@ export function createRoom({ code, now, seed = randomSeed() }) {
    * offset by the round counter keeps two games in a row from lining up exactly
    * the same opponents.
    *
-   * The ASKED-FOR PLACE is honoured when it is free: whoever creates the room
-   * says which seats are bots and which await a human, and a place is a corner
-   * and a colour — seating the bot elsewhere would show a board that is not the
-   * one they laid out. Anything else — a taken place, a number out of range, the
-   * room filling itself at the start — falls back on the first free place.
+   * A PLACE ASKED FOR IS THE ONLY PLACE TAKEN: whoever creates the room says
+   * which seats are bots and which await a human, and a place is a corner and a
+   * colour — seating the bot elsewhere would show a board that is not the one
+   * they laid out. A seat already held means the request has already been
+   * granted, so nothing is seated: the host's screen asks again for the seats
+   * it still sees free, and the answer announcing one bot crosses the request
+   * for the next. Falling back on the first free place then put a THIRD bot on
+   * the seat kept for a human, which filled the room and set the game off while
+   * a friend was still being waited for.
+   *
+   * Only a request that names no place — the room filling itself at the start —
+   * takes the first free seat.
    */
   function addBot(wanted = null) {
-    const free = freePlace();
-    const place = Number.isInteger(wanted) && wanted >= 0 && wanted < places && !taken().has(wanted)
-      ? wanted
-      : free;
+    if (wanted !== null) {
+      if (!Number.isInteger(wanted) || wanted < 0 || wanted >= places || taken().has(wanted)) {
+        return false;
+      }
+    }
+    const place = wanted === null ? freePlace() : wanted;
     if (place === null) return false;
     const rank = Object.keys(pilots).length;
     pilots[place] = createPilot({ level: LEVELS[rank % LEVELS.length] });
@@ -277,6 +299,7 @@ export function createRoom({ code, now, seed = randomSeed() }) {
       Math.max(MIN_PLACES, Number(message.places) || MIN_PLACES, ...seated.map((p) => p + 1)),
     );
     if (FORMATS.includes(Number(message.format))) format = Number(message.format);
+    terrain = cleanTerrain(message.terrain);
     const table = cleanColours(message.colours, places);
     colours = preferColour(table, place, table[0], () => false);
   }
@@ -344,6 +367,10 @@ export function createRoom({ code, now, seed = randomSeed() }) {
     while (addBot());
 
     game = createGame({ seed, places, format });
+    // The board of THIS match: the one the table named, or one drawn now. Drawn
+    // at the start and not on arrival, so that a room played twice does not
+    // replay the same scenery — the original game's "Random Each Game".
+    board = terrain ?? randomTerrain();
     clock = createClock(nowMs);
     intents.length = 0;
     sequences.length = 0;
@@ -360,6 +387,7 @@ export function createRoom({ code, now, seed = randomSeed() }) {
         mine: [member.place],
         places,
         format: game.format,
+        terrain: board,
         names: names(),
         colours: colours.slice(),
       });
@@ -472,6 +500,10 @@ export function createRoom({ code, now, seed = randomSeed() }) {
             mine: [resumed.place],
             places,
             format: game.format,
+            // The board the match is being played on, and not the table's
+            // choice: a room that asked for "au hasard" has drawn one since, and
+            // somebody coming back must find the arena they left.
+            terrain: board,
             names: names(),
             colours: colours.slice(),
           });

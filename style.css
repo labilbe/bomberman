@@ -67,27 +67,51 @@ body {
   min-height: 100%;
 }
 
-/*
- * The menu's sky.
- *
- * The square of stars is OPAQUE — it is a crop from the game's image — and would
- * cover the gradients if laid on them as it is. `screen` solves that: its night
- * blue fades against the background, its stars add up. With the image missing,
- * the blend applies to nothing and the nebula remains, which is enough.
- */
+/* The ground the sky below is laid on, and what shows through everywhere else. */
 body {
+  background: var(--night);
+  color: var(--text);
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  padding: 20px 16px 40px;
+}
+
+/*
+ * THE SKY IS A LAYER OF ITS OWN, and that is a matter of frame rate rather than
+ * of taste — the look is exactly the one above, anchored to the viewport.
+ *
+ * It used to be the body's own background, held still by
+ * `background-attachment: fixed`. That pins it to the VIEWPORT instead of the
+ * page, and the browser then cannot keep it on a layer it reuses: every repaint
+ * passing over it redoes the stars, the two radial gradients and the `screen`
+ * blend that joins them. That cost follows the size of the VIEWPORT — and on
+ * the play screen nothing else does: the arena keeps its 600 × 468 pixels
+ * whatever happens, the GPU merely enlarges them. Pressing F11 was therefore
+ * enough to make it stutter, the same repaint spread over two or three times
+ * the surface, sixty times a second.
+ *
+ * A fixed element costs the same paint ONCE: it is composited, and what is
+ * drawn above no longer touches it.
+ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  /*
+   * The square of stars is OPAQUE — it is a crop from the game's image — and
+   * would cover the gradients if laid on them as it is. `screen` solves that:
+   * its night blue fades against the background, its stars add up. With the
+   * image missing, the blend applies to nothing and the nebula remains, which is
+   * enough.
+   */
   background:
     url('assets/game/stars.png') repeat top left / 200px auto,
     radial-gradient(1100px 620px at 50% -8%, rgba(255, 138, 0, 0.32), transparent 62%),
     radial-gradient(760px 540px at 12% 72%, rgba(123, 44, 191, 0.3), transparent 66%),
     var(--night);
   background-blend-mode: screen, normal, normal, normal;
-  background-attachment: fixed;
-  color: var(--text);
-  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  font-size: 16px;
-  line-height: 1.5;
-  padding: 20px 16px 40px;
 }
 
 #app {
@@ -381,7 +405,7 @@ body {
 }
 
 /*
- * The launch screen: one row per player, its dot, its colour, its control. The
+ * The new-game screen: one row per player, its dot, its colour, its control. The
  * dot carries the colour CHOSEN, and it is what you look for while playing — the
  * colour's name only serves to name it.
  */
@@ -435,23 +459,12 @@ body {
  * the middle of the menu adds « Manette 1 » to the list, which is wider than
  * « Clavier 1 »: left to size itself on its entries, the select grew by nine
  * pixels, the row no longer fitted on one line and every seat broke in two.
- * The width is that of the longest label — nine characters — plus the 6px and
- * 28px the field keeps for its padding and its chevron.
- *
- * The launch screen only: the creation screen offers « Joueur en réseau » on
- * the same kind of select, and that one needs every pixel of its own text.
+ * The width is that of the longest label — nine characters, « En réseau » as
+ * much as « Clavier 1 » — plus the 6px and 28px the field keeps for its padding
+ * and its chevron.
  */
 #seats .control {
   width: calc(9ch + 34px);
-}
-
-/* The seat of whoever lays the table: a statement, not a choice. */
-.seat-you {
-  font-family: var(--display);
-  font-size: 17px;
-  letter-spacing: 0.02em;
-  color: var(--yellow);
-  margin-bottom: 2px;
 }
 
 .field-players {
@@ -462,6 +475,17 @@ body {
    promises a long text where there are three words. */
 .field-format {
   max-width: 13em;
+}
+
+/* Long enough for « Classic Green Acres », the widest of the eleven boards. */
+.field-terrain {
+  max-width: 15em;
+}
+
+/* The room code appears under the rows, once a seat waits for the network: it
+   belongs to that list, not to the settings above it. */
+.field-room {
+  margin-top: 12px;
 }
 
 .panel.fields {

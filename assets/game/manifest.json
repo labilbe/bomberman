@@ -3,12 +3,699 @@
     "width": 40,
     "height": 36
   },
-  "ground": {
-    "file": "ground.png",
-    "width": 600,
-    "height": 72,
-    "terrain": 0
-  },
+  "terrains": [
+    {
+      "terrain": 0,
+      "name": "Green Acres",
+      "ground": {
+        "file": "ground0.png",
+        "width": 600,
+        "height": 468
+      },
+      "roles": {
+        "wall": [
+          {
+            "image": 268,
+            "duration": 30
+          }
+        ],
+        "brick": [
+          {
+            "image": 269,
+            "duration": 30
+          }
+        ],
+        "brickBroken": [
+          {
+            "image": 270,
+            "duration": 30
+          },
+          {
+            "image": 271,
+            "duration": 30
+          },
+          {
+            "image": 272,
+            "duration": 30
+          },
+          {
+            "image": 273,
+            "duration": 30
+          },
+          {
+            "image": 274,
+            "duration": 30
+          },
+          {
+            "image": 275,
+            "duration": 30
+          },
+          {
+            "image": 276,
+            "duration": 30
+          },
+          {
+            "image": 277,
+            "duration": 30
+          },
+          {
+            "image": 278,
+            "duration": 30
+          }
+        ]
+      }
+    },
+    {
+      "terrain": 1,
+      "name": "Classic Green Acres",
+      "ground": {
+        "file": "ground1.png",
+        "width": 600,
+        "height": 468
+      },
+      "roles": {
+        "wall": [
+          {
+            "image": 279,
+            "duration": 30
+          }
+        ],
+        "brick": [
+          {
+            "image": 280,
+            "duration": 30
+          }
+        ],
+        "brickBroken": [
+          {
+            "image": 281,
+            "duration": 30
+          },
+          {
+            "image": 282,
+            "duration": 30
+          },
+          {
+            "image": 283,
+            "duration": 30
+          },
+          {
+            "image": 284,
+            "duration": 30
+          },
+          {
+            "image": 285,
+            "duration": 30
+          },
+          {
+            "image": 286,
+            "duration": 30
+          },
+          {
+            "image": 287,
+            "duration": 30
+          },
+          {
+            "image": 288,
+            "duration": 30
+          },
+          {
+            "image": 289,
+            "duration": 30
+          }
+        ]
+      }
+    },
+    {
+      "terrain": 2,
+      "name": "The Hockey Rink",
+      "ground": {
+        "file": "ground2.png",
+        "width": 600,
+        "height": 468
+      },
+      "roles": {
+        "wall": [
+          {
+            "image": 290,
+            "duration": 30
+          }
+        ],
+        "brick": [
+          {
+            "image": 291,
+            "duration": 30
+          }
+        ],
+        "brickBroken": [
+          {
+            "image": 292,
+            "duration": 30
+          },
+          {
+            "image": 293,
+            "duration": 30
+          },
+          {
+            "image": 294,
+            "duration": 30
+          },
+          {
+            "image": 295,
+            "duration": 30
+          },
+          {
+            "image": 296,
+            "duration": 30
+          },
+          {
+            "image": 297,
+            "duration": 30
+          },
+          {
+            "image": 298,
+            "duration": 30
+          },
+          {
+            "image": 299,
+            "duration": 30
+          },
+          {
+            "image": 299,
+            "duration": 30
+          }
+        ]
+      }
+    },
+    {
+      "terrain": 3,
+      "name": "Ancient Egypt",
+      "ground": {
+        "file": "ground3.png",
+        "width": 600,
+        "height": 468
+      },
+      "roles": {
+        "wall": [
+          {
+            "image": 300,
+            "duration": 30
+          }
+        ],
+        "brick": [
+          {
+            "image": 301,
+            "duration": 30
+          }
+        ],
+        "brickBroken": [
+          {
+            "image": 302,
+            "duration": 30
+          },
+          {
+            "image": 303,
+            "duration": 30
+          },
+          {
+            "image": 304,
+            "duration": 30
+          },
+          {
+            "image": 305,
+            "duration": 30
+          },
+          {
+            "image": 306,
+            "duration": 30
+          },
+          {
+            "image": 307,
+            "duration": 30
+          },
+          {
+            "image": 308,
+            "duration": 30
+          },
+          {
+            "image": 309,
+            "duration": 30
+          },
+          {
+            "image": 310,
+            "duration": 30
+          }
+        ]
+      }
+    },
+    {
+      "terrain": 4,
+      "name": "The Coal Mine",
+      "ground": {
+        "file": "ground4.png",
+        "width": 600,
+        "height": 468
+      },
+      "roles": {
+        "wall": [
+          {
+            "image": 311,
+            "duration": 30
+          }
+        ],
+        "brick": [
+          {
+            "image": 312,
+            "duration": 30
+          }
+        ],
+        "brickBroken": [
+          {
+            "image": 313,
+            "duration": 30
+          },
+          {
+            "image": 314,
+            "duration": 30
+          },
+          {
+            "image": 315,
+            "duration": 30
+          },
+          {
+            "image": 316,
+            "duration": 30
+          },
+          {
+            "image": 317,
+            "duration": 30
+          },
+          {
+            "image": 318,
+            "duration": 30
+          },
+          {
+            "image": 319,
+            "duration": 30
+          },
+          {
+            "image": 320,
+            "duration": 30
+          },
+          {
+            "image": 321,
+            "duration": 30
+          },
+          {
+            "image": 322,
+            "duration": 30
+          }
+        ]
+      }
+    },
+    {
+      "terrain": 5,
+      "name": "The Beach",
+      "ground": {
+        "file": "ground5.png",
+        "width": 600,
+        "height": 468
+      },
+      "roles": {
+        "wall": [
+          {
+            "image": 323,
+            "duration": 30
+          }
+        ],
+        "brick": [
+          {
+            "image": 324,
+            "duration": 30
+          }
+        ],
+        "brickBroken": [
+          {
+            "image": 325,
+            "duration": 30
+          },
+          {
+            "image": 326,
+            "duration": 30
+          },
+          {
+            "image": 327,
+            "duration": 30
+          },
+          {
+            "image": 328,
+            "duration": 30
+          },
+          {
+            "image": 329,
+            "duration": 30
+          },
+          {
+            "image": 330,
+            "duration": 30
+          },
+          {
+            "image": 331,
+            "duration": 30
+          },
+          {
+            "image": 332,
+            "duration": 30
+          },
+          {
+            "image": 333,
+            "duration": 30
+          }
+        ]
+      }
+    },
+    {
+      "terrain": 6,
+      "name": "Aliens",
+      "ground": {
+        "file": "ground6.png",
+        "width": 600,
+        "height": 468
+      },
+      "roles": {
+        "wall": [
+          {
+            "image": 334,
+            "duration": 30
+          }
+        ],
+        "brick": [
+          {
+            "image": 335,
+            "duration": 30
+          }
+        ],
+        "brickBroken": [
+          {
+            "image": 336,
+            "duration": 30
+          },
+          {
+            "image": 337,
+            "duration": 30
+          },
+          {
+            "image": 338,
+            "duration": 30
+          },
+          {
+            "image": 339,
+            "duration": 30
+          },
+          {
+            "image": 340,
+            "duration": 30
+          },
+          {
+            "image": 341,
+            "duration": 30
+          },
+          {
+            "image": 342,
+            "duration": 30
+          },
+          {
+            "image": 343,
+            "duration": 30
+          },
+          {
+            "image": 344,
+            "duration": 30
+          },
+          {
+            "image": 345,
+            "duration": 30
+          }
+        ]
+      }
+    },
+    {
+      "terrain": 7,
+      "name": "Haunted House",
+      "ground": {
+        "file": "ground7.png",
+        "width": 600,
+        "height": 468
+      },
+      "roles": {
+        "wall": [
+          {
+            "image": 346,
+            "duration": 30
+          }
+        ],
+        "brick": [
+          {
+            "image": 347,
+            "duration": 30
+          }
+        ],
+        "brickBroken": [
+          {
+            "image": 348,
+            "duration": 30
+          },
+          {
+            "image": 349,
+            "duration": 30
+          },
+          {
+            "image": 350,
+            "duration": 30
+          },
+          {
+            "image": 351,
+            "duration": 30
+          },
+          {
+            "image": 352,
+            "duration": 30
+          },
+          {
+            "image": 353,
+            "duration": 30
+          },
+          {
+            "image": 354,
+            "duration": 30
+          },
+          {
+            "image": 355,
+            "duration": 30
+          },
+          {
+            "image": 356,
+            "duration": 30
+          }
+        ]
+      }
+    },
+    {
+      "terrain": 8,
+      "name": "Under the Ocean",
+      "ground": {
+        "file": "ground8.png",
+        "width": 600,
+        "height": 468
+      },
+      "roles": {
+        "wall": [
+          {
+            "image": 357,
+            "duration": 30
+          }
+        ],
+        "brick": [
+          {
+            "image": 358,
+            "duration": 30
+          }
+        ],
+        "brickBroken": [
+          {
+            "image": 359,
+            "duration": 30
+          },
+          {
+            "image": 360,
+            "duration": 30
+          },
+          {
+            "image": 361,
+            "duration": 30
+          },
+          {
+            "image": 362,
+            "duration": 30
+          },
+          {
+            "image": 363,
+            "duration": 30
+          },
+          {
+            "image": 364,
+            "duration": 30
+          },
+          {
+            "image": 365,
+            "duration": 30
+          },
+          {
+            "image": 366,
+            "duration": 30
+          },
+          {
+            "image": 367,
+            "duration": 30
+          },
+          {
+            "image": 368,
+            "duration": 30
+          }
+        ]
+      }
+    },
+    {
+      "terrain": 9,
+      "name": "Deep Forest Green",
+      "ground": {
+        "file": "ground9.png",
+        "width": 600,
+        "height": 468
+      },
+      "roles": {
+        "wall": [
+          {
+            "image": 369,
+            "duration": 30
+          }
+        ],
+        "brick": [
+          {
+            "image": 370,
+            "duration": 30
+          }
+        ],
+        "brickBroken": [
+          {
+            "image": 371,
+            "duration": 30
+          },
+          {
+            "image": 372,
+            "duration": 30
+          },
+          {
+            "image": 373,
+            "duration": 30
+          },
+          {
+            "image": 374,
+            "duration": 30
+          },
+          {
+            "image": 375,
+            "duration": 30
+          },
+          {
+            "image": 376,
+            "duration": 30
+          },
+          {
+            "image": 377,
+            "duration": 30
+          },
+          {
+            "image": 378,
+            "duration": 30
+          },
+          {
+            "image": 379,
+            "duration": 30
+          },
+          {
+            "image": 380,
+            "duration": 30
+          }
+        ]
+      }
+    },
+    {
+      "terrain": 10,
+      "name": "Inner City Trash",
+      "ground": {
+        "file": "ground10.png",
+        "width": 600,
+        "height": 468
+      },
+      "roles": {
+        "wall": [
+          {
+            "image": 381,
+            "duration": 30
+          }
+        ],
+        "brick": [
+          {
+            "image": 382,
+            "duration": 30
+          }
+        ],
+        "brickBroken": [
+          {
+            "image": 383,
+            "duration": 30
+          },
+          {
+            "image": 384,
+            "duration": 30
+          },
+          {
+            "image": 385,
+            "duration": 30
+          },
+          {
+            "image": 386,
+            "duration": 30
+          },
+          {
+            "image": 387,
+            "duration": 30
+          },
+          {
+            "image": 388,
+            "duration": 30
+          },
+          {
+            "image": 389,
+            "duration": 30
+          },
+          {
+            "image": 390,
+            "duration": 30
+          },
+          {
+            "image": 391,
+            "duration": 30
+          },
+          {
+            "image": 392,
+            "duration": 30
+          }
+        ]
+      }
+    }
+  ],
   "home": {
     "file": "home.png",
     "width": 640,
@@ -86,206 +773,206 @@
   "images": [
     {
       "file": "000.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "001.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "002.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "003.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "004.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "005.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "006.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "007.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "008.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "009.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "010.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "011.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "012.svg",
       "width": 36,
       "height": 37,
       "anchorX": 18,
       "anchorY": 36
     },
     {
-      "file": "013.svg",
+      "file": "001.svg",
       "width": 35,
       "height": 35,
       "anchorX": 17,
       "anchorY": 34
     },
     {
-      "file": "014.svg",
+      "file": "002.svg",
       "width": 34,
       "height": 33,
       "anchorX": 17,
       "anchorY": 32
     },
     {
-      "file": "015.svg",
+      "file": "003.svg",
       "width": 32,
       "height": 32,
       "anchorX": 16,
       "anchorY": 31
     },
     {
-      "file": "016.svg",
+      "file": "004.svg",
       "width": 30,
       "height": 30,
       "anchorX": 15,
       "anchorY": 29
     },
     {
-      "file": "017.svg",
+      "file": "005.svg",
       "width": 28,
       "height": 28,
       "anchorX": 14,
       "anchorY": 27
     },
     {
-      "file": "018.svg",
+      "file": "006.svg",
       "width": 26,
       "height": 26,
       "anchorX": 13,
       "anchorY": 25
     },
     {
-      "file": "019.svg",
+      "file": "007.svg",
       "width": 25,
       "height": 25,
       "anchorX": 12,
       "anchorY": 24
     },
     {
-      "file": "020.svg",
+      "file": "008.svg",
       "width": 24,
       "height": 23,
       "anchorX": 12,
       "anchorY": 22
     },
     {
-      "file": "021.svg",
+      "file": "009.svg",
       "width": 22,
       "height": 22,
       "anchorX": 11,
       "anchorY": 21
     },
     {
-      "file": "022.svg",
+      "file": "010.svg",
       "width": 36,
       "height": 34,
       "anchorX": 18,
       "anchorY": 33
     },
     {
-      "file": "023.svg",
+      "file": "011.svg",
       "width": 33,
       "height": 33,
       "anchorX": 16,
       "anchorY": 32
     },
     {
-      "file": "024.svg",
+      "file": "012.svg",
       "width": 33,
       "height": 34,
       "anchorX": 16,
       "anchorY": 33
     },
     {
-      "file": "025.svg",
+      "file": "013.svg",
       "width": 36,
       "height": 34,
       "anchorX": 18,
       "anchorY": 33
     },
     {
-      "file": "026.svg",
+      "file": "014.svg",
       "width": 37,
       "height": 31,
       "anchorX": 18,
       "anchorY": 30
     },
     {
-      "file": "027.svg",
+      "file": "015.svg",
       "width": 33,
       "height": 33,
       "anchorX": 16,
       "anchorY": 32
     },
     {
-      "file": "028.svg",
+      "file": "016.svg",
       "width": 33,
       "height": 34,
       "anchorX": 16,
       "anchorY": 33
+    },
+    {
+      "file": "017.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "018.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "019.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "020.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "021.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "022.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "023.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "024.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "025.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "026.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "027.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "028.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
     },
     {
       "file": "029.svg",
@@ -492,87 +1179,87 @@
     },
     {
       "file": "058.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "059.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "060.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "061.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "062.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "063.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "064.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "065.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "066.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "067.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "068.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "069.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "070.svg",
@@ -730,324 +1417,324 @@
     },
     {
       "file": "092.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 96
     },
     {
       "file": "093.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 96
     },
     {
       "file": "094.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "095.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "096.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "097.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "098.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "099.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "100.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "101.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "102.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "103.svg",
-      "width": 40,
-      "height": 36,
-      "anchorX": 20,
-      "anchorY": 35
-    },
-    {
-      "file": "104.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 96
-    },
-    {
-      "file": "105.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 96
-    },
-    {
-      "file": "106.svg",
       "width": 110,
       "height": 110,
       "anchorX": 54,
       "anchorY": 98
     },
     {
-      "file": "107.svg",
+      "file": "095.svg",
       "width": 110,
       "height": 110,
       "anchorX": 57,
       "anchorY": 99
     },
     {
-      "file": "108.svg",
+      "file": "096.svg",
       "width": 110,
       "height": 110,
       "anchorX": 57,
       "anchorY": 97
     },
     {
-      "file": "109.svg",
+      "file": "097.svg",
       "width": 110,
       "height": 110,
       "anchorX": 55,
       "anchorY": 96
     },
     {
-      "file": "110.svg",
+      "file": "098.svg",
       "width": 110,
       "height": 110,
       "anchorX": 56,
       "anchorY": 96
     },
     {
-      "file": "111.svg",
+      "file": "099.svg",
       "width": 110,
       "height": 110,
       "anchorX": 56,
       "anchorY": 96
     },
     {
-      "file": "112.svg",
+      "file": "100.svg",
       "width": 110,
       "height": 110,
       "anchorX": 55,
       "anchorY": 98
     },
     {
-      "file": "113.svg",
+      "file": "101.svg",
       "width": 110,
       "height": 110,
       "anchorX": 56,
       "anchorY": 98
     },
     {
-      "file": "114.svg",
+      "file": "102.svg",
       "width": 110,
       "height": 110,
       "anchorX": 55,
       "anchorY": 99
     },
     {
-      "file": "115.svg",
+      "file": "103.svg",
       "width": 110,
       "height": 110,
       "anchorX": 56,
       "anchorY": 98
     },
     {
-      "file": "116.svg",
+      "file": "104.svg",
       "width": 110,
       "height": 110,
       "anchorX": 56,
       "anchorY": 100
     },
     {
-      "file": "117.svg",
+      "file": "105.svg",
       "width": 110,
       "height": 110,
       "anchorX": 55,
       "anchorY": 97
     },
     {
-      "file": "118.svg",
+      "file": "106.svg",
       "width": 110,
       "height": 110,
       "anchorX": 55,
       "anchorY": 96
     },
     {
-      "file": "119.svg",
+      "file": "107.svg",
       "width": 110,
       "height": 110,
       "anchorX": 56,
       "anchorY": 96
+    },
+    {
+      "file": "108.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 135
+    },
+    {
+      "file": "109.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 37,
+      "anchorY": 135
+    },
+    {
+      "file": "110.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 37,
+      "anchorY": 135
+    },
+    {
+      "file": "111.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 37,
+      "anchorY": 136
+    },
+    {
+      "file": "112.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 38,
+      "anchorY": 136
+    },
+    {
+      "file": "113.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 38,
+      "anchorY": 135
+    },
+    {
+      "file": "114.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 38,
+      "anchorY": 135
+    },
+    {
+      "file": "115.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 38,
+      "anchorY": 135
+    },
+    {
+      "file": "116.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 135
+    },
+    {
+      "file": "117.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 133
+    },
+    {
+      "file": "118.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 133
+    },
+    {
+      "file": "119.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 35,
+      "anchorY": 136
     },
     {
       "file": "120.svg",
       "width": 73,
       "height": 146,
       "anchorX": 36,
-      "anchorY": 135
+      "anchorY": 137
     },
     {
       "file": "121.svg",
       "width": 73,
       "height": 146,
-      "anchorX": 37,
-      "anchorY": 135
+      "anchorX": 35,
+      "anchorY": 137
     },
     {
       "file": "122.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 37,
-      "anchorY": 135
-    },
-    {
-      "file": "123.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 37,
-      "anchorY": 136
-    },
-    {
-      "file": "124.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 38,
-      "anchorY": 136
-    },
-    {
-      "file": "125.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 38,
-      "anchorY": 135
-    },
-    {
-      "file": "126.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 38,
-      "anchorY": 135
-    },
-    {
-      "file": "127.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 38,
-      "anchorY": 135
-    },
-    {
-      "file": "128.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 135
-    },
-    {
-      "file": "129.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 133
-    },
-    {
-      "file": "130.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 133
-    },
-    {
-      "file": "131.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 35,
-      "anchorY": 136
-    },
-    {
-      "file": "132.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 137
-    },
-    {
-      "file": "133.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 35,
-      "anchorY": 137
-    },
-    {
-      "file": "134.svg",
       "width": 73,
       "height": 146,
       "anchorX": 36,
       "anchorY": 138
     },
     {
-      "file": "135.svg",
+      "file": "123.svg",
       "width": 110,
       "height": 110,
       "anchorX": 56,
       "anchorY": 97
     },
     {
-      "file": "136.svg",
+      "file": "124.svg",
       "width": 110,
       "height": 110,
       "anchorX": 57,
       "anchorY": 97
     },
     {
-      "file": "137.svg",
+      "file": "125.svg",
       "width": 110,
       "height": 110,
       "anchorX": 55,
+      "anchorY": 97
+    },
+    {
+      "file": "126.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 98
+    },
+    {
+      "file": "127.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 97
+    },
+    {
+      "file": "128.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 97
+    },
+    {
+      "file": "129.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 57,
+      "anchorY": 97
+    },
+    {
+      "file": "130.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 57,
+      "anchorY": 96
+    },
+    {
+      "file": "131.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 96
+    },
+    {
+      "file": "132.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 96
+    },
+    {
+      "file": "133.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 96
+    },
+    {
+      "file": "134.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 54,
+      "anchorY": 96
+    },
+    {
+      "file": "135.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 96
+    },
+    {
+      "file": "136.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 96
+    },
+    {
+      "file": "137.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
       "anchorY": 97
     },
     {
@@ -1055,91 +1742,91 @@
       "width": 110,
       "height": 110,
       "anchorX": 55,
-      "anchorY": 98
+      "anchorY": 96
     },
     {
       "file": "139.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 97
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 145
     },
     {
       "file": "140.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 97
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 145
     },
     {
       "file": "141.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 57,
-      "anchorY": 97
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 145
     },
     {
       "file": "142.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 57,
-      "anchorY": 96
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 145
     },
     {
       "file": "143.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 96
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 145
     },
     {
       "file": "144.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 96
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 145
     },
     {
       "file": "145.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 96
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 145
     },
     {
       "file": "146.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 54,
-      "anchorY": 96
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 145
     },
     {
       "file": "147.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 96
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 145
     },
     {
       "file": "148.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 96
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 145
     },
     {
       "file": "149.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 97
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 145
     },
     {
       "file": "150.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 96
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 145
     },
     {
       "file": "151.svg",
@@ -1164,87 +1851,87 @@
     },
     {
       "file": "154.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 145
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 98
     },
     {
       "file": "155.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 145
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 96
     },
     {
       "file": "156.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 145
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 99
     },
     {
       "file": "157.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 145
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 99
     },
     {
       "file": "158.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 145
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 98
     },
     {
       "file": "159.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 145
+      "width": 110,
+      "height": 110,
+      "anchorX": 57,
+      "anchorY": 96
     },
     {
       "file": "160.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 145
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 93
     },
     {
       "file": "161.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 145
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 97
     },
     {
       "file": "162.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 145
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 95
     },
     {
       "file": "163.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 145
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 96
     },
     {
       "file": "164.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 145
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 98
     },
     {
       "file": "165.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 145
+      "width": 110,
+      "height": 110,
+      "anchorX": 57,
+      "anchorY": 99
     },
     {
       "file": "166.svg",
@@ -1257,211 +1944,211 @@
       "file": "167.svg",
       "width": 110,
       "height": 110,
-      "anchorX": 55,
-      "anchorY": 96
+      "anchorX": 56,
+      "anchorY": 98
     },
     {
       "file": "168.svg",
       "width": 110,
       "height": 110,
       "anchorX": 56,
-      "anchorY": 99
+      "anchorY": 98
     },
     {
       "file": "169.svg",
       "width": 110,
       "height": 110,
       "anchorX": 55,
-      "anchorY": 99
-    },
-    {
-      "file": "170.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 98
-    },
-    {
-      "file": "171.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 57,
-      "anchorY": 96
-    },
-    {
-      "file": "172.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 93
-    },
-    {
-      "file": "173.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 97
-    },
-    {
-      "file": "174.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 95
-    },
-    {
-      "file": "175.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 96
-    },
-    {
-      "file": "176.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 98
-    },
-    {
-      "file": "177.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 57,
-      "anchorY": 99
-    },
-    {
-      "file": "178.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 98
-    },
-    {
-      "file": "179.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 98
-    },
-    {
-      "file": "180.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 98
-    },
-    {
-      "file": "181.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
       "anchorY": 94
     },
     {
-      "file": "182.svg",
+      "file": "170.svg",
       "width": 73,
       "height": 146,
       "anchorX": 37,
       "anchorY": 135
     },
     {
-      "file": "183.svg",
+      "file": "171.svg",
       "width": 73,
       "height": 146,
       "anchorX": 37,
       "anchorY": 135
     },
     {
-      "file": "184.svg",
+      "file": "172.svg",
       "width": 73,
       "height": 146,
       "anchorX": 37,
       "anchorY": 133
     },
     {
-      "file": "185.svg",
+      "file": "173.svg",
       "width": 73,
       "height": 146,
       "anchorX": 38,
       "anchorY": 135
     },
     {
-      "file": "186.svg",
+      "file": "174.svg",
       "width": 73,
       "height": 146,
       "anchorX": 37,
       "anchorY": 134
     },
     {
-      "file": "187.svg",
+      "file": "175.svg",
       "width": 73,
       "height": 146,
       "anchorX": 37,
       "anchorY": 133
+    },
+    {
+      "file": "176.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 133
+    },
+    {
+      "file": "177.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 37,
+      "anchorY": 135
+    },
+    {
+      "file": "178.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 37,
+      "anchorY": 133
+    },
+    {
+      "file": "179.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 135
+    },
+    {
+      "file": "180.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 35,
+      "anchorY": 135
+    },
+    {
+      "file": "181.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 35,
+      "anchorY": 135
+    },
+    {
+      "file": "182.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 36,
+      "anchorY": 135
+    },
+    {
+      "file": "183.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 35,
+      "anchorY": 135
+    },
+    {
+      "file": "184.svg",
+      "width": 73,
+      "height": 146,
+      "anchorX": 35,
+      "anchorY": 135
+    },
+    {
+      "file": "185.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 97
+    },
+    {
+      "file": "186.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 54,
+      "anchorY": 97
+    },
+    {
+      "file": "187.svg",
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 96
     },
     {
       "file": "188.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 133
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 96
     },
     {
       "file": "189.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 37,
-      "anchorY": 135
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 95
     },
     {
       "file": "190.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 37,
-      "anchorY": 133
+      "width": 110,
+      "height": 110,
+      "anchorX": 57,
+      "anchorY": 96
     },
     {
       "file": "191.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 135
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 94
     },
     {
       "file": "192.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 35,
-      "anchorY": 135
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 95
     },
     {
       "file": "193.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 35,
-      "anchorY": 135
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 98
     },
     {
       "file": "194.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 36,
-      "anchorY": 135
+      "width": 110,
+      "height": 110,
+      "anchorX": 55,
+      "anchorY": 96
     },
     {
       "file": "195.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 35,
-      "anchorY": 135
+      "width": 110,
+      "height": 110,
+      "anchorX": 56,
+      "anchorY": 94
     },
     {
       "file": "196.svg",
-      "width": 73,
-      "height": 146,
-      "anchorX": 35,
-      "anchorY": 135
+      "width": 110,
+      "height": 110,
+      "anchorX": 57,
+      "anchorY": 97
     },
     {
       "file": "197.svg",
@@ -1474,211 +2161,211 @@
       "file": "198.svg",
       "width": 110,
       "height": 110,
-      "anchorX": 54,
-      "anchorY": 97
+      "anchorX": 56,
+      "anchorY": 96
     },
     {
       "file": "199.svg",
       "width": 110,
       "height": 110,
       "anchorX": 55,
-      "anchorY": 96
+      "anchorY": 97
     },
     {
       "file": "200.svg",
       "width": 110,
       "height": 110,
       "anchorX": 55,
-      "anchorY": 96
+      "anchorY": 95
     },
     {
       "file": "201.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 95
-    },
-    {
-      "file": "202.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 57,
-      "anchorY": 96
-    },
-    {
-      "file": "203.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 94
-    },
-    {
-      "file": "204.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 95
-    },
-    {
-      "file": "205.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 98
-    },
-    {
-      "file": "206.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 96
-    },
-    {
-      "file": "207.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 94
-    },
-    {
-      "file": "208.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 57,
-      "anchorY": 97
-    },
-    {
-      "file": "209.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 97
-    },
-    {
-      "file": "210.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 56,
-      "anchorY": 96
-    },
-    {
-      "file": "211.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 97
-    },
-    {
-      "file": "212.svg",
-      "width": 110,
-      "height": 110,
-      "anchorX": 55,
-      "anchorY": 95
-    },
-    {
-      "file": "213.svg",
       "width": 73,
       "height": 146,
       "anchorX": 35,
       "anchorY": 137
     },
     {
-      "file": "214.svg",
+      "file": "202.svg",
       "width": 73,
       "height": 146,
       "anchorX": 36,
       "anchorY": 137
     },
     {
-      "file": "215.svg",
+      "file": "203.svg",
       "width": 73,
       "height": 146,
       "anchorX": 37,
       "anchorY": 137
     },
     {
-      "file": "216.svg",
+      "file": "204.svg",
       "width": 73,
       "height": 146,
       "anchorX": 36,
       "anchorY": 138
     },
     {
-      "file": "217.svg",
+      "file": "205.svg",
       "width": 73,
       "height": 146,
       "anchorX": 35,
       "anchorY": 137
     },
     {
-      "file": "218.svg",
+      "file": "206.svg",
       "width": 73,
       "height": 146,
       "anchorX": 36,
       "anchorY": 135
     },
     {
-      "file": "219.svg",
+      "file": "207.svg",
       "width": 73,
       "height": 146,
       "anchorX": 37,
       "anchorY": 138
     },
     {
-      "file": "220.svg",
+      "file": "208.svg",
       "width": 73,
       "height": 146,
       "anchorX": 36,
       "anchorY": 137
     },
     {
-      "file": "221.svg",
+      "file": "209.svg",
       "width": 73,
       "height": 146,
       "anchorX": 36,
       "anchorY": 137
     },
     {
-      "file": "222.svg",
+      "file": "210.svg",
       "width": 73,
       "height": 146,
       "anchorX": 37,
       "anchorY": 137
     },
     {
-      "file": "223.svg",
+      "file": "211.svg",
       "width": 73,
       "height": 146,
       "anchorX": 36,
       "anchorY": 136
     },
     {
-      "file": "224.svg",
+      "file": "212.svg",
       "width": 73,
       "height": 146,
       "anchorX": 36,
       "anchorY": 136
     },
     {
-      "file": "225.svg",
+      "file": "213.svg",
       "width": 73,
       "height": 146,
       "anchorX": 37,
       "anchorY": 137
     },
     {
-      "file": "226.svg",
+      "file": "214.svg",
       "width": 73,
       "height": 146,
       "anchorX": 37,
       "anchorY": 138
     },
     {
-      "file": "227.svg",
+      "file": "215.svg",
       "width": 73,
       "height": 146,
       "anchorX": 38,
       "anchorY": 136
+    },
+    {
+      "file": "216.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "217.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "218.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "219.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "220.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "221.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "222.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "223.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "224.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "225.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "226.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
+    },
+    {
+      "file": "227.svg",
+      "width": 73,
+      "height": 73,
+      "anchorX": 36,
+      "anchorY": 72
     },
     {
       "file": "228.svg",
@@ -1878,87 +2565,87 @@
     },
     {
       "file": "256.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "257.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "258.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "259.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "260.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "261.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "262.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "263.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "264.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "265.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "266.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "267.svg",
-      "width": 73,
-      "height": 73,
-      "anchorX": 36,
-      "anchorY": 72
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     },
     {
       "file": "268.svg",
@@ -2043,28 +2730,813 @@
       "height": 36,
       "anchorX": 20,
       "anchorY": 35
+    },
+    {
+      "file": "280.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "281.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "282.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "283.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "284.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "285.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "286.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "287.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "288.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "289.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "290.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "291.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "292.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "293.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "294.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "295.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "296.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "297.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "298.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "299.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "300.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "301.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "302.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 34
+    },
+    {
+      "file": "303.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "304.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "305.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "306.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "307.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "308.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "309.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "310.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "311.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "312.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "313.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "314.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "315.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "316.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "317.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "318.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "319.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "320.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "321.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "322.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "323.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 19,
+      "anchorY": 35
+    },
+    {
+      "file": "324.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 19,
+      "anchorY": 35
+    },
+    {
+      "file": "325.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "326.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "327.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "328.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "329.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "330.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "331.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "332.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "333.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "334.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "335.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "336.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "337.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "338.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "339.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "340.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "341.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "342.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "343.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "344.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "345.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "346.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "347.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "348.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "349.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "350.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "351.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "352.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "353.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "354.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "355.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "356.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "357.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "358.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "359.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "360.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "361.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "362.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "363.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "364.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "365.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "366.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "367.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "368.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "369.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "370.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "371.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "372.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "373.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "374.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "375.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "376.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "377.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "378.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "379.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "380.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "381.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "382.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "383.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "384.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "385.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "386.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "387.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "388.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "389.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "390.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "391.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
+    },
+    {
+      "file": "392.svg",
+      "width": 40,
+      "height": 36,
+      "anchorX": 20,
+      "anchorY": 35
     }
   ],
   "roles": {
-    "ground": [
+    "bomb": [
       {
         "image": 0,
         "duration": 30
-      }
-    ],
-    "wall": [
+      },
       {
         "image": 1,
         "duration": 30
-      }
-    ],
-    "brick": [
+      },
       {
         "image": 2,
         "duration": 30
-      }
-    ],
-    "brickBroken": [
+      },
       {
         "image": 3,
         "duration": 30
@@ -2094,15 +3566,47 @@
         "duration": 30
       },
       {
+        "image": 8,
+        "duration": 30
+      },
+      {
+        "image": 7,
+        "duration": 30
+      },
+      {
+        "image": 6,
+        "duration": 30
+      },
+      {
+        "image": 5,
+        "duration": 30
+      },
+      {
+        "image": 4,
+        "duration": 30
+      },
+      {
+        "image": 3,
+        "duration": 30
+      },
+      {
+        "image": 2,
+        "duration": 30
+      },
+      {
+        "image": 1,
+        "duration": 30
+      }
+    ],
+    "bombTrigger": [
+      {
         "image": 10,
         "duration": 30
       },
       {
         "image": 11,
         "duration": 30
-      }
-    ],
-    "bomb": [
+      },
       {
         "image": 12,
         "duration": 30
@@ -2122,7 +3626,9 @@
       {
         "image": 16,
         "duration": 30
-      },
+      }
+    ],
+    "dead": [
       {
         "image": 17,
         "duration": 30
@@ -2143,40 +3649,6 @@
         "image": 21,
         "duration": 30
       },
-      {
-        "image": 20,
-        "duration": 30
-      },
-      {
-        "image": 19,
-        "duration": 30
-      },
-      {
-        "image": 18,
-        "duration": 30
-      },
-      {
-        "image": 17,
-        "duration": 30
-      },
-      {
-        "image": 16,
-        "duration": 30
-      },
-      {
-        "image": 15,
-        "duration": 30
-      },
-      {
-        "image": 14,
-        "duration": 30
-      },
-      {
-        "image": 13,
-        "duration": 30
-      }
-    ],
-    "bombTrigger": [
       {
         "image": 22,
         "duration": 30
@@ -2204,9 +3676,7 @@
       {
         "image": 28,
         "duration": 30
-      }
-    ],
-    "dead": [
+      },
       {
         "image": 29,
         "duration": 30
@@ -2228,11 +3698,127 @@
         "duration": 30
       },
       {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 34,
+        "duration": 30
+      },
+      {
         "image": 34,
         "duration": 30
       },
       {
         "image": 35,
+        "duration": 30
+      },
+      {
+        "image": 35,
+        "duration": 30
+      },
+      {
+        "image": 35,
+        "duration": 30
+      },
+      {
+        "image": 34,
+        "duration": 30
+      },
+      {
+        "image": 34,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 34,
+        "duration": 30
+      },
+      {
+        "image": 34,
+        "duration": 30
+      },
+      {
+        "image": 35,
+        "duration": 30
+      },
+      {
+        "image": 35,
+        "duration": 30
+      },
+      {
+        "image": 34,
+        "duration": 30
+      },
+      {
+        "image": 34,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
+        "duration": 30
+      },
+      {
+        "image": 33,
         "duration": 30
       },
       {
@@ -2276,127 +3862,11 @@
         "duration": 30
       },
       {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 46,
-        "duration": 30
-      },
-      {
         "image": 46,
         "duration": 30
       },
       {
         "image": 47,
-        "duration": 30
-      },
-      {
-        "image": 47,
-        "duration": 30
-      },
-      {
-        "image": 47,
-        "duration": 30
-      },
-      {
-        "image": 46,
-        "duration": 30
-      },
-      {
-        "image": 46,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 46,
-        "duration": 30
-      },
-      {
-        "image": 46,
-        "duration": 30
-      },
-      {
-        "image": 47,
-        "duration": 30
-      },
-      {
-        "image": 47,
-        "duration": 30
-      },
-      {
-        "image": 46,
-        "duration": 30
-      },
-      {
-        "image": 46,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
-        "duration": 30
-      },
-      {
-        "image": 45,
         "duration": 30
       },
       {
@@ -2440,6 +3910,60 @@
         "duration": 30
       },
       {
+        "image": 57,
+        "duration": 30
+      },
+      {
+        "image": 57,
+        "duration": 30
+      },
+      {
+        "image": 57,
+        "duration": 30
+      },
+      {
+        "image": 57,
+        "duration": 30
+      },
+      {
+        "image": 57,
+        "duration": 30
+      },
+      {
+        "image": 57,
+        "duration": 30
+      },
+      {
+        "image": 57,
+        "duration": 30
+      },
+      {
+        "image": 57,
+        "duration": 30
+      },
+      {
+        "image": 57,
+        "duration": 30
+      },
+      {
+        "image": 57,
+        "duration": 30
+      },
+      {
+        "image": 57,
+        "duration": 30
+      },
+      {
+        "image": 57,
+        "duration": 30
+      },
+      {
+        "image": 57,
+        "duration": 30
+      }
+    ],
+    "flameCentre": [
+      {
         "image": 58,
         "duration": 30
       },
@@ -2459,6 +3983,16 @@
         "image": 62,
         "duration": 30
       },
+      {
+        "image": 59,
+        "duration": 30
+      },
+      {
+        "image": 58,
+        "duration": 30
+      }
+    ],
+    "flameMid0": [
       {
         "image": 63,
         "duration": 30
@@ -2480,6 +4014,16 @@
         "duration": 30
       },
       {
+        "image": 64,
+        "duration": 30
+      },
+      {
+        "image": 63,
+        "duration": 30
+      }
+    ],
+    "flameEnd0": [
+      {
         "image": 68,
         "duration": 30
       },
@@ -2487,60 +4031,6 @@
         "image": 69,
         "duration": 30
       },
-      {
-        "image": 69,
-        "duration": 30
-      },
-      {
-        "image": 69,
-        "duration": 30
-      },
-      {
-        "image": 69,
-        "duration": 30
-      },
-      {
-        "image": 69,
-        "duration": 30
-      },
-      {
-        "image": 69,
-        "duration": 30
-      },
-      {
-        "image": 69,
-        "duration": 30
-      },
-      {
-        "image": 69,
-        "duration": 30
-      },
-      {
-        "image": 69,
-        "duration": 30
-      },
-      {
-        "image": 69,
-        "duration": 30
-      },
-      {
-        "image": 69,
-        "duration": 30
-      },
-      {
-        "image": 69,
-        "duration": 30
-      },
-      {
-        "image": 69,
-        "duration": 30
-      },
-      {
-        "image": 69,
-        "duration": 30
-      }
-    ],
-    "flameCentre": [
       {
         "image": 70,
         "duration": 30
@@ -2554,6 +4044,16 @@
         "duration": 30
       },
       {
+        "image": 69,
+        "duration": 30
+      },
+      {
+        "image": 68,
+        "duration": 30
+      }
+    ],
+    "flameMid1": [
+      {
         "image": 73,
         "duration": 30
       },
@@ -2561,16 +4061,6 @@
         "image": 74,
         "duration": 30
       },
-      {
-        "image": 71,
-        "duration": 30
-      },
-      {
-        "image": 70,
-        "duration": 30
-      }
-    ],
-    "flameMid0": [
       {
         "image": 75,
         "duration": 30
@@ -2584,6 +4074,16 @@
         "duration": 30
       },
       {
+        "image": 74,
+        "duration": 30
+      },
+      {
+        "image": 73,
+        "duration": 30
+      }
+    ],
+    "flameEnd1": [
+      {
         "image": 78,
         "duration": 30
       },
@@ -2591,16 +4091,6 @@
         "image": 79,
         "duration": 30
       },
-      {
-        "image": 76,
-        "duration": 30
-      },
-      {
-        "image": 75,
-        "duration": 30
-      }
-    ],
-    "flameEnd0": [
       {
         "image": 80,
         "duration": 30
@@ -2614,6 +4104,46 @@
         "duration": 30
       },
       {
+        "image": 79,
+        "duration": 30
+      },
+      {
+        "image": 78,
+        "duration": 30
+      }
+    ],
+    "flameMid2": [
+      {
+        "image": 63,
+        "duration": 30
+      },
+      {
+        "image": 64,
+        "duration": 30
+      },
+      {
+        "image": 65,
+        "duration": 30
+      },
+      {
+        "image": 66,
+        "duration": 30
+      },
+      {
+        "image": 67,
+        "duration": 30
+      },
+      {
+        "image": 64,
+        "duration": 30
+      },
+      {
+        "image": 63,
+        "duration": 30
+      }
+    ],
+    "flameEnd2": [
+      {
         "image": 83,
         "duration": 30
       },
@@ -2621,16 +4151,6 @@
         "image": 84,
         "duration": 30
       },
-      {
-        "image": 81,
-        "duration": 30
-      },
-      {
-        "image": 80,
-        "duration": 30
-      }
-    ],
-    "flameMid1": [
       {
         "image": 85,
         "duration": 30
@@ -2644,53 +4164,23 @@
         "duration": 30
       },
       {
-        "image": 88,
+        "image": 84,
         "duration": 30
       },
       {
-        "image": 89,
-        "duration": 30
-      },
-      {
-        "image": 86,
-        "duration": 30
-      },
-      {
-        "image": 85,
+        "image": 83,
         "duration": 30
       }
     ],
-    "flameEnd1": [
+    "flameMid3": [
       {
-        "image": 90,
+        "image": 73,
         "duration": 30
       },
       {
-        "image": 91,
+        "image": 74,
         "duration": 30
       },
-      {
-        "image": 92,
-        "duration": 30
-      },
-      {
-        "image": 93,
-        "duration": 30
-      },
-      {
-        "image": 94,
-        "duration": 30
-      },
-      {
-        "image": 91,
-        "duration": 30
-      },
-      {
-        "image": 90,
-        "duration": 30
-      }
-    ],
-    "flameMid2": [
       {
         "image": 75,
         "duration": 30
@@ -2704,23 +4194,57 @@
         "duration": 30
       },
       {
-        "image": 78,
+        "image": 74,
         "duration": 30
       },
       {
-        "image": 79,
-        "duration": 30
-      },
-      {
-        "image": 76,
-        "duration": 30
-      },
-      {
-        "image": 75,
+        "image": 73,
         "duration": 30
       }
     ],
-    "flameEnd2": [
+    "flameEnd3": [
+      {
+        "image": 88,
+        "duration": 30
+      },
+      {
+        "image": 89,
+        "duration": 30
+      },
+      {
+        "image": 90,
+        "duration": 30
+      },
+      {
+        "image": 91,
+        "duration": 30
+      },
+      {
+        "image": 90,
+        "duration": 30
+      },
+      {
+        "image": 89,
+        "duration": 30
+      },
+      {
+        "image": 88,
+        "duration": 30
+      }
+    ],
+    "walk0": [
+      {
+        "image": 92,
+        "duration": 30
+      },
+      {
+        "image": 93,
+        "duration": 30
+      },
+      {
+        "image": 94,
+        "duration": 30
+      },
       {
         "image": 95,
         "duration": 30
@@ -2742,46 +4266,6 @@
         "duration": 30
       },
       {
-        "image": 96,
-        "duration": 30
-      },
-      {
-        "image": 95,
-        "duration": 30
-      }
-    ],
-    "flameMid3": [
-      {
-        "image": 85,
-        "duration": 30
-      },
-      {
-        "image": 86,
-        "duration": 30
-      },
-      {
-        "image": 87,
-        "duration": 30
-      },
-      {
-        "image": 88,
-        "duration": 30
-      },
-      {
-        "image": 89,
-        "duration": 30
-      },
-      {
-        "image": 86,
-        "duration": 30
-      },
-      {
-        "image": 85,
-        "duration": 30
-      }
-    ],
-    "flameEnd3": [
-      {
         "image": 100,
         "duration": 30
       },
@@ -2798,20 +4282,6 @@
         "duration": 30
       },
       {
-        "image": 102,
-        "duration": 30
-      },
-      {
-        "image": 101,
-        "duration": 30
-      },
-      {
-        "image": 100,
-        "duration": 30
-      }
-    ],
-    "walk0": [
-      {
         "image": 104,
         "duration": 30
       },
@@ -2822,11 +4292,15 @@
       {
         "image": 106,
         "duration": 30
-      },
+      }
+    ],
+    "idle0": [
       {
         "image": 107,
         "duration": 30
-      },
+      }
+    ],
+    "carry0": [
       {
         "image": 108,
         "duration": 30
@@ -2870,15 +4344,11 @@
       {
         "image": 118,
         "duration": 30
-      }
-    ],
-    "idle0": [
+      },
       {
         "image": 119,
         "duration": 30
-      }
-    ],
-    "carry0": [
+      },
       {
         "image": 120,
         "duration": 30
@@ -2890,7 +4360,9 @@
       {
         "image": 122,
         "duration": 30
-      },
+      }
+    ],
+    "walk1": [
       {
         "image": 123,
         "duration": 30
@@ -2938,9 +4410,7 @@
       {
         "image": 134,
         "duration": 30
-      }
-    ],
-    "walk1": [
+      },
       {
         "image": 135,
         "duration": 30
@@ -2952,11 +4422,15 @@
       {
         "image": 137,
         "duration": 30
-      },
+      }
+    ],
+    "idle1": [
       {
         "image": 138,
         "duration": 30
-      },
+      }
+    ],
+    "carry1": [
       {
         "image": 139,
         "duration": 30
@@ -3000,15 +4474,11 @@
       {
         "image": 149,
         "duration": 30
-      }
-    ],
-    "idle1": [
+      },
       {
         "image": 150,
         "duration": 30
-      }
-    ],
-    "carry1": [
+      },
       {
         "image": 151,
         "duration": 30
@@ -3020,7 +4490,9 @@
       {
         "image": 153,
         "duration": 30
-      },
+      }
+    ],
+    "walk2": [
       {
         "image": 154,
         "duration": 30
@@ -3068,9 +4540,7 @@
       {
         "image": 165,
         "duration": 30
-      }
-    ],
-    "walk2": [
+      },
       {
         "image": 166,
         "duration": 30
@@ -3082,11 +4552,15 @@
       {
         "image": 168,
         "duration": 30
-      },
+      }
+    ],
+    "idle2": [
       {
         "image": 169,
         "duration": 30
-      },
+      }
+    ],
+    "carry2": [
       {
         "image": 170,
         "duration": 30
@@ -3130,15 +4604,11 @@
       {
         "image": 180,
         "duration": 30
-      }
-    ],
-    "idle2": [
+      },
       {
         "image": 181,
         "duration": 30
-      }
-    ],
-    "carry2": [
+      },
       {
         "image": 182,
         "duration": 30
@@ -3150,7 +4620,9 @@
       {
         "image": 184,
         "duration": 30
-      },
+      }
+    ],
+    "walk3": [
       {
         "image": 185,
         "duration": 30
@@ -3198,9 +4670,7 @@
       {
         "image": 196,
         "duration": 30
-      }
-    ],
-    "walk3": [
+      },
       {
         "image": 197,
         "duration": 30
@@ -3212,11 +4682,15 @@
       {
         "image": 199,
         "duration": 30
-      },
+      }
+    ],
+    "idle3": [
       {
         "image": 200,
         "duration": 30
-      },
+      }
+    ],
+    "carry3": [
       {
         "image": 201,
         "duration": 30
@@ -3260,15 +4734,11 @@
       {
         "image": 211,
         "duration": 30
-      }
-    ],
-    "idle3": [
+      },
       {
         "image": 212,
         "duration": 30
-      }
-    ],
-    "carry3": [
+      },
       {
         "image": 213,
         "duration": 30
@@ -3280,7 +4750,9 @@
       {
         "image": 215,
         "duration": 30
-      },
+      }
+    ],
+    "punch0": [
       {
         "image": 216,
         "duration": 30
@@ -3320,7 +4792,9 @@
       {
         "image": 225,
         "duration": 30
-      },
+      }
+    ],
+    "punch1": [
       {
         "image": 226,
         "duration": 30
@@ -3328,9 +4802,7 @@
       {
         "image": 227,
         "duration": 30
-      }
-    ],
-    "punch0": [
+      },
       {
         "image": 228,
         "duration": 30
@@ -3362,7 +4834,9 @@
       {
         "image": 235,
         "duration": 30
-      },
+      }
+    ],
+    "punch2": [
       {
         "image": 236,
         "duration": 30
@@ -3370,9 +4844,7 @@
       {
         "image": 237,
         "duration": 30
-      }
-    ],
-    "punch1": [
+      },
       {
         "image": 238,
         "duration": 30
@@ -3404,7 +4876,9 @@
       {
         "image": 245,
         "duration": 30
-      },
+      }
+    ],
+    "punch3": [
       {
         "image": 246,
         "duration": 30
@@ -3412,9 +4886,7 @@
       {
         "image": 247,
         "duration": 30
-      }
-    ],
-    "punch2": [
+      },
       {
         "image": 248,
         "duration": 30
@@ -3446,19 +4918,71 @@
       {
         "image": 255,
         "duration": 30
-      },
+      }
+    ],
+    "bonusBomb": [
       {
         "image": 256,
         "duration": 30
-      },
+      }
+    ],
+    "bonusFlame": [
       {
         "image": 257,
         "duration": 30
       }
     ],
-    "punch3": [
+    "bonusSpeed": [
       {
         "image": 258,
+        "duration": 30
+      }
+    ],
+    "bonusKick": [
+      {
+        "image": 259,
+        "duration": 30
+      }
+    ],
+    "bonusTrigger": [
+      {
+        "image": 260,
+        "duration": 30
+      }
+    ],
+    "bonusGlove": [
+      {
+        "image": 261,
+        "duration": 30
+      }
+    ],
+    "bonusJelly": [
+      {
+        "image": 262,
+        "duration": 30
+      }
+    ],
+    "bonusGrab": [
+      {
+        "image": 263,
+        "duration": 30
+      }
+    ],
+    "bonusSpooger": [
+      {
+        "image": 264,
+        "duration": 30
+      }
+    ],
+    "bonusGoldflame": [
+      {
+        "image": 265,
+        "duration": 30
+      }
+    ],
+    "bonusRandom": [
+      {
+        "image": 266,
         "duration": 30
       },
       {
@@ -3466,11 +4990,19 @@
         "duration": 30
       },
       {
-        "image": 260,
+        "image": 257,
         "duration": 30
       },
       {
         "image": 261,
+        "duration": 30
+      },
+      {
+        "image": 258,
+        "duration": 30
+      },
+      {
+        "image": 256,
         "duration": 30
       },
       {
@@ -3490,127 +5022,17 @@
         "duration": 30
       },
       {
-        "image": 266,
-        "duration": 30
-      },
-      {
         "image": 267,
         "duration": 30
-      }
-    ],
-    "bonusBomb": [
-      {
-        "image": 268,
-        "duration": 30
-      }
-    ],
-    "bonusFlame": [
-      {
-        "image": 269,
-        "duration": 30
-      }
-    ],
-    "bonusSpeed": [
-      {
-        "image": 270,
-        "duration": 30
-      }
-    ],
-    "bonusKick": [
-      {
-        "image": 271,
-        "duration": 30
-      }
-    ],
-    "bonusTrigger": [
-      {
-        "image": 272,
-        "duration": 30
-      }
-    ],
-    "bonusGlove": [
-      {
-        "image": 273,
-        "duration": 30
-      }
-    ],
-    "bonusJelly": [
-      {
-        "image": 274,
-        "duration": 30
-      }
-    ],
-    "bonusGrab": [
-      {
-        "image": 275,
-        "duration": 30
-      }
-    ],
-    "bonusSpooger": [
-      {
-        "image": 276,
-        "duration": 30
-      }
-    ],
-    "bonusGoldflame": [
-      {
-        "image": 277,
-        "duration": 30
-      }
-    ],
-    "bonusRandom": [
-      {
-        "image": 278,
-        "duration": 30
       },
       {
-        "image": 271,
-        "duration": 30
-      },
-      {
-        "image": 269,
-        "duration": 30
-      },
-      {
-        "image": 273,
-        "duration": 30
-      },
-      {
-        "image": 270,
-        "duration": 30
-      },
-      {
-        "image": 268,
-        "duration": 30
-      },
-      {
-        "image": 274,
-        "duration": 30
-      },
-      {
-        "image": 275,
-        "duration": 30
-      },
-      {
-        "image": 276,
-        "duration": 30
-      },
-      {
-        "image": 277,
-        "duration": 30
-      },
-      {
-        "image": 279,
-        "duration": 30
-      },
-      {
-        "image": 272,
+        "image": 260,
         "duration": 30
       }
     ],
     "bonusDisease": [
       {
-        "image": 278,
+        "image": 266,
         "duration": 30
       }
     ]

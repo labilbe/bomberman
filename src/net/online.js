@@ -124,11 +124,12 @@ export function followGrid(state, list) {
 /**
  * @param {{
  *   url: string, room: string, nickname: string, places?: number, format?: number,
+ *   terrain?: number | null,
  *   bots?: number[], colours?: number[] | null, colour?: number | null, host?: boolean
  * }} options
  */
 export function createOnlineTransport({
-  url, room, nickname, places = 2, format = 3, bots = [], colours = null, colour = null,
+  url, room, nickname, places = 2, format = 3, terrain = null, bots = [], colours = null, colour = null,
   host = false,
 }) {
   const views = new Set();
@@ -343,6 +344,9 @@ export function createOnlineTransport({
         resolveStart({
           places: message.places,
           format: message.format,
+          // The board the relay settled on, drawn by it when the table asked
+          // for chance: one board for every screen, like the colours.
+          terrain: message.terrain ?? null,
           mine,
           names: message.names ?? null,
           // THE RELAY'S COLOURS AND NOT OURS, even for the host who picked
@@ -465,6 +469,9 @@ export function createOnlineTransport({
         name: nickname,
         places,
         format,
+        // The board, part of the table too: null says "au hasard" and lets the
+        // relay draw, which is the only way every screen gets the same one.
+        terrain: terrain ?? undefined,
         // The colours are part of laying the table, so they travel with it. The
         // relay only listens to the first arrival, and ignores them from a guest
         // — who sends none anyway.

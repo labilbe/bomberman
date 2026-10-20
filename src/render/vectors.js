@@ -201,16 +201,28 @@ export async function loadVectors({ folder = FOLDER, scale = 1 } = {}) {
     manifest.images.map((im) => rasterise(`${folder}/${im.file}`, im.width, im.height, scale)),
   );
 
-  // The ground is the only raster image of the lot: it is the painted band of
-  // the field, two rows across the full width, which the scene repeats
-  // vertically. It goes through the same rasteriser as the SVGs.
-  const ground = manifest.ground
-    ? {
-      canvas: await rasterise(`${folder}/${manifest.ground.file}`, manifest.ground.width, manifest.ground.height, scale),
-      width: Math.round(manifest.ground.width * scale),
-      height: Math.round(manifest.ground.height * scale),
-    }
-    : null;
+  /**
+   * The ground of a board, rasterised on first use and kept afterwards.
+   *
+   * It is the only raster image of the lot — the field as Atomic Bomberman
+   * painted it, the whole arena in one go — and there are eleven of them, one
+   * per terrain, for nearly a megabyte. LOADED ON DEMAND therefore, like the
+   * recoloured series: a game shows one board, and downloading the ten others to
+   * look at none of them would be paid for by everybody at every start.
+   */
+  function lazyGround(entry) {
+    let ready = null;
+    return () => {
+      if (!ready) {
+        ready = rasterise(`${folder}/${entry.file}`, entry.width, entry.height, scale).then((canvas) => ({
+          canvas,
+          width: Math.round(entry.width * scale),
+          height: Math.round(entry.height * scale),
+        }));
+      }
+      return ready;
+    };
+  }
 
   /**
    * Applies a colour transformation to a canvas, once and only once.
@@ -271,12 +283,34 @@ export async function loadVectors({ folder = FOLDER, scale = 1 } = {}) {
     );
   }
 
+  const run = (frames) => (frames ?? []).map((f) => sprite(canvases[f.image], manifest.images[f.image], scale));
+
+  /**
+   * The boards, each with its ground and its scenery.
+   *
+   * A manifest from before the choice of board existed describes a single
+   * terrain, flat: its ground under `ground`, its rocks and its bricks among the
+   * other roles. It is read as the one board it is, rather than leaving an
+   * arena with neither walls nor floor to somebody who has not re-extracted
+   * their sprites.
+   */
+  const terrains = (manifest.terrains ?? (manifest.ground
+    ? [{ terrain: 0, name: 'Green Acres', ground: manifest.ground, roles: manifest.roles }]
+    : [])).map((entry) => ({
+    index: entry.terrain,
+    name: entry.name ?? `Terrain ${entry.terrain}`,
+    ground: lazyGround(entry.ground),
+    wall: run(entry.roles.wall)[0] ?? null,
+    brick: run(entry.roles.brick)[0] ?? null,
+    brickBroken: entry.roles.brickBroken ? run(entry.roles.brickBroken) : null,
+  }));
+
   return {
     tile: {
       width: Math.round(manifest.tile.width * scale),
       height: Math.round(manifest.tile.height * scale),
     },
-    ground,
+    terrains,
     roles,
     cycles,
   };

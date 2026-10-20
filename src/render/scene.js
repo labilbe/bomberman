@@ -157,6 +157,10 @@ export function createScene(canvas, set = fromDrawings()) {
       }
       return;
     }
+    // A sprite set with neither field nor ground tile keeps the backdrop the
+    // draw started on: that is the case of the game's own boards, whose floor is
+    // the field and nothing else, for the instant before it arrives.
+    if (set.ground.length === 0) return;
     for (let y = 0; y < ROWS; y += 1) {
       for (let x = 0; x < COLS; x += 1) {
         const [ax, ay] = cellAnchor(x, y);

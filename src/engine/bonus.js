@@ -13,6 +13,7 @@
  */
 
 import {
+  GOLDFLAME_RANGE,
   MAX_BOMBS,
   MAX_RANGE,
   MAX_SPEED,
@@ -77,7 +78,7 @@ export const BONUS_NAMES = {
  * THE SKULL IS THE COMMONEST OF THE THREE LAST. It has to be met, and feared,
  * for the arena to stop being a place where every pack is good news — picking
  * one up without looking is the mistake the skull exists to punish. The gold
- * flame is the rarest of all: it hands over six flame bonuses at once, and
+ * flame is the rarest of all: it hands over the whole arena's reach at once, and
  * finding it twice in a round would settle that round on its own.
  */
 export const BONUS_TABLE = [
@@ -140,7 +141,8 @@ export function codeOf(value) {
  *
  * The ceilings are not caution: without them a long round ends with eight bombs
  * of range fifteen each, the whole arena burns permanently and nobody is
- * playing any more.
+ * playing any more. The gold flame is the one exception, and a deliberate one:
+ * it is the rarest pack of the table, and its whole point is that reach.
  *
  * @param {{ bombs: number, range: number, speed: number, kick: boolean, triggers: number, jelly: boolean, grab: boolean, spooger: boolean, goldflame: boolean }} player
  * @param {number} code
@@ -151,7 +153,16 @@ export function apply(player, code) {
       player.bombs = Math.min(MAX_BOMBS, player.bombs + 1);
       break;
     case BONUS_CODES.FLAME:
-      player.range = Math.min(MAX_RANGE, player.range + 1);
+      // UNDER THE GOLD FLAME THE RANGE NO LONGER MOVES — it is already the whole
+      // arena — but the pack is not lost for all that: it is counted on the
+      // range held BEFORE the gold one, which is what a corpse gives back.
+      // Without this, `Math.min` pulled the gold reach back down to the ordinary
+      // ceiling, and one flame picked up undid the gold flame.
+      if (player.goldflame) {
+        player.goldflameFrom = Math.min(MAX_RANGE, player.goldflameFrom + 1);
+      } else {
+        player.range = Math.min(MAX_RANGE, player.range + 1);
+      }
       break;
     case BONUS_CODES.SPEED:
       player.speed = Math.min(MAX_SPEED, player.speed + SPEED_STEP);
@@ -183,7 +194,7 @@ export function apply(player, code) {
         player.goldflame = true;
         player.goldflameFrom = player.range;
       }
-      player.range = MAX_RANGE;
+      player.range = GOLDFLAME_RANGE;
       break;
     default:
       break;

@@ -232,6 +232,20 @@ export const MAX_BOMBS = 8;
 export const MAX_RANGE = 8;
 
 /**
+ * The reach of the gold flame: the arena from wall to wall.
+ *
+ * NOT `MAX_RANGE`, which is the ceiling of the ORDINARY flames — those are
+ * picked up one cell at a time, and a ceiling is what keeps a round from
+ * degenerating. The gold flame is the opposite promise: one pack, and the blast
+ * crosses the whole screen, as it does in Atomic Bomberman. Capped at eight it
+ * stopped halfway down the corridor, which is what was reported.
+ *
+ * The longest line the arena holds is its width, walls included: no flame can
+ * then be stopped by anything but the arena itself.
+ */
+export const GOLDFLAME_RANGE = Math.max(COLS, ROWS);
+
+/**
  * Most bombers an arena can hold, as in the original game.
  *
  * Ten on a board of this size is a scrum, and that is what it was: the arena

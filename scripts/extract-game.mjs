@@ -3,6 +3,10 @@
  *
  *   node scripts/extract-game.mjs "<DATA/ANI>" [--out assets/game] [--terrain 0..10]
  *
+ * All ELEVEN boards come out by default — their ground, their rocks, their
+ * bricks — because the new-game screen offers the choice; `--terrain` narrows it
+ * to one while working on that board alone.
+ *
  * `extract-ani.mjs` writes out the whole corpus — 2327 images, some thirty
  * megabytes as SVG. The game only uses a fraction of it, and that is the
  * fraction we want to load in the browser. This script sorts them out from a
@@ -16,7 +20,11 @@
  * files are preferred — at sixteen shades the helmet loses its highlight and the
  * torso its half-tones, for about 40 % less weight.
  *
- * Nothing is committed: the output lands in assets/, excluded by .gitignore.
+ * The output lands in assets/game/ AND IS COMMITTED: the page is served as it
+ * is, by GitHub Pages, with no build step — sprites left out of the repository
+ * would be sprites nobody but their extractor ever sees. Re-running the script
+ * therefore rewrites tracked files, and the diff is meant to be read.
+ *
  * These sprites remain Interplay's property; you need your own copy of the game.
  */
 
@@ -25,6 +33,7 @@ import { join } from 'node:path';
 import { readAnimation } from '../src/extraction/animation.js';
 import { vectorise } from '../src/extraction/vector.js';
 import { decodePcx } from '../src/extraction/pcx.js';
+import { ROWS } from '../src/engine/constants.js';
 import { encodePng } from './ani/png.mjs';
 import { readPlayerColours } from './ani/remap.mjs';
 
@@ -39,18 +48,40 @@ import { readPlayerColours } from './ani/remap.mjs';
 const DIRECTIONS = ['north', 'east', 'south', 'west'];
 
 /**
- * Table of roles, for a given terrain.
+ * How many terrains Atomic Bomberman has: eleven, numbered 0 to 10.
  *
- * It depends on the terrain because the scenery comes in complete sets: terrain
- * 3 has its own rocks, its own bricks and its own falling-brick animation, in
- * TILES3 and XBRICK3. Keeping terrain 0's scenery over a sandy ground would give
- * a board that exists in no game.
+ * The count is the game's, read off its files — TILES0 to TILES10, FIELD0 to
+ * FIELD10 — and the names come from MESSAGES.TXT, where the game keeps the
+ * labels of its own level list.
  */
-const rolesOf = (terrain) => ({
-  ground: [`TILES${terrain}.ANI`, `tile ${terrain} blank`],
+const TERRAINS = 11;
+
+/**
+ * The scenery of ONE terrain: its ground, its rocks, its bricks, and a brick
+ * giving way.
+ *
+ * The scenery comes in complete sets: terrain 3 has its own rocks, its own
+ * bricks and its own falling-brick animation, in TILES3 and XBRICK3. Keeping
+ * terrain 0's scenery over a sandy ground would give a board that exists in no
+ * game — which is why these four roles are extracted ONCE PER TERRAIN, where
+ * everything in ROLES is extracted once and serves them all.
+ *
+ * THERE IS NO GROUND TILE HERE, and there was never meant to be one: only
+ * TILES0 holds a "blank" tile, and it is a spotted grass that looks nothing like
+ * the field behind it — the other ten files do not even carry the sequence. The
+ * ground of a board is its FIELD*.PCX, which `cutGround` takes whole.
+ */
+const sceneryOf = (terrain) => ({
   wall: [`TILES${terrain}.ANI`, `tile ${terrain} solid`],
   brick: [`TILES${terrain}.ANI`, `tile ${terrain} brick`],
   brickBroken: [`XBRICK${terrain}.ANI`, `flame brick ${terrain}`],
+});
+
+/**
+ * What the engine asks for and the terrain does not change: the bombs, the
+ * bombers, the flames and the packs.
+ */
+const ROLES = {
   bomb: ['BOMBS.ANI', 'bomb regular green'],
   bombTrigger: ['TRIGBOMB.ANI', 'bomb trigger green'],
   dead: ['XPLODE1.ANI', 'die green 1'],
@@ -100,7 +131,7 @@ const rolesOf = (terrain) => ({
   // POWERS.ANI also holds 'power disease3' and 'power clog', two more skulls we
   // do not use: the engine has one skull and draws its five illnesses from it.
   bonusDisease: ['POWERS.ANI', 'power disease'],
-});
+};
 
 const argv = process.argv.slice(2);
 const source = argv.find((a) => !a.startsWith('--'));
@@ -110,7 +141,17 @@ const read = (name, fallback) => {
 };
 const out = read('out', 'assets/game');
 const colours = Number(read('colours', 0));
-const terrain = Number(read('terrain', 0));
+/**
+ * Which terrains to extract: all of them, or the one named by `--terrain`.
+ *
+ * All eleven by default, because the launch screen offers the choice and "au
+ * hasard" has to have something to draw from. The flag is kept for a quick
+ * extraction while working on a single board.
+ */
+const only = read('terrain', null);
+const wanted = only === null
+  ? Array.from({ length: TERRAINS }, (_, t) => t)
+  : [Number(only)];
 
 if (!source) {
   console.error('usage : node scripts/extract-game.mjs "<DATA/ANI>" [--out assets/game] [--colours N] [--terrain 0..10]');
@@ -120,35 +161,50 @@ if (!source) {
 mkdirSync(out, { recursive: true });
 
 /**
- * Geometry of the ground in the FIELD*.PCX images, measured on FIELD0.
+ * Geometry of the playing field in the FIELD*.PCX images.
  *
- * The grass starts at (15, 66) and its light and dark bands alternate every 36
- * pixels, that is one per row of the grid. So we cut TWO rows across the whole
- * width of the field: that band repeats vertically with no seam, and
- * horizontally it does not repeat at all.
+ * The ground starts at (15, 66) and runs 600 x 396 — the fifteen columns and
+ * ELEVEN rows the original game plays on, at 40 x 36 a cell. Measured on FIELD0,
+ * where the grass's light and dark bands fall exactly on that grid, and checked
+ * on the other ten: the game blits its tiles at fixed coordinates, so the
+ * rectangle does not move from one terrain to the next.
  */
-const GROUND = { x: 15, y: 66, width: 600, height: 72 };
+const CELL = { width: 40, height: 36 };
+const GROUND = { x: 15, y: 66, width: 15 * CELL.width, height: 11 * CELL.height };
 
 /**
- * Cuts out the ground of the requested terrain.
+ * Cuts out the ground of one terrain, as a single image the size of our arena.
  *
  * The original game's ground is not a tile: it is a 640 x 480 painted image per
  * terrain. The "tile N blank" tile of the .ANI files is another grass, spotted,
  * which does not look like the background — copying it 195 times gave a
  * checkerboard the game never had.
  *
- * And this ground comes out as PNG, the only exception to the all-vector rule:
- * it is pixel-by-pixel noise, which vectorises into 765 kB of tiny specks
- * against 3.6 kB of PNG, for a drawing that gains nothing from being scaled up.
+ * THE WHOLE FIELD AND NOT A BAND, since terrain 3 and terrain 10 showed what a
+ * band costs: their ground is a PAINTING — a mural under the sand, a manhole
+ * cover in the tarmac — which repeating two rows turns into wallpaper. Only the
+ * two grasses tile, and they tile just as well whole.
+ *
+ * Our arena is 15 x 13 where the game's is 15 x 11: the two extra rows are the
+ * wall around the board, which the game paints into its border rather than
+ * laying out as cells. So the field is placed ONE ROW DOWN and the row above and
+ * the row below are filled by stretching its edge — they end up under the solid
+ * tiles, which cover them whole.
  */
-function cutGround() {
+function cutGround(terrain) {
   const file = join(source, '..', 'RES', `FIELD${terrain}.PCX`);
+  if (!existsSync(file)) return null;
   const field = decodePcx(readFileSync(file));
-  const { x, y, width, height } = GROUND;
+  const { x, y, width } = GROUND;
+  const height = ROWS * CELL.height;
   const rgba = new Uint8ClampedArray(width * height * 4);
   for (let l = 0; l < height; l += 1) {
+    // The row of the field this one takes, clamped: above and below the board
+    // its first and last rows are stretched, under the wall where nobody sees
+    // them.
+    const row = Math.min(GROUND.height - 1, Math.max(0, l - CELL.height));
     for (let c = 0; c < width; c += 1) {
-      const s = ((y + l) * field.width + (x + c)) * 4;
+      const s = ((y + row) * field.width + (x + c)) * 4;
       const d = (l * width + c) * 4;
       rgba[d] = field.rgba[s];
       rgba[d + 1] = field.rgba[s + 1];
@@ -156,8 +212,34 @@ function cutGround() {
       rgba[d + 3] = 255;
     }
   }
-  writeFileSync(join(out, 'ground.png'), encodePng(rgba, width, height));
-  return { file: 'ground.png', width, height, terrain };
+  const name = `ground${terrain}.png`;
+  writeFileSync(join(out, name), encodePng(rgba, width, height));
+  return { file: name, width, height };
+}
+
+/**
+ * The names the game gives its own terrains, read from MESSAGES.TXT.
+ *
+ * Messages 150 to 160, in the order of the FIELD files: "Green Acres", "Ancient
+ * Egypt", "Inner City Trash"... They are KEPT AS THE GAME SPELLS THEM, like
+ * `power jelly` and `BOMBS.ANI`: they are the names of its boards, and a French
+ * version of "Green Acres" would be our invention rather than its vocabulary.
+ *
+ * Read and not written down here, so that the list cannot drift from the files
+ * it names. Failing the file, the index stands in — a board with no name is
+ * still playable.
+ */
+function readTerrainNames(root) {
+  const file = join(root, 'MESSAGES.TXT');
+  const names = [];
+  if (existsSync(file)) {
+    const text = readFileSync(file, 'latin1');
+    for (let t = 0; t < TERRAINS; t += 1) {
+      const line = new RegExp(`^${150 + t},"?(.*?)"?\\s*$`, 'm').exec(text);
+      if (line) names[t] = line[1];
+    }
+  }
+  return Array.from({ length: TERRAINS }, (_, t) => names[t] ?? `Terrain ${t}`);
 }
 
 /**
@@ -332,52 +414,86 @@ function open(file) {
 
 const images = [];
 const indexBySource = new Map();
-const roles = {};
 const missing = [];
 
-for (const [role, [file, sequence]] of Object.entries(rolesOf(terrain))) {
-  let animation;
-  try {
-    animation = open(file);
-  } catch {
-    missing.push(`${role} : ${file} introuvable`);
-    continue;
-  }
-
-  const seq = findSequence(animation.sequences, sequence);
-  if (!seq) {
-    missing.push(`${role} : séquence "${sequence}" absente de ${file}`);
-    continue;
-  }
-
-  roles[role] = seq.frames.map((frame) => {
-    const key = `${file}#${frame.image}`;
-    let index = indexBySource.get(key);
-    if (index === undefined) {
-      const image = animation.images[frame.image];
-      index = images.length;
-      const fileName = `${String(index).padStart(3, '0')}.svg`;
-      writeFileSync(join(out, fileName), vectorise(image.rgba, image.width, image.height, {
-        colours,
-        title: `${sequence} ${frame.image}`,
-      }));
-      images.push({
-        file: fileName,
-        width: image.width,
-        height: image.height,
-        // The anchor point is at the bottom centre at Atomic Bomberman: it is
-        // what stands the sprite on its cell, not the corner of the image.
-        anchorX: image.anchorX,
-        anchorY: image.anchorY,
-      });
-      indexBySource.set(key, index);
+/**
+ * Extracts one table of roles, writing out the images it has not seen yet.
+ *
+ * THE DEDUPLICATION IS SHARED between the eleven terrains and the roles common
+ * to them: `indexBySource` is keyed on the source file and image, so the bomb
+ * written while doing terrain 0 is not written again for terrain 7, and two
+ * terrains that happen to use the same drawing share one file.
+ *
+ * @param {Record<string, [string, string]>} table
+ * @param {string} what what to call it in the missing list
+ */
+function extract(table, what) {
+  const roles = {};
+  for (const [role, [file, sequence]] of Object.entries(table)) {
+    let animation;
+    try {
+      animation = open(file);
+    } catch {
+      missing.push(`${what}${role} : ${file} introuvable`);
+      continue;
     }
-    return { image: index, duration: frame.duration };
-  });
+
+    const seq = findSequence(animation.sequences, sequence);
+    if (!seq) {
+      missing.push(`${what}${role} : séquence "${sequence}" absente de ${file}`);
+      continue;
+    }
+
+    roles[role] = seq.frames.map((frame) => {
+      const key = `${file}#${frame.image}`;
+      let index = indexBySource.get(key);
+      if (index === undefined) {
+        const image = animation.images[frame.image];
+        index = images.length;
+        const fileName = `${String(index).padStart(3, '0')}.svg`;
+        writeFileSync(join(out, fileName), vectorise(image.rgba, image.width, image.height, {
+          colours,
+          title: `${sequence} ${frame.image}`,
+        }));
+        images.push({
+          file: fileName,
+          width: image.width,
+          height: image.height,
+          // The anchor point is at the bottom centre at Atomic Bomberman: it is
+          // what stands the sprite on its cell, not the corner of the image.
+          anchorX: image.anchorX,
+          anchorY: image.anchorY,
+        });
+        indexBySource.set(key, index);
+      }
+      return { image: index, duration: frame.duration };
+    });
+  }
+  return roles;
 }
 
-const tile = images[indexBySource.get(`TILES${terrain}.ANI#0`)] ?? images[0];
-const ground = cutGround();
+const roles = extract(ROLES, '');
+
+/**
+ * The eleven boards, each with its ground and its scenery.
+ *
+ * A terrain whose files are missing is DROPPED rather than written half-empty:
+ * the launch screen offers what the list holds, and an entry that draws nothing
+ * is worse than one entry fewer.
+ */
+const names = readTerrainNames(join(source, '..', '..'));
+const terrains = [];
+for (const terrain of wanted) {
+  const scenery = extract(sceneryOf(terrain), `terrain ${terrain} : `);
+  const ground = cutGround(terrain);
+  if (!ground || !scenery.wall || !scenery.brick) continue;
+  terrains.push({ terrain, name: names[terrain], ground, roles: scenery });
+}
+
+// The cell's size is the solid tile's: 40 x 36 at Atomic Bomberman, and the same
+// for all eleven terrains — a board whose cell did not match the others could
+// not share an arena with them.
+const tile = images[terrains[0]?.roles.wall[0].image] ?? images[0];
 const home = cutHome();
 
 /**
@@ -396,7 +512,7 @@ const home = cutHome();
  * manifest and would not know which file number to ask for.
  */
 function writeMenuBomb() {
-  const [file, sequence] = rolesOf(terrain).bomb;
+  const [file, sequence] = ROLES.bomb;
   let animation;
   try {
     animation = open(file);
@@ -418,7 +534,7 @@ page.bomb = writeMenuBomb();
 const playerColours = readPlayerColours(join(source, '..', '..'));
 writeFileSync(join(out, 'manifest.json'), `${JSON.stringify({
   tile: { width: tile.width, height: tile.height },
-  ground,
+  terrains,
   home,
   page,
   playerColours,
@@ -426,7 +542,8 @@ writeFileSync(join(out, 'manifest.json'), `${JSON.stringify({
   roles,
 }, null, 2)}\n`);
 
-console.log(`${Object.keys(roles).length} roles, ${images.length} images uniques, sol du terrain ${terrain}, vers ${out}/`);
+console.log(`${Object.keys(roles).length} roles communs, ${images.length} images uniques, vers ${out}/`);
+console.log(`${terrains.length} terrains : ${terrains.map((t) => `${t.terrain} ${t.name}`).join(', ')}`);
 console.log(`${playerColours.length} couleurs de joueur lues dans COLOR.PAL et les .RMP`);
 console.log(`morceaux de la page d accueil : ${Object.entries(page).filter(([, v]) => v).map(([k]) => k).join(', ') || 'aucun'}`);
 if (missing.length) console.log(`\nmanquants :\n  ${missing.join('\n  ')}`);

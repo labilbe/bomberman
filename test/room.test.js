@@ -12,7 +12,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createRoom } from '../worker/room.js';
-import { CLIENT, SERVER, RESUME_MS } from '../src/net/protocol.js';
+import { CLIENT, SERVER, RESUME_MS, TERRAINS } from '../src/net/protocol.js';
 import { STEP_MS } from '../src/engine/constants.js';
 import { ROUND_START_STEPS } from '../src/engine/game.js';
 
@@ -172,16 +172,41 @@ test('a bot asks for a precise seat and gets it', () => {
   assert.equal(waiting.names[3], null);
 });
 
-test('a seat already held sends the bot to the first free one', () => {
-  // The seat comes off the network: asking for a place that is taken, or for one
-  // that does not exist, must seat the bot rather than lose it.
+test('a bot asked for a seat already held is not seated elsewhere', () => {
+  // A seat that is taken is a request already granted: the host's screen asks
+  // again for the seats it still sees free, and the answer announcing one bot
+  // crosses the request for the next. Seating that bot on the first free place
+  // put it on the seat kept for a human.
   const room = createRoom({ code: 'TEST', now: 0, seed: 1 });
   room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 4, host: true }, 0);
-  const onMine = of(room.message('a', { type: CLIENT.BOT, seat: 0 }, 0), SERVER.WAITING)[0];
-  assert.ok(onMine.names[1], 'it falls back on the first free place');
+  room.message('a', { type: CLIENT.BOT, seat: 2 }, 0);
+
+  const again = of(room.message('a', { type: CLIENT.BOT, seat: 2 }, 0), SERVER.WAITING)[0];
+  assert.equal(again, undefined, 'nothing happened, so nothing is announced');
 
   const outOfRange = of(room.message('a', { type: CLIENT.BOT, seat: 99 }, 0), SERVER.WAITING)[0];
-  assert.ok(outOfRange.names[2], 'and so does a place that does not exist');
+  assert.equal(outOfRange, undefined, 'nor for a place that does not exist');
+
+  const outgoing = room.message('a', { type: CLIENT.BOT, seat: 3 }, 0);
+  const [waiting] = of(outgoing, SERVER.WAITING);
+  assert.equal(waiting.names[1], null, 'place 1 still awaits its human');
+  assert.equal(room.started, false);
+});
+
+test('two bots and a seat kept for a friend do not start the game', () => {
+  // The bug as it was reported: a room for four, two bots, one place waiting for
+  // somebody on the network — and the game set off by itself. The host's screen
+  // asks for its bots again on every announcement, so the request for the last
+  // one arrives twice; the second one used to seat a third bot on the friend's
+  // place, which filled the room.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('h', { type: CLIENT.JOIN, name: 'Hôte', places: 4, host: true }, 0);
+  room.message('h', { type: CLIENT.BOT, seat: 2 }, 0);
+  room.message('h', { type: CLIENT.BOT, seat: 3 }, 0);
+  const outgoing = room.message('h', { type: CLIENT.BOT, seat: 3 }, 0);
+
+  assert.equal(room.started, false, 'the room still waits for its human');
+  assert.equal(of(outgoing, SERVER.START).length, 0);
 });
 
 test('adding bots until it is full starts the game', () => {
@@ -430,6 +455,52 @@ test('the start hands out the colours too', () => {
   const starts = of(starting, SERVER.START);
   assert.equal(starts.length, 2, 'one per human');
   for (const start of starts) assert.deepEqual(start.colours, [9, 3]);
+});
+
+test('the board of the table is the board everybody is given', () => {
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, terrain: 7, host: true }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob', terrain: 2 }, 0);
+
+  const starts = of(room.message('a', { type: CLIENT.BEGIN }, 0), SERVER.START);
+  assert.equal(starts.length, 2, 'one per human');
+  for (const start of starts) assert.equal(start.terrain, 7, 'the guest does not get a say');
+});
+
+test('a table that asked for chance draws one board, for everybody', () => {
+  // "Au hasard" is the screen's default, and the draw belongs to the room: two
+  // screens drawing their own would be two games.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, host: true }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+
+  const starts = of(room.message('a', { type: CLIENT.BEGIN }, 0), SERVER.START);
+  const [drawn] = starts.map((start) => start.terrain);
+  assert.ok(Number.isInteger(drawn) && drawn >= 0 && drawn < TERRAINS);
+  for (const start of starts) assert.equal(start.terrain, drawn);
+});
+
+test('coming back finds the board the match is played on', () => {
+  // The room asked for chance: the board exists only since the start, and
+  // somebody coming back must find the arena they left rather than a new draw.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, host: true }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+  const drawn = of(room.message('a', { type: CLIENT.BEGIN }, 0), SERVER.START)[0].terrain;
+
+  room.leave('a', 1000);
+  const back = room.join('a2', { type: CLIENT.JOIN, name: 'Alice', resume: 'a' }, 2000);
+  assert.equal(of(back, SERVER.START)[0].terrain, drawn);
+});
+
+test('a board nobody could have asked for is drawn instead', () => {
+  // The number comes off the wire: a stranger can name board 99, or none.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, terrain: 99, host: true }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+
+  const start = of(room.message('a', { type: CLIENT.BEGIN }, 0), SERVER.START)[0];
+  assert.ok(start.terrain >= 0 && start.terrain < TERRAINS);
 });
 
 test('a room nobody laid out wears the colours of its places', () => {

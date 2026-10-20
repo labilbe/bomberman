@@ -7,6 +7,7 @@ import { index, centreOfCell } from '../src/engine/grid.js';
 import {
   BASE_SPEED,
   DISEASE_STEPS,
+  GOLDFLAME_RANGE,
   MAX_RANGE,
   MAX_SPEED,
   RANGE_AT_START,
@@ -166,7 +167,7 @@ test('the gold flame gives the whole reach at once', () => {
   const player = place(state, 0, 5, 5);
 
   apply(player, BONUS_CODES.GOLDFLAME);
-  assert.equal(player.range, MAX_RANGE, 'everything, in one pack');
+  assert.equal(player.range, GOLDFLAME_RANGE, 'the whole arena, in one pack');
   assert.equal(player.goldflame, true);
   assert.equal(player.goldflameFrom, RANGE_AT_START, 'what was owned before it is kept');
 
@@ -183,7 +184,7 @@ test('the gold flame keeps the flames owned before it', () => {
   apply(player, BONUS_CODES.GOLDFLAME);
 
   assert.equal(player.goldflameFrom, RANGE_AT_START + 2, 'two flames, and then the gold one');
-  assert.equal(player.range, MAX_RANGE);
+  assert.equal(player.range, GOLDFLAME_RANGE);
 });
 
 test('a random pack gives something else, and never itself', () => {

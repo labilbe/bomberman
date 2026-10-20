@@ -317,6 +317,10 @@ export function fromDrawings(places = PLACES.length) {
     // No painted background here: the checkerboard of two ground shades does the
     // job.
     background: null,
+    // And no boards either: the drawn sprites know one scenery, so the launch
+    // screen has nothing to offer and does not ask.
+    terrains: [],
+    useTerrain: async () => {},
     bombCycle: DEFAULT_BOMB_CYCLE,
     walkCycle: DEFAULT_WALK_CYCLE,
     randomCycle: DEFAULT_RANDOM_CYCLE,
@@ -355,28 +359,58 @@ export function fromDrawings(places = PLACES.length) {
 /**
  * Vector sprite set, from what `loadVectors` returns.
  *
- * The ground arrives in two forms. `background` is the painted band of the
- * field, as wide as the whole arena, which the scene prefers when it is there:
- * it is Atomic Bomberman's real ground, with its alternating light and dark
- * rows. `ground` stays the "blank" tile of the .ANI files, kept as a fallback —
- * it does the job if the field's file is missing, but it is another grass,
- * spotted, whose repetition from cell to cell shows at once.
+ * THE SCENERY IS NOT FIXED: it is the board's, and the board is chosen on the
+ * new-game screen. `background`, `wall`, `brick` and `brickBroken` therefore
+ * change together, through `useTerrain`, and everything else — bombers, bombs,
+ * flames, packs — is the same on all eleven boards.
+ *
+ * The scene reads those four straight off this object on every frame, so
+ * swapping them in place is all it takes; there is no second sprite set to
+ * build, and no scene to rebuild.
  */
 export function fromVectors(loaded, places = PLACES.length) {
-  const { tile, ground: background, roles, cycles } = loaded;
+  const { tile, terrains, roles, cycles } = loaded;
   const one = (name) => roles[name]?.[0] ?? null;
 
-  return {
+  const set = {
     tile,
-    background,
+    // The board, until one is chosen: the first of the list. A game always calls
+    // `useTerrain`, but the menu's bomb and the warm-up read the set before
+    // that, and an empty scenery would show up as an arena with no walls.
+    background: null,
+    wall: terrains[0]?.wall ?? null,
+    brick: terrains[0]?.brick ?? null,
+    brickBroken: terrains[0]?.brickBroken ?? null,
+    /** What the new-game screen offers: the boards, by index and by name. */
+    terrains: terrains.map(({ index, name }) => ({ index, name })),
+    /**
+     * Lays one board's scenery out, ground included.
+     *
+     * Awaited, because the ground is a picture that is fetched on demand — a
+     * game that started without waiting would play its first frames on the
+     * previous board, which is exactly the kind of flicker nobody can explain
+     * afterwards.
+     *
+     * An index nobody has extracted leaves the scenery as it is: the wire
+     * carries a terrain number, and a relay can perfectly well name a board this
+     * page does not have.
+     */
+    async useTerrain(index) {
+      const chosen = terrains.find((t) => t.index === index) ?? terrains[0];
+      if (!chosen) return;
+      set.wall = chosen.wall;
+      set.brick = chosen.brick;
+      set.brickBroken = chosen.brickBroken;
+      set.background = await chosen.ground();
+    },
     // The pulse rate comes from the original game, not from a setting of ours.
     bombCycle: cycles?.bomb ?? DEFAULT_BOMB_CYCLE,
     walkCycle: cycles?.walk0 ?? DEFAULT_WALK_CYCLE,
     randomCycle: cycles?.bonusRandom ?? DEFAULT_RANDOM_CYCLE,
-    ground: [one('ground'), one('ground')],
-    wall: one('wall'),
-    brick: one('brick'),
-    brickBroken: roles.brickBroken ?? null,
+    // No tiled ground to fall back on, and there is nothing to fall back to:
+    // Atomic Bomberman's boards have no ground tile, their floor is the painted
+    // field. The scene draws its own backdrop while one is on its way.
+    ground: [],
     bonus: {
       bomb: one('bonusBomb'),
       flame: one('bonusFlame'),
@@ -446,4 +480,6 @@ export function fromVectors(loaded, places = PLACES.length) {
       : null,
     dead: lazyPerPlace(places, (p) => roles.dead[p]),
   };
+
+  return set;
 }

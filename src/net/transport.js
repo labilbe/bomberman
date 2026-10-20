@@ -8,7 +8,7 @@
  * touching the renderer or the keyboard.
  *
  * Common contract:
- *   start()                 -> Promise<{ places, format, mine: number[] }>
+ *   start()                 -> Promise<{ places, format, terrain, mine: number[] }>
  *   intent(place, input)    -> void   last known intent of a place
  *   beat(nowMs)             -> void   advances time (solo only)
  *   onView(f)               -> () => void   f(view)
@@ -33,7 +33,7 @@ import { FORMATS } from '../engine/round.js';
  * network.
  *
  * @param {{
- *   seed?: number, places?: number, humans?: number, format?: number,
+ *   seed?: number, places?: number, humans?: number, format?: number, terrain?: number,
  *   pilots?: Record<number, (state: object, place: number) => object>
  * }} options
  */
@@ -42,6 +42,7 @@ export function createLocalTransport({
   places = 2,
   humans = 1,
   format = FORMATS[0],
+  terrain = null,
   pilots = {},
 } = {}) {
   const game = createGame({ seed, places, format });
@@ -93,7 +94,7 @@ export function createLocalTransport({
           seed: game.state.seed,
         }),
       );
-      return { places, format: game.format, mine, names: null };
+      return { places, format: game.format, terrain, mine, names: null };
     },
 
     intent(place, input) {

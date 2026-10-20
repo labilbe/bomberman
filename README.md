@@ -58,9 +58,17 @@ npm run test:relay                         # un bout en bout contre le relais
 Pour jouer contre un relais local, ajouter `?relais=ws://localhost:8787/room` à
 l'URL de la page.
 
-Créer un salon permet de choisir, place par place, qui sera un humain et qui sera
-un bot ; le code du salon par défaut se règle dans les Options et sert aussi bien
-à créer qu'à rejoindre.
+**Il n'y a pas de « partie réseau » à part.** On ouvre *Nouvelle partie*, et sur
+la ligne de chaque joueur on choisit ce qui le pilote : un clavier, une manette,
+un bot — ou *En réseau*, c'est-à-dire quelqu'un qui va rejoindre. Dès qu'une
+place est confiée au réseau, le code du salon apparaît sous la liste : c'est le
+rendez-vous à partager, et c'est la seule différence. *Rejoindre une partie en
+réseau* reste à part, puisqu'on y répond à une invitation au lieu de poser la
+table.
+
+En ligne, un écran ne tient qu'une place : les autres claviers de la liste
+repassent donc en bots. Le code du salon par défaut se règle dans les Options et
+sert aussi bien à poser la table qu'à rejoindre.
 
 ## Les sprites et les sons
 
@@ -80,6 +88,13 @@ Les sprites sortent en SVG, dédoublonnés, avec un `manifest.json` que la page
 charge au démarrage ; les couleurs par joueur sont obtenues par rotation de
 teinte, à la demande. Les sons sortent en WAV, avec leurs variantes — le jeu
 d'origine tire au sort parmi vingt explosions, et une seule finirait par scier.
+
+**Les onze décors du jeu sont extraits**, chacun avec son sol peint, ses rochers
+et ses briques : *Green Acres*, *Ancient Egypt*, *The Coal Mine*, *Inner City
+Trash*… Ils portent les noms que le jeu leur donne, lus dans son `MESSAGES.TXT`,
+et l'écran de nouvelle partie les propose — *Au hasard* par défaut, comme le
+*Random Each Game* de l'original. Le sol n'est chargé qu'au moment où une partie
+le demande : c'est une image par décor, et une partie n'en montre qu'un.
 
 Ces images et ces sons restent la propriété d'Interplay.
 

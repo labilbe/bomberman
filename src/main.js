@@ -33,7 +33,8 @@ import {
   MIN_PLACES,
   MAX_PLACES,
   cleanColours,
-  preferColour,
+  cleanTerrain,
+  randomTerrain,
 } from './net/protocol.js';
 
 const menu = document.querySelector('#menu');
@@ -48,13 +49,13 @@ const localFormatSelect = document.querySelector('#local-format');
 const formatSelect = document.querySelector('#format');
 const colourSelect = document.querySelector('#colour');
 const defaultRoomInput = document.querySelector('#default-room');
-const netPlayersSelect = document.querySelector('#net-players');
-const netSeatsList = document.querySelector('#net-seats');
 const createRoomInput = document.querySelector('#create-room');
-const netFormatSelect = document.querySelector('#net-format');
+const roomField = document.querySelector('#room-field');
+const netNote = document.querySelector('#net-note');
+const terrainField = document.querySelector('#terrain-field');
+const terrainSelect = document.querySelector('#terrain');
 const playLocalButton = document.querySelector('#play-local');
 const playOnlineButton = document.querySelector('#play-online');
-const createOnlineButton = document.querySelector('#play-create');
 const quitButton = document.querySelector('#quit');
 const netState = document.querySelector('#net-state');
 const track = document.querySelector('#track');
@@ -65,8 +66,8 @@ const PREF_ROOM = 'bomberman.room';
 const PREF_PLAYERS = 'bomberman.players';
 const PREF_SEATS = 'bomberman.seats';
 const PREF_FORMAT = 'bomberman.format';
-const PREF_NET_SEATS = 'bomberman.netSeats';
 const PREF_COLOUR = 'bomberman.colour';
+const PREF_TERRAIN = 'bomberman.terrain';
 
 /**
  * The keys this page used to write, when the code was in French.
@@ -169,9 +170,16 @@ const CONTROLS = [
   { code: 'manette1', label: 'Manette 1', read: () => gamepads.read(0), gamepad: 0 },
   { code: 'manette2', label: 'Manette 2', read: () => gamepads.read(1), gamepad: 1 },
   { code: 'bot', label: 'Bot' },
+  // THE ONLY THING THAT MAKES A GAME A NETWORK GAME. It is not offered to the
+  // first row: that one is yours, you are the one laying the table, and a host
+  // who was waiting for themselves would be waiting for ever.
+  { code: 'network', label: 'En réseau', network: true },
 ];
 
 const controlOf = (code) => CONTROLS.find((choice) => choice.code === code) ?? null;
+
+/** A control that reads a human's hands here, on this machine. */
+const isLocal = (code) => typeof controlOf(code)?.read === 'function';
 
 /**
  * A run of sprites redrawn on ONE canvas size, each frame kept on its anchor.
@@ -372,8 +380,7 @@ window.addEventListener('resize', () => {
 function openScreen(name) {
   const target = document.querySelector(`#screen-${name}`);
   if (!target) return;
-  if (name === 'join' || name === 'create') proposeRooms();
-  if (name === 'create') proposeFormat(netFormatSelect);
+  if (name === 'join' || name === 'game') proposeRooms();
   if (name === 'game') proposeFormat(localFormatSelect);
   // The nickname may have been changed in the options since the rows were built:
   // the first row wears it, so it is re-read here rather than at the start.
@@ -496,7 +503,7 @@ window.addEventListener('keydown', (event) => {
 });
 
 /**
- * Puts the bomb on "Lancer une partie" when nothing is chosen.
+ * Puts the bomb on "Nouvelle partie" when nothing is chosen.
  *
  * The marker follows the focus: with no focus, no row is marked and the menu
  * looks dead. We force nothing when a row is already chosen — the mouse hovering
@@ -509,7 +516,7 @@ function selectByDefault() {
 }
 
 function showMenu() {
-  // We always come back to the list: keeping the launch screen open after a game
+  // We always come back to the list: keeping the new-game screen open after a game
   // would suggest another one is being started.
   closeScreen({ focus: false });
   menu.hidden = false;
@@ -576,10 +583,66 @@ const BOT_START = Math.floor(Math.random() * BOT_NAMES.length);
  * a bot does not rename row 3.
  */
 function proposedName(place, control, first) {
+  // A seat kept for somebody over the network is NOT named here: whoever sits
+  // in it brings their own name, and offering one would be showing a name that
+  // nobody will ever carry.
+  if (control === 'network') return '';
   if (control === 'bot') return BOT_NAMES[(BOT_START + place) % BOT_NAMES.length];
   const drawn = HUMAN_NAMES[(NAME_START + place) % HUMAN_NAMES.length];
   if (place === first) return cleanName(nicknameInput.value, drawn);
   return drawn;
+}
+
+/**
+ * Does this game wait for somebody over the network?
+ *
+ * ONE QUESTION ANSWERS THE WHOLE SCREEN: it decides whether the room code shows,
+ * whether the names of the other rows are ours to give, and whether "Lancer"
+ * opens a relay connection or runs the engine right here. There is no "network
+ * game" setting any more — there is a seat held by somebody who is not in the
+ * room, or there is not.
+ */
+const networked = () =>
+  [...seatsList.querySelectorAll('.control')].some((control) => control.value === 'network');
+
+/**
+ * Brings the rows back to a layout that can actually be played, then shows what
+ * that layout needs.
+ *
+ * ONE SCREEN HOLDS ONE PLACE, and the relay says so: it hands a client a single
+ * seat. So the moment a seat goes to the network, the other local controls have
+ * nothing left to drive and fall back on bots — and the first row, which is
+ * yours, stops being one. Nothing is refused and nothing is greyed out: the
+ * choice is taken, and its consequences are applied in front of the player.
+ */
+function settleSeats() {
+  const controls = [...seatsList.querySelectorAll('.control')];
+  if (networked()) {
+    controls.forEach((control, place) => {
+      if (place === 0) {
+        if (!isLocal(control.value)) control.value = 'clavier1';
+        return;
+      }
+      if (isLocal(control.value)) control.value = 'bot';
+    });
+  }
+  const online = networked();
+  roomField.hidden = !online;
+  netNote.hidden = !online;
+  playLocalButton.textContent = online ? 'Créer ce salon' : 'Lancer';
+  // ONLINE, THE OTHER NAMES ARE NOT OURS TO GIVE: a seat waiting for a human
+  // will be named by whoever sits in it, and the relay names the bots itself.
+  // Leaving the fields open would have shown names nobody would ever read.
+  for (const [place, control] of controls.entries()) {
+    const nick = control.closest('.seat')?.querySelector('.nick');
+    if (!nick) continue;
+    nick.disabled = online && place > 0;
+    nick.placeholder = !nick.disabled
+      ? ''
+      : control.value === 'network'
+        ? 'en attente'
+        : 'nommé par le salon';
+  }
 }
 
 /**
@@ -592,7 +655,7 @@ function proposedName(place, control, first) {
 function refreshProposals() {
   const rows = [...seatsList.querySelectorAll('.seat')];
   const controls = rows.map((row) => row.querySelector('.control').value);
-  const first = controls.findIndex((code) => code !== 'bot');
+  const first = controls.findIndex((code) => isLocal(code));
   rows.forEach((row, place) => {
     const nick = row.querySelector('.nick');
     if (nick.dataset.typed) return;
@@ -613,6 +676,9 @@ function buildSeats() {
     );
   const controls = Array.from({ length: count }, (_, place) => {
     const wanted = previous[place]?.control ?? (place === 0 ? 'clavier1' : 'bot');
+    // The first row is yours and never waits for the network — a remembered
+    // list can hold one all the same, since the number of players changed since.
+    if (place === 0 && wanted === 'network') return 'clavier1';
     return usable(wanted) ? wanted : 'bot';
   });
   // Two bombers of the same colour cannot be told apart: the first row to ask
@@ -635,7 +701,7 @@ function buildSeats() {
   // colour from the options. Claimed BEFORE the others are handed out, so the
   // row that had it falls back on the next free colour rather than the other
   // way round.
-  const mine = firstRowColour('local', previous[0]?.colour);
+  const mine = firstRowColour(previous[0]?.colour);
   assign(mine);
 
   seatsList.textContent = '';
@@ -685,6 +751,9 @@ function buildSeats() {
       // A gamepad we do not have is not offered: it would never answer, and you
       // would think the game broken rather than the gamepad absent.
       if (choice.gamepad !== undefined && choice.gamepad >= connected) continue;
+      // The first row is the one holding this keyboard: it cannot be waiting
+      // for itself at the other end of a wire.
+      if (choice.network && place === 0) continue;
       const option = document.createElement('option');
       option.value = choice.code;
       option.textContent = choice.label;
@@ -693,10 +762,14 @@ function buildSeats() {
     control.value = controls[place];
 
     // Changing the control changes who is a human and who is a bot, therefore
-    // the names offered: a row that becomes a bot takes a bot's first name.
+    // the names offered: a row that becomes a bot takes a bot's first name. And
+    // it can turn the whole game into a network one, or back, which is what
+    // `settleSeats` reads.
     control.addEventListener('change', () => {
+      settleSeats();
       refreshProposals();
       rememberSeats();
+      if (networked()) proposeRooms();
     });
 
     row.append(dot, label, wrap('Nom', nick), wrap('Couleur', colour), wrap('Commande', control));
@@ -704,15 +777,12 @@ function buildSeats() {
   }
 
   // After the rows, since the proposal of one depends on the controls of all.
+  settleSeats();
   refreshProposals();
 }
 
 /**
  * The colour selector of one row, tied to its dot and to its neighbours.
- *
- * Shared by the two screens that lay out an arena — the local launch and the
- * network creation — because they ask exactly the same question, and the swap
- * below is a rule, not a decoration.
  *
  * Two bombers of the same colour cannot be told apart in play. Rather than
  * refusing the choice, we SWAP with whoever had it: that is what the game's own
@@ -765,8 +835,8 @@ function colourPicker({ list, dot, start, remember }) {
 /**
  * The colour one prefers to play, as the options hold it.
  *
- * It dresses the FIRST ROW of the two screens that lay out an arena, and is
- * asked of the relay when one joins somebody else's. White failing anything —
+ * It dresses the FIRST ROW of the new-game screen, and is asked of the relay when
+ * one joins somebody else's room. White failing anything —
  * the first colour of the game's own list, which is what the first place wore
  * before the option existed.
  */
@@ -776,8 +846,7 @@ function preferredColour() {
 }
 
 /**
- * The preferred colour as each seat screen last offered it: 'local' for the
- * launch screen, 'net' for the creation screen.
+ * The preferred colour as the new-game screen last offered it.
  *
  * It starts at the option's own value, because LOADING THE PAGE IS NOT CHANGING
  * THE OPTION: the rows remember what the player last chose — the option
@@ -785,7 +854,7 @@ function preferredColour() {
  * on every load would undo, one refresh later, the very choice this rule is
  * there to protect.
  */
-const offered = { local: preferredColour(), net: preferredColour() };
+let offered = preferredColour();
 
 /**
  * What the first row — yours — should wear.
@@ -803,13 +872,12 @@ const offered = { local: preferredColour(), net: preferredColour() };
  * offered. That is what makes the option visibly alive without it overruling a
  * choice made two seconds earlier on the row itself.
  *
- * @param {'local' | 'net'} screen
  * @param {number | null | undefined} chosen the colour that row already wears
  */
-function firstRowColour(screen, chosen) {
+function firstRowColour(chosen) {
   const wanted = preferredColour();
-  if (offered[screen] === wanted && typeof chosen === 'number') return chosen;
-  offered[screen] = wanted;
+  if (offered === wanted && typeof chosen === 'number') return chosen;
+  offered = wanted;
   return wanted;
 }
 
@@ -824,7 +892,7 @@ function wrap(title, control) {
 }
 
 /**
- * What the launch screen says, row by row.
+ * What the new-game screen says, row by row.
  *
  * `name` is what was TYPED — empty when the row wears an offered name — and
  * `label` what the bomber will be called either way. The first is what gets
@@ -852,134 +920,70 @@ function rememberSeats() {
 }
 
 /**
- * The seats of a room being created: what colour each place wears, who waits for
- * a human and who is a bot.
+ * The board the new-game screen asks for: an index, or null for "au hasard".
  *
- * THE COLOURS ARE SETTLED HERE, BEFORE THE ROOM EXISTS, and that is why they can
- * be chosen at all: they leave with the arrival that opens the room, the relay
- * cleans them up and announces them, and every screen then draws the same
- * arena. Offering the choice later — on each player's own screen, in the waiting
- * room — would have let two players swap colours between themselves, and one
- * would be aiming at a green bomber the other sees as red.
- *
- * Whoever joins therefore chooses nothing: they take the colour of the seat they
- * are given, and the waiting room tells them which one it is. That is the price
- * of a single arena, and it is the same price the original game paid — the
- * colours belong to the table, not to the guests.
- *
- * The first row is you, and that much is not a choice: whoever lays the table
- * sits at it. It is shown all the same, so that the list reads as the arena will
- * look — four rows, four corners, four colours.
+ * Null is the default, and it is the original game's own: its options list the
+ * eleven boards under a "Random Each Game" that comes first.
  */
-function buildNetSeats() {
-  const count = Math.max(MIN_PLACES, Math.min(MAX_PLACES, Number(netPlayersSelect.value) || MIN_PLACES));
-  const previous = readNetSeats();
-  // The defaults, and the repair of a remembered list that no longer fits —
-  // the same rule as the relay's, from the same function: every place gets a
-  // colour, and no two get the same one. The first place is yours, and the
-  // others move aside for it.
-  const tints = cleanColours(
-    [firstRowColour('net', previous[0]?.colour), ...previous.slice(1).map((seat) => seat.colour)],
-    count,
-  );
+function chosenTerrain() {
+  return cleanTerrain(terrainSelect.value);
+}
 
-  netSeatsList.textContent = '';
-  for (let place = 0; place < count; place += 1) {
-    const row = document.createElement('li');
-    row.className = 'seat';
+/**
+ * Fills the board list with what the sprites brought back.
+ *
+ * THE LIST COMES FROM THE SPRITE SET and not from a table written here: eleven
+ * is what the original game has, but an extraction can be short of a board, and
+ * naming one the page cannot draw would offer a choice that changes nothing.
+ * With no extracted sprites at all the field disappears: the sprites drawn in
+ * code know one scenery, and an empty drop-down is worse than none.
+ *
+ * The names are the GAME'S OWN — "Green Acres", "Ancient Egypt" — kept as it
+ * spells them, like `power jelly`: they are its boards, and translating them
+ * would be inventing names rather than using its vocabulary. "Au hasard", on the
+ * other hand, is ours to say.
+ */
+function buildTerrains() {
+  const boards = spriteSet.terrains ?? [];
+  terrainField.hidden = boards.length < 2;
+  if (terrainField.hidden) return;
 
-    const dot = document.createElement('span');
-    dot.className = 'dot';
-
-    const label = document.createElement('span');
-    label.className = 'seat-name';
-    label.textContent = `Joueur ${place + 1}`;
-
-    const colour = colourPicker({
-      list: netSeatsList,
-      dot,
-      start: tints[place],
-      remember: rememberNetSeats,
-    });
-
-    row.append(dot, label, wrap('Couleur', colour));
-
-    if (place === 0) {
-      const mine = document.createElement('span');
-      mine.className = 'seat-you';
-      mine.textContent = 'Vous';
-      row.append(mine);
-    } else {
-      const control = document.createElement('select');
-      control.className = 'control';
-      for (const [value, text] of [['human', 'Joueur en réseau'], ['bot', 'Bot']]) {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = text;
-        control.append(option);
-      }
-      control.value = previous[place] === 'bot' ? 'bot' : 'human';
-      control.addEventListener('change', rememberNetSeats);
-      row.append(wrap('Commande', control));
-    }
-
-    netSeatsList.append(row);
+  const random = document.createElement('option');
+  random.value = '';
+  random.textContent = 'Au hasard';
+  terrainSelect.append(random);
+  for (const board of boards) {
+    const option = document.createElement('option');
+    option.value = String(board.index);
+    option.textContent = board.name;
+    terrainSelect.append(option);
   }
+
+  const remembered = readPref(PREF_TERRAIN, '');
+  terrainSelect.value = [...terrainSelect.options].some((o) => o.value === remembered)
+    ? remembered
+    : '';
+  terrainSelect.addEventListener('change', () => {
+    writePref(PREF_TERRAIN, terrainSelect.value);
+  });
 }
 
 /**
- * What the creation screen says, row by row: its colour, and whether the seat
- * waits for a human or is a bot.
+ * Starts the game the new-game screen describes — here, or in a room.
  *
- * @returns {{ control: 'human' | 'bot', colour: number }[]}
+ * ONE BUTTON AND ONE LIST OF PLAYERS. What decides is what the rows say: with no
+ * seat waiting for the network the engine runs in this page, and from the first
+ * one it runs on the relay and this page is a client of it. Everything else —
+ * the colours, the number of rounds, the board, who is a bot — is asked exactly
+ * once and means the same thing in both cases.
  */
-function readNetSeats() {
-  const rows = [...netSeatsList.querySelectorAll('.seat')];
-  if (rows.length === 0) {
-    // Before the first build — the join screen asks too, for the number of
-    // places — the remembered list stands in. Failing that, a room for two: the
-    // smallest thing that is a game.
-    try {
-      const remembered = JSON.parse(readPref(PREF_NET_SEATS, '[]'));
-      if (Array.isArray(remembered) && remembered.length >= MIN_PLACES) {
-        return remembered.map(netSeat);
-      }
-    } catch {
-      // Unreadable preference: the default below is just as good.
-    }
-    return [netSeat('human'), netSeat('human')];
-  }
-  return rows.map((row, place) => ({
-    // The first row is the host's, and it is never a bot: whoever lays the table
-    // sits at it.
-    control: place > 0 && row.querySelector('.control')?.value === 'bot' ? 'bot' : 'human',
-    colour: Number(row.querySelector('.colour').value),
-  }));
+function playGame() {
+  if (networked()) playOnline({ fresh: true });
+  else playLocal();
 }
 
 /**
- * One remembered row, whatever shape it was written in.
- *
- * The preference used to be a plain list of 'human' and 'bot', before the
- * colours could be chosen: a profile that has not played since still holds one,
- * and reading it as an object gave a screen of undefined colours. A string is
- * therefore still understood — the colour then comes from the place, which is
- * exactly what that version did.
- */
-function netSeat(remembered) {
-  const control = (typeof remembered === 'string' ? remembered : remembered?.control) === 'bot'
-    ? 'bot'
-    : 'human';
-  const colour = Number(remembered?.colour);
-  return { control, colour: Number.isInteger(colour) ? colour : null };
-}
-
-function rememberNetSeats() {
-  writePref(PREF_NET_SEATS, JSON.stringify(readNetSeats()));
-}
-
-/**
- * Starts a local game, as the launch screen describes it.
+ * Starts a local game, as the new-game screen describes it.
  *
  * Each row gives a bomber: its colour, and what drives it — a set of keys, a
  * gamepad, or nobody, in which case the engine plays for it. The bots keep
@@ -990,7 +994,7 @@ function playLocal() {
 
   const seats = readSeats();
   const places = seats.length;
-  // THE FORMAT OF THIS GAME, read from the launch screen and not written back:
+  // THE FORMAT OF THIS GAME, read from the new-game screen and not written back:
   // the standing choice lives in the options, and an evening played in seven
   // rounds must not quietly become the setting.
   const format = Number(localFormatSelect.value) || 3;
@@ -1025,6 +1029,9 @@ function playLocal() {
     places,
     humans: humanRank,
     format,
+    // The board is drawn HERE when the screen said "au hasard", where online the
+    // relay draws it: in both cases once per game, and for everybody.
+    terrain: chosenTerrain() ?? randomTerrain(),
     pilots,
   });
 
@@ -1057,7 +1064,23 @@ async function startSession(transport, { humans = 1, places, names, sources = nu
   }
 
   const count = start.places ?? places;
-  // ONLINE, THE COLOURS COME BACK FROM THE RELAY: the creation screen chose
+  // THE BOARD COMES WITH THE START, as the colours do, and it is awaited: its
+  // ground is a picture fetched on demand, and the first frames of a game drawn
+  // on the previous board would be a flicker nobody could explain. Online it is
+  // the relay's answer — one scenery for every screen; here it is the draw made
+  // on departure.
+  //
+  // A session abandoned while the ground was loading gives up here, like the one
+  // abandoned during `start()`: the check is the same, and for the same reason.
+  if (start.terrain !== null && start.terrain !== undefined) {
+    await spriteSet.useTerrain(start.terrain);
+    if (session?.token !== token) {
+      transport.close();
+      return;
+    }
+  }
+
+  // ONLINE, THE COLOURS COME BACK FROM THE RELAY: the new-game screen chose
   // them, the room cleaned them up, and everybody — host and guests alike —
   // draws the list it announces. In solo play nothing comes back, and the screen's
   // own choice stands.
@@ -1186,7 +1209,8 @@ document.addEventListener('keydown', firstGesture);
 
 playLocalButton.addEventListener('click', () => {
   sounds.wake();
-  playLocal();
+  banner.hide();
+  playGame();
 });
 quitButton.addEventListener('click', stopSession);
 
@@ -1241,8 +1265,7 @@ function proposeRooms() {
 }
 
 /**
- * The number of rounds the launch and creation screens propose: the one set in
- * the options.
+ * The number of rounds the new-game screen proposes: the one set in the options.
  *
  * Proposed AGAIN each time the screen opens, like the room code and for the same
  * reason: the options hold the standing choice, and a format set for one evening
@@ -1284,14 +1307,18 @@ function playOnline({ fresh = false } = {}) {
   // CREATING AND JOINING ARE THE SAME MESSAGE for the relay — it opens the room
   // if the code is free and seats you in it otherwise — but not the same gesture
   // for the player: one lays the table, the other answers an invitation. So
-  // creating reads its own screen (code, seats, bots), joining only reads the
-  // code it has been given.
-  const seats = fresh ? readNetSeats() : [];
+  // laying the table reads the new-game screen whole (code, rows, bots, board),
+  // joining only reads the code it has been given.
+  const seats = fresh ? readSeats() : [];
   const field = fresh ? createRoomInput : roomInput;
   const code = cleanRoom(field.value) || randomRoom();
   field.value = code;
+  // The nickname sent is the one on YOUR ROW, which is the first: the launch
+  // screen shows it, and announcing another one in the room would make a liar of
+  // the field just filled in. Joining has no row and falls back on the options.
+  const nickname = cleanName(fresh ? seats[0]?.label ?? '' : nicknameInput.value);
   writePref(PREF_NICKNAME, cleanName(nicknameInput.value, nicknameInput.value));
-  if (fresh) rememberNetSeats();
+  if (fresh) rememberSeats();
 
   // The bots are named by their SEAT, and the places left free are those that
   // await a human. Joining says nothing about any of this: the room was laid out
@@ -1299,32 +1326,35 @@ function playOnline({ fresh = false } = {}) {
   // turns out to be free — that is, when there was nothing to join.
   const places = fresh
     ? seats.length
-    : Math.max(MIN_PLACES, Math.min(MAX_PLACES, readNetSeats().length));
+    : Math.max(MIN_PLACES, Math.min(MAX_PLACES, Number(playersSelect.value) || MIN_PLACES));
   const bots = seats.flatMap((seat, place) => (seat.control === 'bot' ? [place] : []));
   // The colours of the table being laid, and nothing when one is only joining:
   // the room already has its own, and sending ours would be an opinion the relay
   // is right to ignore.
   const colours = fresh ? cleanColours(seats.map((seat) => seat.colour), places) : null;
-  // Creating says how many rounds ITS room plays; joining says nothing — the
-  // room was laid out by whoever opened it, format included.
-  const format = Number((fresh ? netFormatSelect : formatSelect).value) || 3;
+  // Laying the table says how many rounds ITS room plays; joining says nothing —
+  // the room was laid out by whoever opened it, format included.
+  const format = Number((fresh ? localFormatSelect : formatSelect).value) || 3;
   const url = new URLSearchParams(location.search).get('relais') || RELAY;
 
   const transport = createOnlineTransport({
     url,
     room: code,
-    nickname: cleanName(nicknameInput.value),
+    nickname,
     places,
     format,
+    // The board of the room being laid out, null for "au hasard" — the relay
+    // then draws it. Joining says nothing: the board is the room's.
+    terrain: fresh ? chosenTerrain() : null,
     bots,
     colours,
-    // Creating already carries the colour of the options in its list, on the
-    // first row; joining has no list to carry, so it asks for it.
+    // The new-game screen already carries the colour of the options in its list,
+    // on the first row; joining has no list to carry, so it asks for it.
     colour: fresh ? null : preferredColour(),
-    // ONLY "CRÉER" LAYS A TABLE. Whoever comes through "Rejoindre" answers an
-    // invitation, even when they turn out to be the first to arrive: they are
-    // not offered the start, and the room falls back on setting off by itself
-    // once full — which is how a room nobody created has always worked.
+    // ONLY A TABLE LAID HERE IS A TABLE. Whoever comes through "Rejoindre"
+    // answers an invitation, even when they turn out to be the first to arrive:
+    // they are not offered the start, and the room falls back on setting off by
+    // itself once full — which is how a room nobody created has always worked.
     host: fresh,
   });
 
@@ -1428,12 +1458,6 @@ playOnlineButton.addEventListener('click', () => {
   playOnline();
 });
 
-createOnlineButton.addEventListener('click', () => {
-  sounds.wake();
-  banner.hide();
-  playOnline({ fresh: true });
-});
-
 /**
  * Says how many gamepads are plugged in, under the table of controls.
  *
@@ -1457,7 +1481,7 @@ function announceGamepads() {
 
 /**
  * A gamepad arriving or leaving changes the choices possible: we rebuild the rows
- * of the launch screen, which keep whatever still holds on the way.
+ * of the new-game screen, which keep whatever still holds on the way.
  */
 function followGamepads() {
   announceGamepads();
@@ -1492,6 +1516,10 @@ function initialise() {
           control.value = wanted.control;
         }
       });
+      // The remembered rows may bring a seat back from the network: the screen
+      // has to dress itself accordingly, room code and all.
+      settleSeats();
+      refreshProposals();
     }
   } catch {
     // An unreadable preference must not keep anybody from playing: we keep the
@@ -1501,15 +1529,10 @@ function initialise() {
     buildSeats();
     rememberSeats();
   });
-  netPlayersSelect.value = String(readNetSeats().length);
-  buildNetSeats();
-  netPlayersSelect.addEventListener('change', () => {
-    buildNetSeats();
-    rememberNetSeats();
-  });
+  buildTerrains();
 
   // THE DEFAULT ROOM IS SET IN THE OPTIONS, and nowhere else. The code typed on
-  // the create or join screen is a one-off — the evening's room, a friend's code
+  // the launch or join screen is a one-off — the evening's room, a friend's code
   // — and writing it back as the default would quietly replace a group's own
   // code with the last one tried.
   defaultRoomInput.value = cleanRoom(readPref(PREF_ROOM, ''));
@@ -1517,18 +1540,16 @@ function initialise() {
   nicknameInput.value = cleanName(readPref(PREF_NICKNAME, ''), randomName());
   formatSelect.value = readPref(PREF_FORMAT, '3');
   // WRITTEN DOWN WHEN IT CHANGES, and not only when a game is launched from the
-  // launch screen: somebody who only ever plays online would have set it at
+  // new-game screen: somebody who only ever plays online would have set it at
   // every session without it ever being kept.
   formatSelect.addEventListener('change', () => {
     writePref(PREF_FORMAT, formatSelect.value);
     proposeFormat(localFormatSelect);
-    proposeFormat(netFormatSelect);
   });
   proposeFormat(localFormatSelect);
-  proposeFormat(netFormatSelect);
 
   // THE COLOUR ONE PREFERS, in the game's own order so that the list reads like
-  // the one on the launch screen.
+  // the one on the new-game screen.
   for (const [index, tint] of PLACES.entries()) {
     const option = document.createElement('option');
     option.value = String(index);
@@ -1538,8 +1559,8 @@ function initialise() {
   colourSelect.value = String(preferredColour());
   colourSelect.addEventListener('change', () => {
     writePref(PREF_COLOUR, colourSelect.value);
-    // The two screens that lay out an arena follow AT ONCE, as the default room
-    // does: a choice that only showed after a reload would look ignored.
+    // The new-game screen follows AT ONCE, as it does for the default room: a
+    // choice that only showed after a reload would look ignored.
     //
     // And what they now show is WRITTEN DOWN, since the rows are what the next
     // load reads back: without it the new colour held until the page was
@@ -1547,13 +1568,11 @@ function initialise() {
     // a refresh.
     buildSeats();
     rememberSeats();
-    buildNetSeats();
-    rememberNetSeats();
   });
   defaultRoomInput.addEventListener('change', () => {
     defaultRoomInput.value = cleanRoom(defaultRoomInput.value);
     writePref(PREF_ROOM, defaultRoomInput.value);
-    // The two screens follow at once: a default that only took effect after a
+    // The two fields follow at once: a default that only took effect after a
     // reload would look as if it had been ignored.
     proposeRooms();
   });
@@ -1568,7 +1587,7 @@ function initialise() {
   }
   showMenu();
 
-  // "Lancer une partie" is selected from the start: the game's menu always
+  // "Nouvelle partie" is selected from the start: the game's menu always
   // arrives with a row chosen, and that row carries the bomb.
   //
   // AFTER THE FIRST FRAME, and not straight away: the browser puts the focus

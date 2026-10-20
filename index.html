@@ -26,10 +26,18 @@
       <main>
         <!--
           The menu takes the original game's entries, in its own language:
-          "Start Game", "Start Network Game", "Join Network Game", "Options",
-          "Online Manual", "About". Those that need a setting slide the menu to
-          the left and bring their screen in from the right, the way the game
-          moved from one screen to the next.
+          "Start Game", "Join Network Game", "Options", "Online Manual",
+          "About". Those that need a setting slide the menu to the left and
+          bring their screen in from the right, the way the game moved from one
+          screen to the next.
+
+          "Start Network Game" is NOT one of them any more, and that is a
+          departure from the original: there is one way to start a game, and a
+          seat held by somebody over the network is one choice among the others
+          on its row. A game with no such seat is played here and asks for no
+          room code; from the first one, the code appears — that is the whole
+          difference, and it is stated by the list of players rather than by the
+          door one came through.
 
           "Exit Bomberman" has no translation here: a tab does not close itself,
           and a button that does nothing is worth less than no button at all.
@@ -46,8 +54,7 @@
           <div class="menu-scene">
             <div class="track" id="track">
               <nav class="choices">
-                <button type="button" class="row" data-open="game">Lancer une partie</button>
-                <button type="button" class="row" data-open="create">Créer une partie en réseau</button>
+                <button type="button" class="row" data-open="game">Nouvelle partie</button>
                 <button type="button" class="row" data-open="join">Rejoindre une partie en réseau</button>
                 <button type="button" class="row" data-open="options">Options</button>
                 <button type="button" class="row" data-open="manual">Manuel</button>
@@ -56,7 +63,7 @@
 
               <div class="screens">
                 <section class="screen" id="screen-game" hidden>
-                  <h2 class="screen-title">Lancer une partie</h2>
+                  <h2 class="screen-title">Nouvelle partie</h2>
                   <div class="panel">
                       <label class="field field-players">
                         <span>Joueurs</span>
@@ -85,55 +92,32 @@
                           <option value="7">Au meilleur des 7</option>
                         </select>
                       </label>
+                      <!--
+                        Le décor du plateau, parmi les onze du jeu d'origine.
+                        Le champ est rempli par la page, à partir des sprites
+                        extraits : sans eux il n'y a qu'un décor, et le champ
+                        disparaît au lieu de proposer un choix vide.
+                      -->
+                      <label class="field" id="terrain-field" hidden>
+                        <span>Terrain</span>
+                        <select id="terrain" class="field-terrain"></select>
+                      </label>
                       <ol id="seats" class="seats"></ol>
-                      <button id="play-local" type="button" class="row small">Lancer</button>
-                  </div>
-                  <button type="button" class="row small back">Retour</button>
-                </section>
-                <!--
-                  Créer, c'est poser la table : le code que l'on donnera à ses
-                  amis, la couleur de chaque place, et qui l'occupe — un humain
-                  qui va rejoindre, ou un bot tout de suite. Les places laissées
-                  aux humains sont celles qui restent libres dans le salon.
-                  Les couleurs partent avec le salon : celui qui rejoint prend
-                  celle de sa place, et le salon lui dit laquelle.
-                -->
-                <section class="screen" id="screen-create" hidden>
-                  <h2 class="screen-title">Créer une partie en réseau</h2>
-                  <div class="panel">
-                      <label class="field field-players">
-                        <span>Joueurs</span>
-                        <select id="net-players">
-                          <option value="2">2</option>
-                          <option value="3">3</option>
-                          <option value="4">4</option>
-                          <option value="5">5</option>
-                          <option value="6">6</option>
-                          <option value="7">7</option>
-                          <option value="8">8</option>
-                          <option value="9">9</option>
-                          <option value="10">10</option>
-                        </select>
-                      </label>
-                      <label class="field">
-                        <!--
-                          Le nombre de manches de CE salon. Il arrive sur celui
-                          des options — le choix permanent — et on en change
-                          ici pour une soirée sans toucher au réglage.
-                        -->
-                        <span>Manches</span>
-                        <select id="net-format" class="field-format">
-                          <option value="3">Au meilleur des 3</option>
-                          <option value="5">Au meilleur des 5</option>
-                          <option value="7">Au meilleur des 7</option>
-                        </select>
-                      </label>
-                      <label class="field">
+                      <!--
+                        Le code du salon n'apparaît QUE s'il y a quelqu'un à
+                        attendre : une place confiée au réseau, et il faut bien
+                        donner un rendez-vous. Sans cela la partie se joue ici,
+                        et un code n'aurait rien à désigner.
+                      -->
+                      <label class="field field-room" id="room-field" hidden>
                         <span>Code du salon</span>
                         <input id="create-room" type="text" maxlength="8" autocomplete="off" spellcheck="false" />
                       </label>
-                      <ol id="net-seats" class="seats"></ol>
-                      <button id="play-create" type="button" class="row small">Créer ce salon</button>
+                      <p class="note" id="net-note" hidden>
+                        Les places « En réseau » attendent quelqu'un dans ce salon : partage-lui le code.
+                        Les autres manettes du clavier passent en bot — en ligne, un écran tient une place.
+                      </p>
+                      <button id="play-local" type="button" class="row small">Lancer</button>
                   </div>
                   <button type="button" class="row small back">Retour</button>
                 </section>

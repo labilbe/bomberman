@@ -25,9 +25,9 @@ export function createHud(root) {
    * @param {number} places
    * @param {string[]} names
    * @param {number[] | null} colours colour index per place, when the players
-   *   have chosen one — on the launch screen in solo play, on the creation
-   *   screen online, where the relay then hands the same list to everybody.
-   *   Without it, the place gives the colour.
+   *   have chosen one — on the new-game screen, which also lays the table of a
+   *   room, the relay then handing the same list to everybody. Without it, the
+   *   place gives the colour.
    */
   function build(places, names, colours = null) {
     root.textContent = '';
@@ -75,7 +75,12 @@ export function createHud(root) {
     const speed = 1 + Math.round((player.speed - BASE_SPEED) / SPEED_STEP);
     const parts = [
       `<span>Bombes <b>${player.bombs}${player.bombs >= MAX_BOMBS ? ' max' : ''}</b></span>`,
-      `<span>Flamme <b>${player.range}${player.range >= MAX_RANGE ? ' max' : ''}</b></span>`,
+      // The gold flame is said by its name and not by its number: its reach is
+      // that of the arena, and "Flamme 15" would be a figure nobody can place
+      // against a ceiling of eight.
+      player.goldflame
+        ? "<span>Flamme <b>d'or</b></span>"
+        : `<span>Flamme <b>${player.range}${player.range >= MAX_RANGE ? ' max' : ''}</b></span>`,
       `<span>Vitesse <b>${speed}</b></span>`,
     ];
     if (player.kick) parts.push('<span class="on">Kick</span>');

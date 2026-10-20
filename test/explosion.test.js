@@ -17,8 +17,11 @@ import {
   HALF_BOMBER,
   TRIGGERS_PER_BONUS,
   FALL_STEPS,
+  COLS,
+  GOLDFLAME_RANGE,
+  RANGE_AT_START,
 } from '../src/engine/constants.js';
-import { BONUS_CODES } from '../src/engine/bonus.js';
+import { BONUS_CODES, apply } from '../src/engine/bonus.js';
 import { bareArena, brick, item, place, input, events } from './helpers.js';
 
 /**
@@ -497,4 +500,30 @@ test('the loot falls at random across the arena, and not around the body', () =>
   // the browser's randomness. Without that, relay and replay would diverge.
   assert.deepEqual(sowing(1), first);
   assert.notDeepEqual(sowing(7), first, 'another seed sows elsewhere');
+});
+
+test("the gold flame burns the corridor from one wall to the other", () => {
+  // THE BUG AS IT WAS REPORTED: the gold flame did not cross the screen. Its
+  // range was the ordinary ceiling — eight — and the blast died halfway down a
+  // corridor thirteen cells long.
+  const state = bareArena();
+  const player = place(state, 0, 1, 1);
+  apply(player, BONUS_CODES.GOLDFLAME);
+
+  // Row 1 holds no pillar: nothing but the outer wall can stop this branch.
+  const branch = ray(state, 1, 1, RIGHT, player.range);
+  assert.equal(branch.cells.length, COLS - 3, 'every cell up to the far wall');
+  assert.deepEqual(branch.cells[branch.cells.length - 1], [COLS - 2, 1], 'the last one touches the wall');
+});
+
+test('a flame picked up after the gold one does not shorten it', () => {
+  // `Math.min` against the ordinary ceiling used to pull the reach back down to
+  // eight: one pack picked up undid the gold flame.
+  const state = bareArena();
+  const player = place(state, 0, 1, 1);
+  apply(player, BONUS_CODES.GOLDFLAME);
+  apply(player, BONUS_CODES.FLAME);
+
+  assert.equal(player.range, GOLDFLAME_RANGE, 'the reach does not move');
+  assert.equal(player.goldflameFrom, RANGE_AT_START + 1, 'but the pack is counted');
 });
