@@ -26,6 +26,9 @@ import {
   BASE_SPEED,
   DOWN,
   MAX_PLAYERS,
+  STEP_HZ,
+  DURATIONS,
+  DEFAULT_DURATION,
 } from './constants.js';
 import { centreOfCell } from './grid.js';
 import { createRng } from './rng.js';
@@ -139,7 +142,7 @@ export function createPlayer(place) {
  * @param {{ seed: number, places?: number }} options
  * @returns {State}
  */
-export function createState({ seed, places = 2 }) {
+export function createState({ seed, places = 2, duration = DEFAULT_DURATION }) {
   const count = Math.max(1, Math.min(MAX_PLAYERS, places));
   const arena = generateArena(createRng(seed), count);
   return {
@@ -148,6 +151,15 @@ export function createState({ seed, places = 2 }) {
     step: 0,
     phase: 'play',
     version: 0,
+    /**
+     * When the arena starts closing in, in STEPS.
+     *
+     * Converted here, once, and never again: the duration is chosen in seconds
+     * because that is how a player reads it, and everything downstream counts
+     * steps like the rest of the engine. A value nobody offers falls back on
+     * the default rather than being honoured — it arrives off the network.
+     */
+    timeLimit: (DURATIONS.includes(duration) ? duration : DEFAULT_DURATION) * STEP_HZ,
     tiles: arena.tiles,
     items: arena.items,
     players: Array.from({ length: count }, (_, place) => createPlayer(place)),

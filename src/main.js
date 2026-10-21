@@ -20,7 +20,7 @@ import { createOnlineTransport } from './net/online.js';
 import { createSounds } from './audio/sounds.js';
 import { createPilot } from './ai/pilot.js';
 import { randomSeed } from './engine/rng.js';
-import { MAX_PLAYERS, STEP_MS } from './engine/constants.js';
+import { MAX_PLAYERS, STEP_MS, DURATIONS, DEFAULT_DURATION } from './engine/constants.js';
 import { placeColour, PLACES } from './render/palette.js';
 import {
   randomRoom,
@@ -46,6 +46,8 @@ const roomInput = document.querySelector('#room');
 const playersSelect = document.querySelector('#players');
 const seatsList = document.querySelector('#seats');
 const localFormatSelect = document.querySelector('#local-format');
+const localDurationSelect = document.querySelector('#local-duration');
+const durationSelect = document.querySelector('#duration');
 const formatSelect = document.querySelector('#format');
 const colourSelect = document.querySelector('#colour');
 const defaultRoomInput = document.querySelector('#default-room');
@@ -68,6 +70,7 @@ const PREF_SEATS = 'bomberman.seats';
 const PREF_FORMAT = 'bomberman.format';
 const PREF_COLOUR = 'bomberman.colour';
 const PREF_TERRAIN = 'bomberman.terrain';
+const PREF_DURATION = 'bomberman.duration';
 
 /**
  * The keys this page used to write, when the code was in French.
@@ -381,7 +384,10 @@ function openScreen(name) {
   const target = document.querySelector(`#screen-${name}`);
   if (!target) return;
   if (name === 'join' || name === 'game') proposeRooms();
-  if (name === 'game') proposeFormat(localFormatSelect);
+  if (name === 'game') {
+    propose(localFormatSelect, formatSelect);
+    propose(localDurationSelect, durationSelect);
+  }
   // The nickname may have been changed in the options since the rows were built:
   // the first row wears it, so it is re-read here rather than at the start.
   if (name === 'game') refreshProposals();
@@ -920,6 +926,51 @@ function rememberSeats() {
 }
 
 /**
+ * Fills a duration list from what the engine actually offers.
+ *
+ * Built here rather than written into the page twice: the engine owns the list
+ * — it is the one that refuses a duration nobody offers — and a fourth entry
+ * added there must not need an edit in two more places to become reachable.
+ *
+ * @param {HTMLSelectElement} select
+ */
+function fillDurations(select) {
+  for (const duration of DURATIONS) {
+    const option = document.createElement('option');
+    option.value = String(duration);
+    // Whole minutes read as minutes; anything else keeps its seconds, so that a
+    // duration of 90 would show as "1 min 30" rather than as a broken "1".
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    option.textContent = seconds === 0
+      ? `${minutes} minute${minutes > 1 ? 's' : ''}`
+      : `${minutes} min ${seconds}`;
+    select.append(option);
+  }
+}
+
+/**
+ * A remembered duration, or the default when it is not one we offer.
+ *
+ * The preference is TEXT, as everything in storage is, and an empty or stale
+ * value must not fall through to something arbitrary: it is compared against
+ * the list as text, never cast. That is the lesson of the terrain, where a
+ * `Number('')` read the empty value as a formal choice of board zero.
+ *
+ * @param {string} remembered
+ */
+function chosenDuration(remembered) {
+  return DURATIONS.some((duration) => String(duration) === remembered)
+    ? remembered
+    : String(DEFAULT_DURATION);
+}
+
+/** The duration of the game about to start, in seconds. */
+function gameDuration() {
+  return Number(chosenDuration(localDurationSelect.value));
+}
+
+/**
  * The board the new-game screen asks for: an index, or null for "au hasard".
  *
  * Null is the default, and it is the original game's own: its options list the
@@ -1034,6 +1085,9 @@ function playLocal() {
     places,
     humans: humanRank,
     format,
+    // THE DURATION OF THIS GAME, read from the screen and not written back, for
+    // the same reason as the format: the standing choice lives in the options.
+    duration: gameDuration(),
     // The board is drawn HERE when the screen said "au hasard", where online the
     // relay draws it: in both cases once per game, and for everybody.
     terrain: chosenTerrain() ?? randomTerrain(),
@@ -1270,22 +1324,27 @@ function proposeRooms() {
 }
 
 /**
- * The number of rounds the new-game screen proposes: the one set in the options.
+ * Copies a standing choice from the options onto the new-game screen.
  *
  * Proposed AGAIN each time the screen opens, like the room code and for the same
- * reason: the options hold the standing choice, and a format set for one evening
- * must not quietly become it.
+ * reason: the options hold the standing choice, and a setting changed for one
+ * evening must not quietly become it.
  *
- * A format CHANGED ON THE SCREEN holds its ground, though — the same rule as the
+ * A value CHANGED ON THE SCREEN holds its ground, though — the same rule as the
  * first row's colour, and for the same reason: it is picked on the very screen
  * that is about to start the game, two clicks before starting it.
  *
- * @param {HTMLSelectElement} select
+ * ONE FUNCTION FOR BOTH the number of rounds and the duration: they ask exactly
+ * the same question of exactly the same pair of fields, and two copies of this
+ * rule would be two chances for them to drift.
+ *
+ * @param {HTMLSelectElement} select the field on the new-game screen
+ * @param {HTMLSelectElement} standing the field in the options
  */
-function proposeFormat(select) {
+function propose(select, standing) {
   const touched = proposed.has(select) && select.value !== proposed.get(select);
   if (touched) return;
-  select.value = formatSelect.value;
+  select.value = standing.value;
   proposed.set(select, select.value);
 }
 
@@ -1348,6 +1407,9 @@ function playOnline({ fresh = false } = {}) {
     nickname,
     places,
     format,
+    // How long each round of this room runs. Joining says nothing: the room was
+    // laid out by whoever opened it, duration included.
+    duration: fresh ? gameDuration() : undefined,
     // The board of the room being laid out, null for "au hasard" — the relay
     // then draws it. Joining says nothing: the board is the room's.
     terrain: fresh ? chosenTerrain() : null,
@@ -1549,9 +1611,21 @@ function initialise() {
   // every session without it ever being kept.
   formatSelect.addEventListener('change', () => {
     writePref(PREF_FORMAT, formatSelect.value);
-    proposeFormat(localFormatSelect);
+    propose(localFormatSelect, formatSelect);
   });
-  proposeFormat(localFormatSelect);
+  propose(localFormatSelect, formatSelect);
+
+  // THE DURATION OF A ROUND, by the same rule and in the same two places: the
+  // options hold the standing choice, the new-game screen copies it on opening,
+  // and a duration set there for one evening is not written back.
+  fillDurations(durationSelect);
+  fillDurations(localDurationSelect);
+  durationSelect.value = chosenDuration(readPref(PREF_DURATION, ''));
+  durationSelect.addEventListener('change', () => {
+    writePref(PREF_DURATION, durationSelect.value);
+    propose(localDurationSelect, durationSelect);
+  });
+  propose(localDurationSelect, durationSelect);
 
   // THE COLOUR ONE PREFERS, in the game's own order so that the list reads like
   // the one on the new-game screen.

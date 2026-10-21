@@ -13,6 +13,7 @@
  */
 
 import { createState } from './state.js';
+import { DEFAULT_DURATION } from './constants.js';
 import { step } from './step.js';
 import {
   createMatch,
@@ -55,14 +56,18 @@ export const ROUND_START_STEPS = 72;
  * @param {{ seed: number, places: number, format?: number }} options
  * @returns {Game}
  */
-export function createGame({ seed, places, format = FORMATS[0] }) {
+export function createGame({ seed, places, format = FORMATS[0], duration = DEFAULT_DURATION }) {
   const match = createMatch({ places, total: format });
   return {
     seed,
     format: match.total,
     places,
+    // How long each round of THIS match runs before the arena closes in. Held
+    // by the game and not by the state, because every round of a match gets the
+    // same one: it is a setting of the table, like the number of rounds.
+    duration,
     match,
-    state: createState({ seed: roundSeed(seed, 1), places }),
+    state: createState({ seed: roundSeed(seed, 1), places, duration }),
     round: 1,
     pause: 0,
     start: ROUND_START_STEPS,
@@ -76,6 +81,7 @@ function newRound(game) {
   game.state = createState({
     seed: roundSeed(game.seed, game.round),
     places: game.places,
+    duration: game.duration,
   });
   game.start = ROUND_START_STEPS;
   return {

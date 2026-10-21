@@ -14,7 +14,7 @@
 
 /** Messages from the client to the relay. */
 export const CLIENT = {
-  JOIN: 'join', // { type, room, name, places, format, terrain?, colours?, colour?, host?, resume? }
+  JOIN: 'join', // { type, room, name, places, format, duration?, terrain?, colours?, colour?, host?, resume? }
   BEGIN: 'begin', // { type } — the host starts without waiting for the room to fill
   BOT: 'bot', // { type, seat? } — seat an artificial opponent, there or anywhere
   INPUT: 'input', // { type, seat, seq, dir, bomb, det, hold } — intent
@@ -34,7 +34,7 @@ export const CLIENT = {
 /** Messages from the relay to the client. */
 export const SERVER = {
   WAITING: 'waiting', // { type, room, myId, places, min, max, names, colours, host, hosted }
-  START: 'start', // { type, room, myId, mine, places, format, terrain, names, colours }
+  START: 'start', // { type, room, myId, mine, places, format, duration, terrain, names, colours }
   ROUND: 'round', // { type, round, seed, tiles, items, v }
   STATE: 'state', // { type, t, v, j, b, f }
   ARENA: 'arena', // { type, v, tiles, items } — answer to RESYNC

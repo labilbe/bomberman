@@ -20,11 +20,15 @@ import {
   ROWS,
   SOLID,
   EMPTY,
-  ROUND_TIME_STEPS,
+  DEFAULT_DURATION,
+  DURATIONS,
   ENCLOSURE_STEPS,
   STEP_HZ,
 } from '../src/engine/constants.js';
 import { BONUS_CODES } from '../src/engine/bonus.js';
+
+/** The limit a round gets when nobody chooses one, in steps. */
+const LIMIT = DEFAULT_DURATION * STEP_HZ;
 
 test('the spiral covers the whole playable area, once each', () => {
   const inside = (COLS - 2) * (ROWS - 2);
@@ -56,25 +60,25 @@ test('it turns clockwise: along the top, then down the right side', () => {
 });
 
 test('nothing falls while the round still has time', () => {
-  assert.equal(wallsDue(0), 0);
-  assert.equal(wallsDue(ROUND_TIME_STEPS), 0, 'not even on the very last step');
-  assert.equal(closing(ROUND_TIME_STEPS), false);
-  assert.equal(wallsDue(ROUND_TIME_STEPS + 1), 1, 'the first one falls on the step after');
-  assert.equal(closing(ROUND_TIME_STEPS + 1), true);
+  assert.equal(wallsDue(0, LIMIT), 0);
+  assert.equal(wallsDue(LIMIT, LIMIT), 0, 'not even on the very last step');
+  assert.equal(closing(LIMIT, LIMIT), false);
+  assert.equal(wallsDue(LIMIT + 1, LIMIT), 1, 'the first one falls on the step after');
+  assert.equal(closing(LIMIT + 1, LIMIT), true);
 });
 
 test('the blocks fall at a steady pace, and stop once the board is full', () => {
-  assert.equal(wallsDue(ROUND_TIME_STEPS + ENCLOSURE_STEPS), 1, 'one per interval');
-  assert.equal(wallsDue(ROUND_TIME_STEPS + ENCLOSURE_STEPS + 1), 2);
-  const whole = ROUND_TIME_STEPS + ENCLOSURE.length * ENCLOSURE_STEPS;
-  assert.equal(wallsDue(whole), ENCLOSURE.length, 'the spiral is done');
-  assert.equal(wallsDue(whole + 10000), ENCLOSURE.length, 'and nothing runs off the end');
+  assert.equal(wallsDue(LIMIT + ENCLOSURE_STEPS, LIMIT), 1, 'one per interval');
+  assert.equal(wallsDue(LIMIT + ENCLOSURE_STEPS + 1, LIMIT), 2);
+  const whole = LIMIT + ENCLOSURE.length * ENCLOSURE_STEPS;
+  assert.equal(wallsDue(whole, LIMIT), ENCLOSURE.length, 'the spiral is done');
+  assert.equal(wallsDue(whole + 10000, LIMIT), ENCLOSURE.length, 'and nothing runs off the end');
 });
 
 test('the time left is what the dashboard counts down', () => {
-  assert.equal(timeLeft(0), ROUND_TIME_STEPS);
-  assert.equal(timeLeft(ROUND_TIME_STEPS - STEP_HZ), STEP_HZ, 'one second to go');
-  assert.equal(timeLeft(ROUND_TIME_STEPS + 500), 0, 'never negative');
+  assert.equal(timeLeft(0, LIMIT), LIMIT);
+  assert.equal(timeLeft(LIMIT - STEP_HZ, LIMIT), STEP_HZ, 'one second to go');
+  assert.equal(timeLeft(LIMIT + 500, LIMIT), 0, 'never negative');
 });
 
 test('the first block walls off the top left corner', () => {
@@ -83,7 +87,7 @@ test('the first block walls off the top left corner', () => {
   place(state, 0, 5, 5);
   place(state, 1, 9, 5);
 
-  advanceBy(state, ROUND_TIME_STEPS);
+  advanceBy(state, LIMIT);
   assert.equal(cellAt(state, 1, 1), EMPTY, 'still open on the last step of the round');
 
   step(state);
@@ -96,7 +100,7 @@ test('a block crushes whoever is under it', () => {
   place(state, 0, 1, 1);
   place(state, 1, 9, 5);
 
-  advanceBy(state, ROUND_TIME_STEPS + 1);
+  advanceBy(state, LIMIT + 1);
 
   const crushed = state.players[0];
   assert.equal(crushed.alive, false, 'the corner is where the first block falls');
@@ -110,7 +114,7 @@ test('a block buries the pack that was lying there', () => {
   place(state, 1, 9, 5);
   item(state, 1, 1, BONUS_CODES.FLAME);
 
-  advanceBy(state, ROUND_TIME_STEPS + 1);
+  advanceBy(state, LIMIT + 1);
 
   assert.equal(state.items[index(1, 1)], 0, 'the pack goes with the cell');
   assert.deepEqual(events(state, 'itemgone'), [['itemgone', 1, 1]], 'so the client clears it too');
@@ -124,7 +128,7 @@ test('a bomb under a block is gone, not set off', () => {
   place(state, 1, 9, 5);
   // Dropped THREE STEPS before the block falls: a fuse runs far longer than
   // that, so what buries the bomb is the block and nothing else.
-  advanceBy(state, ROUND_TIME_STEPS - 3);
+  advanceBy(state, LIMIT - 3);
   step(state, [{ dir: -1, drop: true, detonate: false, hold: false }]);
   assert.equal(state.bombs.length, 1, 'the bomb is there before the block');
 
@@ -140,7 +144,7 @@ test('the blocks fall one at a time, in the order of the spiral', () => {
   const state = bareArena();
   place(state, 0, 5, 5);
   place(state, 1, 9, 5);
-  advanceBy(state, ROUND_TIME_STEPS);
+  advanceBy(state, LIMIT);
 
   const laid = [];
   for (let i = 0; i < 20 * ENCLOSURE_STEPS; i += 1) {
@@ -162,7 +166,7 @@ test('the closing forces the round to a conclusion', () => {
 
   // Neither of them moves or drops anything: left alone they would still be
   // there in an hour, which is exactly the round this rule exists to end.
-  advanceBy(state, ROUND_TIME_STEPS + ENCLOSURE.length * ENCLOSURE_STEPS + 200);
+  advanceBy(state, LIMIT + ENCLOSURE.length * ENCLOSURE_STEPS + 200);
 
   assert.equal(state.phase, 'verdict', 'the round is over');
   assert.ok(state.verdict, 'and it has a verdict');
@@ -172,4 +176,38 @@ test('the closing forces the round to a conclusion', () => {
   );
   // The corner they were standing in is walled: that is what ended it.
   assert.equal(cellAt(state, 1, 1), SOLID);
+});
+
+test('a round closes on the duration it was given, not on the default', () => {
+  // The duration is chosen in the options and on the new-game screen, so the
+  // arena of a one-minute round has to start closing after one minute.
+  const short = DURATIONS[0];
+  const state = bareArena({ duration: short });
+  place(state, 0, 5, 5);
+  place(state, 1, 9, 5);
+  assert.equal(state.timeLimit, short * STEP_HZ, 'seconds, turned into steps once');
+
+  advanceBy(state, short * STEP_HZ);
+  assert.equal(cellAt(state, 1, 1), EMPTY, 'still open on its last step');
+  step(state);
+  assert.equal(cellAt(state, 1, 1), SOLID, 'and closing on the next');
+});
+
+test('a duration nobody offers falls back on the default', () => {
+  // It arrives off the network, so it comes from a stranger: a room asking for
+  // five seconds, or for nothing at all, plays the ordinary two minutes.
+  for (const nonsense of [7, 0, -120, 99999, '120', null, undefined, NaN]) {
+    const state = bareArena({ duration: nonsense });
+    assert.equal(state.timeLimit, DEFAULT_DURATION * STEP_HZ, `${JSON.stringify(nonsense)}`);
+  }
+});
+
+test('every duration on offer is a whole number of seconds, in order', () => {
+  // They are shown as minutes and seconds, and a list out of order would read
+  // as a bug in the menu rather than a choice.
+  assert.ok(DURATIONS.includes(DEFAULT_DURATION), 'the default is one of them');
+  for (const duration of DURATIONS) {
+    assert.ok(Number.isInteger(duration) && duration > 0, `${duration} is a duration`);
+  }
+  assert.deepEqual(DURATIONS, [...DURATIONS].sort((a, b) => a - b), 'shortest first');
 });

@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 
 import { createRoom } from '../worker/room.js';
 import { CLIENT, SERVER, RESUME_MS, TERRAINS } from '../src/net/protocol.js';
+import { DURATIONS, DEFAULT_DURATION } from '../src/engine/constants.js';
 import { STEP_MS } from '../src/engine/constants.js';
 import { ROUND_START_STEPS } from '../src/engine/game.js';
 
@@ -656,4 +657,49 @@ test('a frame sent to keep the line open does nothing at all', () => {
   const outgoing = room.message('a', { type: CLIENT.PING }, 0);
   assert.deepEqual(outgoing, [], 'not a word in reply');
   assert.equal(room.started, false, 'and nothing set off');
+});
+
+test('the duration of the table is the duration everybody is given', () => {
+  // Like the colours and the board: one room, one clock. Two screens counting
+  // down to different moments would watch the same walls fall at the wrong time.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  const wanted = DURATIONS[DURATIONS.length - 1];
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, duration: wanted, host: true }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob', duration: DURATIONS[0] }, 0);
+
+  const starts = of(room.message('a', { type: CLIENT.BEGIN }, 0), SERVER.START);
+  assert.equal(starts.length, 2, 'one per human');
+  for (const start of starts) assert.equal(start.duration, wanted, 'the guest does not get a say');
+});
+
+test('a room told nothing about its duration plays the ordinary one', () => {
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, host: true }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+
+  const [start] = of(room.message('a', { type: CLIENT.BEGIN }, 0), SERVER.START);
+  assert.equal(start.duration, DEFAULT_DURATION);
+});
+
+test('a duration nobody offers is refused by the room', () => {
+  // It comes off the wire: a hand-made client asking for five seconds would
+  // otherwise make the arena close before anybody had moved.
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, duration: 5, host: true }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+
+  const [start] = of(room.message('a', { type: CLIENT.BEGIN }, 0), SERVER.START);
+  assert.equal(start.duration, DEFAULT_DURATION);
+});
+
+test('coming back finds the duration the match is played on', () => {
+  const room = createRoom({ code: 'TEST', now: 0, seed: 7 });
+  const wanted = DURATIONS[0];
+  room.join('a', { type: CLIENT.JOIN, name: 'Alice', places: 2, duration: wanted, host: true }, 0);
+  room.join('b', { type: CLIENT.JOIN, name: 'Bob' }, 0);
+  room.message('a', { type: CLIENT.BEGIN }, 0);
+
+  room.leave('a', 1000);
+  const back = room.join('a2', { type: CLIENT.JOIN, name: 'Alice', resume: 'a' }, 2000);
+  assert.equal(of(back, SERVER.START)[0].duration, wanted);
 });

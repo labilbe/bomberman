@@ -27,6 +27,7 @@ import { createGame, stepGame } from '../engine/game.js';
 import { createClock, advance } from '../engine/clock.js';
 import { EMPTY_INPUT } from '../engine/inputs.js';
 import { FORMATS } from '../engine/round.js';
+import { DEFAULT_DURATION } from '../engine/constants.js';
 
 /**
  * Solo and local play: the engine runs in the page, with no latency and no
@@ -34,6 +35,7 @@ import { FORMATS } from '../engine/round.js';
  *
  * @param {{
  *   seed?: number, places?: number, humans?: number, format?: number, terrain?: number,
+ *   duration?: number,
  *   pilots?: Record<number, (state: object, place: number) => object>
  * }} options
  */
@@ -43,9 +45,10 @@ export function createLocalTransport({
   humans = 1,
   format = FORMATS[0],
   terrain = null,
+  duration = DEFAULT_DURATION,
   pilots = {},
 } = {}) {
-  const game = createGame({ seed, places, format });
+  const game = createGame({ seed, places, format, duration });
   const intents = Array.from({ length: places }, () => ({ ...EMPTY_INPUT }));
   const views = new Set();
   const events = new Set();

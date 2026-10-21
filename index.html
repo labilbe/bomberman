@@ -92,6 +92,18 @@
                           <option value="7">Au meilleur des 7</option>
                         </select>
                       </label>
+                      <label class="field">
+                        <!--
+                          La durée de CETTE partie, au bout de laquelle le
+                          terrain se referme. Elle arrive sur celle des
+                          options — le choix permanent — et on en change ici
+                          pour une soirée sans toucher au réglage. La liste
+                          est remplie par la page : c'est le moteur qui sait
+                          quelles durées existent.
+                        -->
+                        <span>Durée</span>
+                        <select id="local-duration" class="field-duration"></select>
+                      </label>
                       <!--
                         Le décor du plateau, parmi les onze du jeu d'origine.
                         Le champ est rempli par la page, à partir des sprites
@@ -159,6 +171,16 @@
                           <option value="5">Au meilleur des 5</option>
                           <option value="7">Au meilleur des 7</option>
                         </select>
+                      </label>
+                      <label class="field">
+                        <!--
+                          La durée d'une manche, au bout de laquelle le terrain
+                          se referme. C'est le choix permanent : l'écran de
+                          nouvelle partie le recopie à chaque ouverture, et on
+                          peut l'y changer pour une seule soirée.
+                        -->
+                        <span>Durée d'une manche</span>
+                        <select id="duration"></select>
                       </label>
                       <label class="field">
                         <!--
@@ -245,7 +267,9 @@
                       compris.
                     </p>
                     <p class="note">
-                      Une manche dure DEUX MINUTES. Passé ce délai le terrain se referme : des blocs
+                      Une manche dure DEUX MINUTES par défaut — la durée se règle de une à cinq
+                      minutes dans les Options, et l'écran de nouvelle partie la recopie.
+                      Passé ce délai le terrain se referme : des blocs
                       tombent un par un, en spirale, depuis le coin en haut à gauche et jusqu'au centre.
                       Ils écrasent qui se trouve dessous, enterrent les bombes et les paquets. Rien
                       n'est déclaré nul — le sol disparaît jusqu'à ce qu'il ne reste qu'un bomber.

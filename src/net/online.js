@@ -26,7 +26,7 @@ import { EMPTY_INPUT } from '../engine/inputs.js';
 import { createState } from '../engine/state.js';
 import { createMatch } from '../engine/round.js';
 import { index, inArena } from '../engine/grid.js';
-import { EMPTY, SOLID } from '../engine/constants.js';
+import { EMPTY, SOLID, DEFAULT_DURATION } from '../engine/constants.js';
 import { BONUS_NAMES } from '../engine/bonus.js';
 import { CLIENT, SERVER, encode, decode, RESUME_MS } from './protocol.js';
 
@@ -130,12 +130,13 @@ export function followGrid(state, list) {
 /**
  * @param {{
  *   url: string, room: string, nickname: string, places?: number, format?: number,
- *   terrain?: number | null,
+ *   terrain?: number | null, duration?: number,
  *   bots?: number[], colours?: number[] | null, colour?: number | null, host?: boolean
  * }} options
  */
 export function createOnlineTransport({
-  url, room, nickname, places = 2, format = 3, terrain = null, bots = [], colours = null, colour = null,
+  url, room, nickname, places = 2, format = 3, terrain = null, duration = DEFAULT_DURATION,
+  bots = [], colours = null, colour = null,
   host = false,
 }) {
   const views = new Set();
@@ -342,7 +343,10 @@ export function createOnlineTransport({
       // the next reconnection.
       beginWanted = false;
       mine = message.mine ?? [];
-      state = createState({ seed: 1, places: message.places });
+      // The round's time limit comes with the start, like the colours and the
+      // board: the dashboard counts it down, and a client counting its own
+      // would show a clock that disagrees with the walls it is watching fall.
+      state = createState({ seed: 1, places: message.places, duration: message.duration });
       match = createMatch({ places: message.places, total: message.format });
       say('');
       if (!started) {
@@ -475,6 +479,8 @@ export function createOnlineTransport({
         name: nickname,
         places,
         format,
+        // How long each round runs, part of the table like the rest.
+        duration,
         // The board, part of the table too: null says "au hasard" and lets the
         // relay draw, which is the only way every screen gets the same one.
         terrain: terrain ?? undefined,

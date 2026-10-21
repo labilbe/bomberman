@@ -18,7 +18,7 @@
  * between them beyond the events it records.
  */
 
-import { ROUND_TIME_STEPS, ENCLOSURE_STEPS, SOLID } from './constants.js';
+import { ENCLOSURE_STEPS, SOLID } from './constants.js';
 import { ENCLOSURE } from './arena.js';
 import { index, setCell, boxOnCell } from './grid.js';
 import { record } from './state.js';
@@ -33,23 +33,28 @@ import { kill, BY_WALL } from './explosion.js';
  * reconnection, and a single missed increment would leave two arenas closing at
  * different rates. A step gives the same answer to everybody, for ever.
  *
+ * The limit is handed in rather than read from a constant: it is the round's
+ * own, chosen on the new-game screen and settled by the relay for a room, so
+ * two games running side by side do not close at the same moment.
+ *
  * @param {number} step
+ * @param {number} limit when the closing starts, in steps
  * @returns {number} between 0 and the whole spiral
  */
-export function wallsDue(step) {
-  if (step <= ROUND_TIME_STEPS) return 0;
-  const fallen = Math.floor((step - ROUND_TIME_STEPS - 1) / ENCLOSURE_STEPS) + 1;
+export function wallsDue(step, limit) {
+  if (step <= limit) return 0;
+  const fallen = Math.floor((step - limit - 1) / ENCLOSURE_STEPS) + 1;
   return Math.min(ENCLOSURE.length, fallen);
 }
 
-/** Seconds left before the arena starts closing, for the dashboard. */
-export function timeLeft(step) {
-  return Math.max(0, ROUND_TIME_STEPS - step);
+/** Steps left before the arena starts closing, for the dashboard. */
+export function timeLeft(step, limit) {
+  return Math.max(0, limit - step);
 }
 
 /** Has the arena started closing? */
-export function closing(step) {
-  return step > ROUND_TIME_STEPS;
+export function closing(step, limit) {
+  return step > limit;
 }
 
 /**
@@ -115,8 +120,8 @@ function dropWall(state, cx, cy) {
  * @param {import('./state.js').State} state
  */
 export function closeArena(state) {
-  const due = wallsDue(state.step);
-  for (let i = wallsDue(state.step - 1); i < due; i += 1) {
+  const due = wallsDue(state.step, state.timeLimit);
+  for (let i = wallsDue(state.step - 1, state.timeLimit); i < due; i += 1) {
     dropWall(state, ENCLOSURE[i][0], ENCLOSURE[i][1]);
   }
 }

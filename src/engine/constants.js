@@ -258,17 +258,27 @@ export const MAX_PLAYERS = 10;
 export const ROUND_END_STEPS = 90;
 
 /**
- * How long a round runs before the arena starts closing in: two minutes.
+ * How long a round runs before the arena starts closing in, in SECONDS.
  *
- * It is the original game's own figure — `playtime=120` in its OPTIONS.INI,
- * shown as "Play Time" in its options screen — and not a number chosen here.
+ * In seconds and not in steps, unlike every other duration in this file,
+ * because this one is CHOSEN: it is offered in the options and on the
+ * new-game screen, it travels over the wire, and a player picks it in minutes.
+ * The engine converts it once, in `createState`, and counts steps from then on.
  *
  * The limit is NOT a draw. Nothing ends when it expires: the walls start
  * falling, and the round ends because somebody is the last one left. A timer
  * that simply called the round void would reward whoever hid best, which is the
  * opposite of what this is for.
  */
-export const ROUND_TIME_STEPS = 120 * STEP_HZ;
+export const DURATIONS = [60, 120, 180, 240, 300];
+
+/**
+ * The duration a round gets when nobody says otherwise: two minutes.
+ *
+ * The original game's own figure — `playtime=120` in its OPTIONS.INI, shown as
+ * "Play Time" in its options screen — and not a number chosen here.
+ */
+export const DEFAULT_DURATION = 120;
 
 /**
  * How often a block falls once the arena is closing: every fifth of a second.

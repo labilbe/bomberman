@@ -98,13 +98,13 @@ export function createHud(root) {
    * in is the one thing the player has to read, since every corner of the board
    * is about to stop being one.
    */
-  function showClock(step) {
+  function showClock(step, limit) {
     if (!clock) return;
-    const left = timeLeft(step);
-    const seconds = Math.ceil(left / STEP_HZ);
-    clock.classList.toggle('closing', closing(step));
-    clock.classList.toggle('urgent', !closing(step) && seconds <= URGENT_SECONDS);
-    clock.textContent = closing(step)
+    const seconds = Math.ceil(timeLeft(step, limit) / STEP_HZ);
+    const shutting = closing(step, limit);
+    clock.classList.toggle('closing', shutting);
+    clock.classList.toggle('urgent', !shutting && seconds <= URGENT_SECONDS);
+    clock.textContent = shutting
       ? 'Le terrain se referme'
       : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
   }
@@ -160,7 +160,7 @@ export function createHud(root) {
      * @param {import('../engine/round.js').Match} match
      */
     refresh(state, match) {
-      showClock(state.step);
+      showClock(state.step, state.timeLimit);
       for (const player of state.players) {
         const row = rows.get(player.place);
         if (!row) continue;

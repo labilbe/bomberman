@@ -27,7 +27,7 @@ import { randomSeed } from '../src/engine/rng.js';
 import { EMPTY_INPUT, normalise } from '../src/engine/inputs.js';
 import { kill, BY_START, BY_LEAVING } from '../src/engine/explosion.js';
 import { FORMATS } from '../src/engine/round.js';
-import { TICK_HZ, STEP_HZ } from '../src/engine/constants.js';
+import { TICK_HZ, STEP_HZ, DURATIONS, DEFAULT_DURATION } from '../src/engine/constants.js';
 import {
   SERVER,
   CLIENT,
@@ -166,6 +166,8 @@ export function createRoom({ code, now, seed = randomSeed() }) {
   let clock = null;
   let places = MIN_PLACES;
   let format = FORMATS[0];
+  /** How long each round of this room runs before the arena closes in. */
+  let duration = DEFAULT_DURATION;
   /**
    * The colour each place wears, as whoever laid the table chose them.
    *
@@ -299,6 +301,7 @@ export function createRoom({ code, now, seed = randomSeed() }) {
       Math.max(MIN_PLACES, Number(message.places) || MIN_PLACES, ...seated.map((p) => p + 1)),
     );
     if (FORMATS.includes(Number(message.format))) format = Number(message.format);
+    if (DURATIONS.includes(Number(message.duration))) duration = Number(message.duration);
     terrain = cleanTerrain(message.terrain);
     const table = cleanColours(message.colours, places);
     colours = preferColour(table, place, table[0], () => false);
@@ -366,7 +369,7 @@ export function createRoom({ code, now, seed = randomSeed() }) {
   function start(nowMs) {
     while (addBot());
 
-    game = createGame({ seed, places, format });
+    game = createGame({ seed, places, format, duration });
     // The board of THIS match: the one the table named, or one drawn now. Drawn
     // at the start and not on arrival, so that a room played twice does not
     // replay the same scenery — the original game's "Random Each Game".
@@ -387,6 +390,7 @@ export function createRoom({ code, now, seed = randomSeed() }) {
         mine: [member.place],
         places,
         format: game.format,
+        duration: game.duration,
         terrain: board,
         names: names(),
         colours: colours.slice(),
@@ -500,6 +504,7 @@ export function createRoom({ code, now, seed = randomSeed() }) {
             mine: [resumed.place],
             places,
             format: game.format,
+            duration: game.duration,
             // The board the match is being played on, and not the table's
             // choice: a room that asked for "au hasard" has drawn one since, and
             // somebody coming back must find the arena they left.

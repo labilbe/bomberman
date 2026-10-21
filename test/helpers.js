@@ -17,8 +17,8 @@ import { COLS, ROWS, EMPTY, SOLID, BRICK } from '../src/engine/constants.js';
  *
  * @param {{ places?: number, seed?: number }} options
  */
-export function bareArena({ places = 2, seed = 1 } = {}) {
-  const state = createState({ seed, places });
+export function bareArena({ places = 2, seed = 1, duration = undefined } = {}) {
+  const state = createState({ seed, places, duration });
   for (let y = 0; y < ROWS; y += 1) {
     for (let x = 0; x < COLS; x += 1) {
       state.tiles[index(x, y)] = isHardWall(x, y) ? SOLID : EMPTY;
