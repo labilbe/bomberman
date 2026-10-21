@@ -13,6 +13,7 @@
 import { placeColour } from '../render/palette.js';
 import { MAX_BOMBS, MAX_RANGE, BASE_SPEED, SPEED_STEP, STEP_HZ } from '../engine/constants.js';
 import { ILLNESSES, isIll } from '../engine/disease.js';
+import { timeLeft, closing } from '../engine/enclosure.js';
 
 /**
  * @param {HTMLElement} root
@@ -20,6 +21,8 @@ import { ILLNESSES, isIll } from '../engine/disease.js';
 export function createHud(root) {
   /** @type {Map<number, { block: HTMLElement, rounds: HTMLElement, powers: HTMLElement }>} */
   const rows = new Map();
+  /** The round's clock, rebuilt with the rows. */
+  let clock = null;
 
   /**
    * @param {number} places
@@ -32,6 +35,15 @@ export function createHud(root) {
   function build(places, names, colours = null) {
     root.textContent = '';
     rows.clear();
+
+    // THE CLOCK COMES FIRST, across the whole dashboard. It is not a player's
+    // business, it is the round's: the arena starts closing when it runs out,
+    // and a countdown nobody can see would make that look like the game
+    // breaking down rather than the rule it is.
+    clock = document.createElement('div');
+    clock.className = 'clock';
+    root.append(clock);
+
     for (let place = 0; place < places; place += 1) {
       const colour = placeColour(colours?.[place] ?? place);
       const block = document.createElement('div');
@@ -69,6 +81,33 @@ export function createHud(root) {
     [ILLNESSES.SLOW]: 'Jambes de plomb',
     [ILLNESSES.RUSH]: 'Jambes folles',
   };
+
+  /**
+   * When the last seconds start being counted one by one.
+   *
+   * Ten seconds: long enough to come out of a corner and settle something, short
+   * enough that the warning is not noise for two minutes.
+   */
+  const URGENT_SECONDS = 10;
+
+  /**
+   * The round's clock: what is left, then what is happening.
+   *
+   * Once the time is up the figure is replaced rather than left at zero. A
+   * countdown stuck on 0:00 says nothing about what follows; the arena closing
+   * in is the one thing the player has to read, since every corner of the board
+   * is about to stop being one.
+   */
+  function showClock(step) {
+    if (!clock) return;
+    const left = timeLeft(step);
+    const seconds = Math.ceil(left / STEP_HZ);
+    clock.classList.toggle('closing', closing(step));
+    clock.classList.toggle('urgent', !closing(step) && seconds <= URGENT_SECONDS);
+    clock.textContent = closing(step)
+      ? 'Le terrain se referme'
+      : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  }
 
   /** A bomber's powers, on one line legible at a glance. */
   function powersOf(player, step) {
@@ -121,6 +160,7 @@ export function createHud(root) {
      * @param {import('../engine/round.js').Match} match
      */
     refresh(state, match) {
+      showClock(state.step);
       for (const player of state.players) {
         const row = rows.get(player.place);
         if (!row) continue;

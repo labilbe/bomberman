@@ -46,6 +46,7 @@ import {
   ageFlames,
   ageRubble,
 } from './explosion.js';
+import { closeArena } from './enclosure.js';
 import { roundVerdict } from './round.js';
 
 /** The input of a place, or standing still while the network has not said yet. */
@@ -222,6 +223,11 @@ export function step(state, inputs = []) {
   // its cell and shows its bonus, which will therefore only be pickable on the
   // next step — you do not pick up through a brick that has just fallen.
   ageRubble(state);
+  // The arena closes LAST, once everything else on this step has happened. A
+  // block that falls is the final word on its cell: whoever was there has had
+  // their move, their bomb and their pickup first, and is crushed afterwards —
+  // not robbed of a step they had already played.
+  closeArena(state);
   conclude(state);
 
   return state;

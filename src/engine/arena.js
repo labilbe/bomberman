@@ -59,6 +59,50 @@ export function isHardWall(x, y) {
 }
 
 /**
+ * The order in which the arena closes when the time is up: a spiral.
+ *
+ * It starts at the TOP LEFT corner of the playable area, runs along the top
+ * wall to the right, turns down, and keeps turning inwards until it reaches the
+ * middle — the original game's "Enclosement", all the way in.
+ *
+ * It covers the INSIDE only: the outer ring is already wall, and the
+ * checkerboard's pillars are walked over like anything else, since a block
+ * falling on a pillar changes nothing and skipping them would make the spiral
+ * stutter at an irregular pace.
+ *
+ * Computed once, from the arena's dimensions alone. It is the same list on
+ * every machine and in every round — the closing is the one thing in this game
+ * that owes nothing to chance, which is what makes it a deadline rather than a
+ * punishment.
+ *
+ * @returns {[number, number][]} cells, in the order they are filled
+ */
+function spiral() {
+  const cells = [];
+  let left = 1;
+  let right = COLS - 2;
+  let top = 1;
+  let bottom = ROWS - 2;
+  while (left <= right && top <= bottom) {
+    for (let x = left; x <= right; x += 1) cells.push([x, top]);
+    top += 1;
+    for (let y = top; y <= bottom; y += 1) cells.push([right, y]);
+    right -= 1;
+    if (top <= bottom) {
+      for (let x = right; x >= left; x -= 1) cells.push([x, bottom]);
+      bottom -= 1;
+    }
+    if (left <= right) {
+      for (let y = bottom; y >= top; y -= 1) cells.push([left, y]);
+      left += 1;
+    }
+  }
+  return cells;
+}
+
+export const ENCLOSURE = spiral();
+
+/**
  * The three cells to clear around a start: its own, and two neighbours. A bomber
  * therefore always has two ways out.
  *

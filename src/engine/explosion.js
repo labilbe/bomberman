@@ -39,6 +39,8 @@ import { isHidden, isVisible, codeOf, grant, BONUS_NAMES, BONUS_CODES } from './
 export const BY_FLAME = 0;
 export const BY_LEAVING = 1;
 export const BY_START = 2;
+/** Crushed by the arena closing in, once the round's time is up. */
+export const BY_WALL = 3;
 
 /**
  * Actual reach of one branch of the explosion.

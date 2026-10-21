@@ -35,6 +35,12 @@ goutte (les bombes shootées rebondissent), la rafale, la flamme d'or (toute la
 portée d'un coup) et le paquet mystère. Un bomber qui meurt lâche tout ce qu'il
 avait ramassé.
 
+**Une manche dure deux minutes** — le `playtime` du jeu d'origine. Ensuite le
+terrain se referme : des blocs durs tombent un par un, en spirale, du coin haut
+gauche jusqu'au centre, écrasant qui se trouve dessous. Ce n'est pas un match
+nul, c'est une échéance : le sol disparaît jusqu'à ce que la manche se décide
+toute seule. Deux bombers qui s'évitent ne s'évitent pas éternellement.
+
 **Le crâne**, lui, ne se ramasse pas : il s'attrape. Colique, mèche courte,
 flamme rabougrie, jambes de plomb ou jambes folles, quinze secondes durant. Il
 ne touche à aucun bonus — tout revient intact — et surtout il se REFILE : entrez

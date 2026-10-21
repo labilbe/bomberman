@@ -26,7 +26,7 @@ import { EMPTY_INPUT } from '../engine/inputs.js';
 import { createState } from '../engine/state.js';
 import { createMatch } from '../engine/round.js';
 import { index, inArena } from '../engine/grid.js';
-import { EMPTY } from '../engine/constants.js';
+import { EMPTY, SOLID } from '../engine/constants.js';
 import { BONUS_NAMES } from '../engine/bonus.js';
 import { CLIENT, SERVER, encode, decode, RESUME_MS } from './protocol.js';
 
@@ -111,6 +111,12 @@ export function followGrid(state, list) {
     // itself walk in.
     if (name === 'brickgone') {
       state.tiles[i] = EMPTY;
+      tilesWritten += 1;
+    } else if (name === 'wall') {
+      // The arena closing in. Unlike a brick there is no delay and no
+      // animation to wait for: the block IS the cell, from the step it is
+      // announced, and the relay has already killed whoever stood there.
+      state.tiles[i] = SOLID;
       tilesWritten += 1;
     } else if (name === 'item') {
       state.items[i] = CODE_BY_NAME[rest[0]] ?? 0;

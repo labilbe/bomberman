@@ -717,6 +717,57 @@ body:has(#game:not([hidden])) .masthead {
   width: 100%;
 }
 
+/*
+ * The round's clock, across the whole dashboard.
+ *
+ * A bar of its own above the players and not a fourth figure on their rows: it
+ * belongs to nobody, and when it runs out the arena starts closing on everybody
+ * at once. Tabular figures so that the seconds do not shift the line as they
+ * count down — a clock that jiggles is read as an animation rather than a
+ * countdown.
+ */
+.clock {
+  grid-column: 1 / -1;
+  font-family: var(--display);
+  font-size: 22px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--steel);
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 2px 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The last ten seconds: the figure itself turns, before the walls do. */
+.clock.urgent {
+  color: var(--yellow);
+  border-color: var(--accent-dark);
+}
+
+/*
+ * The arena closing. It PULSES, which nothing else in the dashboard does: the
+ * board is being taken away a block at a time, and that is the one message
+ * worth interrupting a player's reading for.
+ */
+.clock.closing {
+  color: #ff5a5a;
+  border-color: #ff5a5a;
+  animation: clock-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes clock-pulse {
+  50% { opacity: 0.45; }
+}
+
+/* Somebody who asked for less movement gets the colour and not the blinking. */
+@media (prefers-reduced-motion: reduce) {
+  .clock.closing {
+    animation: none;
+  }
+}
+
 .player {
   background: var(--bg-sunken);
   border: 1px solid var(--line);

@@ -257,6 +257,30 @@ export const MAX_PLAYERS = 10;
 /** Pause after the last death, before the round is announced. */
 export const ROUND_END_STEPS = 90;
 
+/**
+ * How long a round runs before the arena starts closing in: two minutes.
+ *
+ * It is the original game's own figure — `playtime=120` in its OPTIONS.INI,
+ * shown as "Play Time" in its options screen — and not a number chosen here.
+ *
+ * The limit is NOT a draw. Nothing ends when it expires: the walls start
+ * falling, and the round ends because somebody is the last one left. A timer
+ * that simply called the round void would reward whoever hid best, which is the
+ * opposite of what this is for.
+ */
+export const ROUND_TIME_STEPS = 120 * STEP_HZ;
+
+/**
+ * How often a block falls once the arena is closing: every fifth of a second.
+ *
+ * The 143 cells of the playable area therefore take some twenty-nine seconds to
+ * fill. Slower, two bombers who avoid each other can run from the wall for a
+ * minute more and the limit decides nothing; faster, the closing kills before
+ * it threatens, and a round can be lost without a single reason you could see
+ * coming.
+ */
+export const ENCLOSURE_STEPS = 12;
+
 /** Directions, in the order the engine evaluates them. */
 export const UP = 0;
 export const RIGHT = 1;
