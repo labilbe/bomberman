@@ -211,3 +211,23 @@ test('every duration on offer is a whole number of seconds, in order', () => {
   }
   assert.deepEqual(DURATIONS, [...DURATIONS].sort((a, b) => a - b), 'shortest first');
 });
+
+test('the warning goes out once, on the step the time runs out', () => {
+  // It comes from the ENGINE so that every screen flashes it on the same step:
+  // a page watching its own countdown would have warned the player whose clock
+  // ran fast while the others still had a second.
+  const state = bareArena();
+  place(state, 0, 5, 5);
+  place(state, 1, 9, 5);
+
+  advanceBy(state, LIMIT - 1);
+  assert.equal(events(state, 'hurry').length, 0, 'not before the clock runs out');
+
+  step(state);
+  assert.deepEqual(events(state, 'hurry'), [['hurry']], 'exactly on the last step');
+  assert.equal(events(state, 'wall').length, 0, 'and before the first block, as in the game');
+
+  step(state);
+  assert.equal(events(state, 'hurry').length, 0, 'never twice');
+  assert.equal(events(state, 'wall').length, 1, 'the blocks start on the step after');
+});

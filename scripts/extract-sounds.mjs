@@ -43,6 +43,16 @@ const ROLES = {
   // in the file and never heard in the original, and adding them would be
   // inventing a game that does not exist.
   wall: [140, 142],
+  // The warning that the time is up, the instant before the first block falls:
+  // the two-blast siren, and ONLY it.
+  //
+  // SOUNDLST reserves 2700 to 2799 for "plays when 'hurry' flashes across the
+  // screen", and an installation holds two — 2700 `hurry`, the siren, and 2701
+  // `hurytuf`, a spoken taunt. Taking the range whole made the bank draw
+  // between them, so one time in two the siren did not sound at all. The siren
+  // is what the moment is: measured on the file, two bursts of 700 to 1500 Hz
+  // either side of a dip, at 0.6 s.
+  hurry: [2700, 2700],
 };
 
 /**

@@ -14,7 +14,7 @@ import { fromDrawings, fromVectors } from './render/spriteSet.js';
 import { createKeyboard, KEYS } from './input/keyboard.js';
 import { createGamepads } from './input/gamepads.js';
 import { merge } from './input/merge.js';
-import { createHud, createBanner } from './view/hud.js';
+import { createHud, createBanner, createFlash } from './view/hud.js';
 import { createLocalTransport } from './net/transport.js';
 import { createOnlineTransport } from './net/online.js';
 import { createSounds } from './audio/sounds.js';
@@ -144,6 +144,7 @@ const spriteSet = vectors ? fromVectors(vectors) : fromDrawings();
 const scene = createScene(canvas, spriteSet);
 const hud = createHud(document.querySelector('#hud'));
 const banner = createBanner(document.querySelector('#banner'));
+const flash = createFlash(document.querySelector('#hurry'));
 const keyboard = createKeyboard({ count: KEYS.length });
 const gamepads = createGamepads({ count: KEYS.length });
 
@@ -528,6 +529,8 @@ function showMenu() {
   menu.hidden = false;
   game.hidden = true;
   banner.hide();
+  // A warning left over from the round just ended has nothing to say in a menu.
+  flash.hide();
   netState.textContent = '';
   selectByDefault();
 }
@@ -1177,6 +1180,10 @@ async function startSession(transport, { humans = 1, places, names, sources = nu
   transport.onEvents((list) => {
     scene.events(list, performance.now());
     sounds.react(list);
+    // The engine says WHEN, the page says what it looks like. The word is
+    // French like everything else the game says out loud, even though the
+    // original flashes its own 'HURRY!' here.
+    if (list.some((event) => event[0] === 'hurry')) flash.show('VITE !');
   });
 
   transport.onTransition((transition) => {

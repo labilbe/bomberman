@@ -849,6 +849,45 @@ body:has(#game:not([hidden])) .masthead {
   border-radius: 4px;
 }
 
+/*
+ * The warning thrown across the board when the time runs out.
+ *
+ * NO VEIL BEHIND IT, unlike the banner: that one covers the arena because what
+ * it has to say replaces the game — the round is over, here is the score. This
+ * one says the opposite — look at the board, it is closing — so it must not
+ * hide it. Hence a word laid over the play, in the game's yellow, with a hard
+ * shadow to stay legible over grass as well as over tarmac.
+ *
+ * `pointer-events: none` so it never eats a click on its way through: it lasts
+ * two seconds and the player is in the middle of fleeing.
+ */
+.hurry {
+  position: absolute;
+  inset: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  font-family: var(--display);
+  font-size: clamp(40px, 11vw, 96px);
+  letter-spacing: 0.06em;
+  color: var(--yellow);
+  text-shadow: 0 0 18px rgba(0, 0, 0, 0.9), 4px 4px 0 rgba(0, 0, 0, 0.75);
+  animation: hurry-flash 0.42s steps(2, end) 5;
+}
+
+/* It FLASHES rather than fading: the original blinks it, and a blink is read
+   as an alarm where a fade reads as decoration. */
+@keyframes hurry-flash {
+  50% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hurry {
+    animation: none;
+  }
+}
+
 .banner {
   position: absolute;
   inset: 6px;

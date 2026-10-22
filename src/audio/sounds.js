@@ -127,6 +127,15 @@ export function createSounds() {
       blast(0.16, 900, 180, 0.4);
       note('sine', 120, 60, 0.14, 0.5);
     },
+    // The warning that the time is up, when the game's own siren is not there.
+    // TWO BLASTS and not a rising phrase, because that is what the original
+    // sounds: measured on its `hurry`, two bursts falling from about 1.4 kHz,
+    // either side of a dip at 0.6 s. A deadline for everybody at once, where
+    // the skull's three notes are bad news about you alone.
+    hurry: () => {
+      note('square', 1300, 820, 0.42, 0.3);
+      note('square', 1300, 820, 0.42, 0.3, 0.68);
+    },
     item: () => {
       note('triangle', 700, 700, 0.07, 0.4);
       note('triangle', 1050, 1050, 0.09, 0.4, 0.07);

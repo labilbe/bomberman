@@ -176,6 +176,53 @@ export function createHud(root) {
 }
 
 /**
+ * The warning thrown across the board when the round's time runs out.
+ *
+ * Separate from the banner although both lie over the arena, because they are
+ * opposites: the banner REPLACES the game for a moment — round, score, end of
+ * match — while this one asks the player to look at the board. It shows itself
+ * and takes itself away, and it is told nothing but "now".
+ *
+ * The word is the engine's cue and not a countdown of its own: it comes from
+ * the `hurry` event, which the relay broadcasts like any other, so every screen
+ * flashes it on the same step.
+ *
+ * @param {HTMLElement} element
+ * @param {number} ms how long it stays up
+ */
+export function createFlash(element, ms = 2100) {
+  let timer = null;
+
+  return {
+    /** @param {string} text */
+    show(text) {
+      if (!element) return;
+      if (timer) clearTimeout(timer);
+      element.textContent = text;
+      element.hidden = false;
+      // The animation is restarted by hand: shown twice in a row — two rounds
+      // running out back to back — the class is already there and the browser
+      // would not replay it.
+      element.style.animation = 'none';
+      void element.offsetWidth;
+      element.style.animation = '';
+      timer = setTimeout(() => {
+        element.hidden = true;
+        element.textContent = '';
+      }, ms);
+    },
+
+    hide() {
+      if (timer) clearTimeout(timer);
+      if (element) {
+        element.hidden = true;
+        element.textContent = '';
+      }
+    },
+  };
+}
+
+/**
  * Full-frame banner: round, score, end of match.
  *
  * @param {HTMLElement} element

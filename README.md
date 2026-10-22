@@ -37,8 +37,8 @@ avait ramassé.
 
 **Une manche dure deux minutes par défaut** — le `playtime` du jeu d'origine —
 et la durée se règle de une à cinq minutes dans les Options, l'écran de nouvelle
-partie la recopiant à chaque ouverture. Ensuite le
-terrain se referme : des blocs durs tombent un par un, en spirale, du coin haut
+partie la recopiant à chaque ouverture. Quand il tombe, la sirène sonne deux fois et
+*VITE !* traverse le plateau, puis le terrain se referme : des blocs durs tombent un par un, en spirale, du coin haut
 gauche jusqu'au centre, écrasant qui se trouve dessous — chacun avec le bruit
 de plaque du jeu d'origine, tiré au sort parmi ses trois variantes. Ce n'est pas un match
 nul, c'est une échéance : le sol disparaît jusqu'à ce que la manche se décide

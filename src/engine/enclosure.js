@@ -120,6 +120,13 @@ function dropWall(state, cx, cy) {
  * @param {import('./state.js').State} state
  */
 export function closeArena(state) {
+  // THE WARNING COMES FROM THE ENGINE, on the exact step the clock runs out, and
+  // not from a page watching its own countdown: online, each screen would have
+  // flashed it at a slightly different instant, and the one whose clock ran fast
+  // would have been told to hurry while the others still had a second. It fires
+  // once by construction — the step only takes this value once.
+  if (state.step === state.timeLimit) record(state, ['hurry']);
+
   const due = wallsDue(state.step, state.timeLimit);
   for (let i = wallsDue(state.step - 1, state.timeLimit); i < due; i += 1) {
     dropWall(state, ENCLOSURE[i][0], ENCLOSURE[i][1]);
