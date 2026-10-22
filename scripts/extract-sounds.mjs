@@ -36,6 +36,13 @@ const ROLES = {
   // The jelly's "boing". SOUNDLST groups them itself: "jelly bomb bouncing",
   // from 135 to 139.
   bounce: [135, 139], // a mad bomb bouncing
+  // A block of the closing arena landing. SOUNDLST calls it "a solid tile
+  // slamming in place (after 'hurry' is displayed)" and lists seven of them —
+  // but it also warns, in capitals, that the game is HARD-CODED to play one of
+  // the first three at random. We take exactly those three: the four below are
+  // in the file and never heard in the original, and adding them would be
+  // inventing a game that does not exist.
+  wall: [140, 142],
 };
 
 /**

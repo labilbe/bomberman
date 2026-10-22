@@ -116,11 +116,13 @@ export function createSounds() {
       note('sine', 90, 36, 0.3, 0.8);
     },
     brick: () => blast(0.12, 2600, 700, 0.35),
-    // A block of the closing arena landing. The brick's puff of noise pitched
-    // DOWN and given a low thump underneath: a brick breaking opens a cell, a
-    // block closes one, and the ear has to tell those two apart without
-    // looking — by the time this starts playing, looking is the one thing the
-    // player cannot afford.
+    // A block of the closing arena landing, when the game's own sound is not
+    // there. The real one is an iron plate slamming down — SOUNDLST.RES calls
+    // it "a solid tile slamming in place" — so this stands in with the brick's
+    // puff of noise pitched DOWN and a low thump underneath: a brick breaking
+    // opens a cell, a block closes one, and the ear has to tell those two apart
+    // without looking. By the time this starts playing, looking is the one
+    // thing the player cannot afford.
     wall: () => {
       blast(0.16, 900, 180, 0.4);
       note('sine', 120, 60, 0.14, 0.5);

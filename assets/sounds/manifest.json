@@ -56,6 +56,11 @@
       "bombboun.wav",
       "1017.wav",
       "1036.wav"
+    ],
+    "wall": [
+      "clikplat.wav",
+      "sqrdrop2.wav",
+      "sqrdrop4.wav"
     ]
   },
   "music": {
