@@ -1180,10 +1180,15 @@ async function startSession(transport, { humans = 1, places, names, sources = nu
   transport.onEvents((list) => {
     scene.events(list, performance.now());
     sounds.react(list);
-    // The engine says WHEN, the page says what it looks like. The word is
-    // French like everything else the game says out loud, even though the
-    // original flashes its own 'HURRY!' here.
-    if (list.some((event) => event[0] === 'hurry')) flash.show('VITE !');
+    // The engine says WHEN, the page says what it looks like.
+    //
+    // 'HURRY!' AND NOT ITS FRENCH, by exception to the rule that the game
+    // speaks French to its player: this word is part of Atomic Bomberman's own
+    // face, like the names of its boards. It is thrown across the screen in the
+    // original, in those letters, and whoever knows the game reads the alarm
+    // before reading the word. 'VITE !' said the same thing and was nobody's
+    // memory of it.
+    if (list.some((event) => event[0] === 'hurry')) flash.show('HURRY!');
   });
 
   transport.onTransition((transition) => {

@@ -21,6 +21,13 @@ Two things sit on the boundary and are already settled:
   file or a sequence: `BOMBS.ANI`, `power jelly`, `punch north green`. Renaming
   Interplay's assets in our own words would break the only link between the
   extractor and the files it reads.
+- **And a handful of words the original THROWS ON SCREEN are kept too**, French
+  rule notwithstanding, because they are part of its face rather than its
+  speech: `HURRY!` when the time runs out, and the names of the eleven boards —
+  *Green Acres*, *Ancient Egypt*. Whoever knows the game reads the alarm before
+  reading the word; a French version says the same thing and is nobody's memory
+  of it. The list is short and closed: everything else the game says out loud —
+  menus, manual, banners, HUD — stays French.
 
 The `bomberman.*` keys in `localStorage` are English too. They were renamed late,
 and `migratePrefs` in `main.js` carries the old French names over once: a key
