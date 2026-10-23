@@ -105,6 +105,26 @@ function isCap(r, g, b) {
 }
 
 /**
+ * How much of the silhouette may be yellow and still be a cap.
+ *
+ * On a bomb tinted for the YELLOW place, `isCap` matches the whole sphere: the
+ * cloud is then the bomb itself, its axis is that of a circle — undefined, and
+ * in practice whichever way the pixel noise leans. The band came out nearly
+ * upright and ran along the fuse, sticking out of the silhouette.
+ */
+const CAP_SHARE = 0.35;
+
+/**
+ * How much longer than wide the cloud must be for its axis to mean anything.
+ *
+ * A cap is a small leaning cylinder: its spread clearly favours one direction.
+ * A disc spreads the same in all of them, and the principal axis of a disc is
+ * noise. Measured on the game's bombs, the cap passes 2 while the sphere of a
+ * flash frame stays under 1.2.
+ */
+const CAP_ELONGATION = 1.5;
+
+/**
  * Axis of the yellow cap, in radians, or `null` when it cannot be found.
  *
  * We take the principal axis of the cloud of yellow pixels — the direction in
@@ -112,14 +132,16 @@ function isCap(r, g, b) {
  * recognition: the cap is a small leaning cylinder, and its spread follows its
  * slope.
  */
-function capAxis(data, width, height) {
+export function capAxis(data, width, height) {
   let n = 0;
+  let opaque = 0;
   let sx = 0;
   let sy = 0;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const i = (y * width + x) * 4;
       if (data[i + 3] < 128) continue;
+      opaque += 1;
       if (!isCap(data[i], data[i + 1], data[i + 2])) continue;
       n += 1;
       sx += x;
@@ -127,6 +149,7 @@ function capAxis(data, width, height) {
     }
   }
   if (n < 8) return null;
+  if (n > opaque * CAP_SHARE) return null;
 
   const mx = sx / n;
   const my = sy / n;
@@ -146,6 +169,14 @@ function capAxis(data, width, height) {
     }
   }
   if (xx === 0 && yy === 0) return null;
+
+  // Eigenvalues of the covariance: the spread along the principal axis, and the
+  // spread across it. Their ratio says whether the cloud has a direction at all.
+  const mean = (xx + yy) / 2;
+  const gap = Math.sqrt(((xx - yy) / 2) ** 2 + xy * xy);
+  if (mean - gap <= 0) return 0.5 * Math.atan2(2 * xy, xx - yy);
+  if ((mean + gap) / (mean - gap) < CAP_ELONGATION ** 2) return null;
+
   return 0.5 * Math.atan2(2 * xy, xx - yy);
 }
 
@@ -242,11 +273,15 @@ function withBand(source, tilt = TILT) {
   return canvas;
 }
 
-/** The same run of sprites, each girt with its band. */
-const runWithBand = (run) => {
-  const tilt = runAngle(run);
-  return run.map((sprite) => ({ ...sprite, canvas: withBand(sprite.canvas, tilt) }));
-};
+/**
+ * The same run of sprites, each girt with its band.
+ *
+ * `tilt` is there for the tinted runs: the angle is then read on the bomb as it
+ * sleeps in the file, where the cap is the only yellow thing, and not on a copy
+ * whose tint may have turned the whole sphere yellow.
+ */
+const runWithBand = (run, tilt = runAngle(run)) =>
+  run.map((sprite) => ({ ...sprite, canvas: withBand(sprite.canvas, tilt) }));
 
 /**
  * Reads the cap's angle on the first frame that shows one.
@@ -372,6 +407,17 @@ export function fromVectors(loaded, places = PLACES.length) {
   const { tile, terrains, roles, cycles } = loaded;
   const one = (name) => roles[name]?.[0] ?? null;
 
+  // The band's angle, measured once on the untinted bomb and shared by the ten
+  // places. Read on a tinted run it would be wrong for the yellow place, whose
+  // whole sphere passes for brass; and measuring it ten times over would cost
+  // ten readbacks for an angle that is the same bomb's every time. Lazy, like
+  // the runs it serves: a game that never drops a trigger bomb never pays it.
+  let tilt = null;
+  const bandTilt = () => {
+    if (tilt === null) tilt = roles.rawBomb ? runAngle(roles.rawBomb) : TILT;
+    return tilt;
+  };
+
   const set = {
     tile,
     // The board, until one is chosen: the first of the list. A game always calls
@@ -453,10 +499,10 @@ export function fromVectors(loaded, places = PLACES.length) {
         : tileSprite(paintSkull(tile.width, tile.height), tile),
     },
     bomb: lazyPerPlace(places, (p) => roles.bomb[p % roles.bomb.length]),
-    bombTrigger: lazyPerPlace(places, (p) => runWithBand(roles.bomb[p % roles.bomb.length])),
+    bombTrigger: lazyPerPlace(places, (p) => runWithBand(roles.bomb[p % roles.bomb.length], bandTilt())),
     // The MENU's bomb is green: it is the colour in the file, that of the bomber
     // on the home screen, and not one of the ten player tints.
-    menuBomb: roles.rawBomb ? runWithBand(roles.rawBomb) : null,
+    menuBomb: roles.rawBomb ? runWithBand(roles.rawBomb, bandTilt()) : null,
     // An explosion takes the colour of whoever dropped the bomb: each piece
     // therefore exists in as many copies as there are places.
     flame: lazyPerPlace(places, (p) => ({
